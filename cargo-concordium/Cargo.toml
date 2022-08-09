@@ -3,7 +3,7 @@ name = "cargo-concordium"
 version = "2.0.2"
 authors = ["Concordium <developers@concordium.com>"]
 edition = "2018"
-license-file = "../LICENSE-APACHE"
+license-file = "../LICENSE"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -24,12 +24,12 @@ num-traits = "0.2.15"
 [features]
 
 [dependencies.wasm-transform]
-path = "../wasm-transform"
+path = "../concordium-base/smart-contracts/wasm-transform"
 version = "0"
 
 [dependencies.wasm-chain-integration]
 version = "0.2"
-path = "../wasm-chain-integration/"
+path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
 
 [dev-dependencies]
@@ -37,5 +37,5 @@ criterion = "0.3"
 
 [dependencies.concordium-contracts-common]
 version = "3.0"
-path = "../concordium-contracts-common/concordium-contracts-common"
+path = "../concordium-base/concordium-contracts-common/concordium-contracts-common"
 features = ["derive-serde", "std"]

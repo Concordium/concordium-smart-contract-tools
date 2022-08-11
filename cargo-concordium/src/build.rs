@@ -33,7 +33,10 @@ pub enum SchemaBuildOptions {
 impl SchemaBuildOptions {
     /// Return whether the schema should be built.
     pub fn build(self) -> bool {
-        matches!(self, SchemaBuildOptions::JustBuild | SchemaBuildOptions::BuildAndEmbed)
+        matches!(
+            self,
+            SchemaBuildOptions::JustBuild | SchemaBuildOptions::BuildAndEmbed
+        )
     }
 
     /// Return whether the schema should be embedded.
@@ -54,8 +57,8 @@ pub fn build_contract(
     // reference to this vector, which is why it has to be here. This is a bit ugly, but not as
     // ugly as alternatives.
     let mut schema_bytes = Vec::new();
-    /* if none do not build. If Some(true) then embed, otherwise
-     * just build and return */
+    // if none do not build. If Some(true) then embed, otherwise
+    // just build and return
     let schema = match version {
         utils::WasmVersion::V0 => {
             if build_schema.build() {
@@ -96,7 +99,9 @@ pub fn build_contract(
     };
 
     let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-    let package = manifest.package.context("Manifest needs to specify [package]")?;
+    let package = manifest
+        .package
+        .context("Manifest needs to specify [package]")?;
 
     let result = Command::new("cargo")
         .arg("build")
@@ -184,10 +189,7 @@ fn check_exports(module: &Module, version: WasmVersion) -> anyhow::Result<()> {
     let mut contracts = BTreeSet::new();
     let mut methods = BTreeMap::<_, BTreeSet<OwnedEntrypointName>>::new();
     for export in &module.export.exports {
-        if let ExportDescription::Func {
-            ..
-        } = export.description
-        {
+        if let ExportDescription::Func { .. } = export.description {
             if let Ok(cn) = ContractName::new(export.name.as_ref()) {
                 contracts.insert(cn.contract_name());
             } else if let Ok(rn) = ReceiveName::new(export.name.as_ref()) {
@@ -225,8 +227,11 @@ fn check_exports(module: &Module, version: WasmVersion) -> anyhow::Result<()> {
                     closest[0]
                 );
             } else {
-                let list =
-                    closest.into_iter().map(|x| format!("'{}'", x)).collect::<Vec<_>>().join(", ");
+                let list = closest
+                    .into_iter()
+                    .map(|x| format!("'{}'", x))
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 anyhow::bail!(
                     "An entrypoint is declared for a contract '{}', but such a contract does not \
                      exist in the module.\nPerhaps you meant one of [{}].",
@@ -277,7 +282,9 @@ pub fn build_contract_schema<A>(
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
     let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-    let package = manifest.package.context("Manifest needs to specify [package]")?;
+    let package = manifest
+        .package
+        .context("Manifest needs to specify [package]")?;
 
     let result = Command::new("cargo")
         .arg("build")
@@ -315,7 +322,9 @@ pub fn build_contract_schema<A>(
 /// failed.
 pub fn build_and_run_wasm_test(extra_args: &[String]) -> anyhow::Result<bool> {
     let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-    let package = manifest.package.context("Manifest needs to specify [package]")?;
+    let package = manifest
+        .package
+        .context("Manifest needs to specify [package]")?;
 
     let cargo_args = [
         "build",
@@ -330,7 +339,11 @@ pub fn build_and_run_wasm_test(extra_args: &[String]) -> anyhow::Result<bool> {
 
     // Output what we are doing so that it is easier to debug if the user
     // has their own features or options.
-    eprint!("{} cargo {}", Color::Green.bold().paint("Running"), cargo_args.join(" "));
+    eprint!(
+        "{} cargo {}",
+        Color::Green.bold().paint("Running"),
+        cargo_args.join(" ")
+    );
     if extra_args.is_empty() {
         // This branch is just to avoid the extra trailing space in the case when
         // there are no extra arguments.
@@ -369,7 +382,11 @@ pub fn build_and_run_wasm_test(extra_args: &[String]) -> anyhow::Result<bool> {
         match result.1 {
             Some(err) => {
                 num_failed += 1;
-                eprintln!("  - {} ... {}", test_name, Color::Red.bold().paint("FAILED"));
+                eprintln!(
+                    "  - {} ... {}",
+                    test_name,
+                    Color::Red.bold().paint("FAILED")
+                );
                 eprintln!(
                     "    {} ... {}",
                     Color::Red.bold().paint("Error"),

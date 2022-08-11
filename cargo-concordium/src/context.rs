@@ -47,7 +47,10 @@ impl v0::HasInitContext for InitContextOpt {
     }
 
     fn sender_policies(&self) -> ExecResult<&[u8]> {
-        unwrap_ctx_field(self.sender_policies.as_ref().map(Vec::as_ref), "senderPolicies")
+        unwrap_ctx_field(
+            self.sender_policies.as_ref().map(Vec::as_ref),
+            "senderPolicies",
+        )
     }
 }
 
@@ -118,7 +121,10 @@ impl v0::HasReceiveContext for ReceiveContextOpt {
     }
 
     fn sender_policies(&self) -> ExecResult<&[u8]> {
-        unwrap_ctx_field(self.sender_policies.as_ref().map(Vec::as_ref), "senderPolicies")
+        unwrap_ctx_field(
+            self.sender_policies.as_ref().map(Vec::as_ref),
+            "senderPolicies",
+        )
     }
 }
 
@@ -173,7 +179,10 @@ impl v0::HasReceiveContext for ReceiveContextV1Opt {
     }
 
     fn sender_policies(&self) -> ExecResult<&[u8]> {
-        unwrap_ctx_field(self.common.sender_policies.as_ref().map(Vec::as_ref), "senderPolicies")
+        unwrap_ctx_field(
+            self.common.sender_policies.as_ref().map(Vec::as_ref),
+            "senderPolicies",
+        )
     }
 }
 
@@ -199,7 +208,9 @@ fn deserialize_policy_bytes_from_json<'de, D: serde::de::Deserializer<'de>>(
         for policy in policies.iter() {
             let bytes = concordium_contracts_common::to_bytes(policy);
             let internal_len = bytes.len() as u16;
-            internal_len.serial(&mut out).expect("Cannot fail writing to vec.");
+            internal_len
+                .serial(&mut out)
+                .expect("Cannot fail writing to vec.");
             out.extend_from_slice(&bytes);
         }
         Ok(Some(out))

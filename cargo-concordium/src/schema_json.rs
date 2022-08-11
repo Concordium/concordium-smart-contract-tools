@@ -29,7 +29,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::U8 => {
             if let Value::Number(n) = json {
-                let n = n.as_u64().ok_or_else(|| anyhow!("Unsigned integer required"))?;
+                let n = n
+                    .as_u64()
+                    .ok_or_else(|| anyhow!("Unsigned integer required"))?;
                 let n: u8 = n.try_into()?;
                 serial!(n, out)
             } else {
@@ -38,7 +40,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::U16 => {
             if let Value::Number(n) = json {
-                let n = n.as_u64().ok_or_else(|| anyhow!("Unsigned integer required"))?;
+                let n = n
+                    .as_u64()
+                    .ok_or_else(|| anyhow!("Unsigned integer required"))?;
                 let n: u16 = n.try_into()?;
                 serial!(n, out)
             } else {
@@ -47,7 +51,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::U32 => {
             if let Value::Number(n) = json {
-                let n = n.as_u64().ok_or_else(|| anyhow!("Unsigned integer required"))?;
+                let n = n
+                    .as_u64()
+                    .ok_or_else(|| anyhow!("Unsigned integer required"))?;
                 let n: u32 = n.try_into()?;
                 serial!(n, out)
             } else {
@@ -56,7 +62,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::U64 => {
             if let Value::Number(n) = json {
-                let n = n.as_u64().ok_or_else(|| anyhow!("Unsigned integer required"))?;
+                let n = n
+                    .as_u64()
+                    .ok_or_else(|| anyhow!("Unsigned integer required"))?;
                 serial!(n, out)
             } else {
                 bail!("JSON number required")
@@ -64,7 +72,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::I8 => {
             if let Value::Number(n) = json {
-                let n = n.as_i64().ok_or_else(|| anyhow!("Signed integer required"))?;
+                let n = n
+                    .as_i64()
+                    .ok_or_else(|| anyhow!("Signed integer required"))?;
                 let n: i8 = n.try_into()?;
                 serial!(n, out)
             } else {
@@ -73,7 +83,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::I16 => {
             if let Value::Number(n) = json {
-                let n = n.as_i64().ok_or_else(|| anyhow!("Signed integer required"))?;
+                let n = n
+                    .as_i64()
+                    .ok_or_else(|| anyhow!("Signed integer required"))?;
                 let n: i16 = n.try_into()?;
                 serial!(n, out)
             } else {
@@ -82,7 +94,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::I32 => {
             if let Value::Number(n) = json {
-                let n = n.as_i64().ok_or_else(|| anyhow!("Signed integer required"))?;
+                let n = n
+                    .as_i64()
+                    .ok_or_else(|| anyhow!("Signed integer required"))?;
                 let n: i32 = n.try_into()?;
                 serial!(n, out)
             } else {
@@ -91,7 +105,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::I64 => {
             if let Value::Number(n) = json {
-                let n = n.as_i64().ok_or_else(|| anyhow!("Signed integer required"))?;
+                let n = n
+                    .as_i64()
+                    .ok_or_else(|| anyhow!("Signed integer required"))?;
                 serial!(n, out)
             } else {
                 bail!("JSON number required")
@@ -107,8 +123,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::AccountAddress => {
             if let Value::String(string) = json {
-                let account: AccountAddress =
-                    string.parse().map_err(|_| anyhow!("Failed parsing account address"))?;
+                let account: AccountAddress = string
+                    .parse()
+                    .map_err(|_| anyhow!("Failed parsing account address"))?;
                 serial!(account, out)
             } else {
                 bail!("JSON String required")
@@ -116,7 +133,10 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
         }
         Type::ContractAddress => {
             if let Value::Object(fields) = json {
-                ensure!(fields.len() <= 2, "Only index and optionally subindex are allowed");
+                ensure!(
+                    fields.len() <= 2,
+                    "Only index and optionally subindex are allowed"
+                );
 
                 let index = fields
                     .get("index")
@@ -132,10 +152,7 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
                         _ => None,
                     })
                     .unwrap_or(0);
-                let contract = ContractAddress {
-                    index,
-                    subindex,
-                };
+                let contract = ContractAddress { index, subindex };
                 serial!(contract, out)
             } else {
                 bail!("JSON Object with 'index' field required")
@@ -236,9 +253,11 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
                     .find(|(_, (variant_name_schema, _))| variant_name_schema == variant_name);
                 if let Some((i, (_, variant_fields))) = schema_fields_opt {
                     if variants_ty.len() <= 256 {
-                        out.write_u8(i as u8).map_err(|_| anyhow!("Failed writing"))?;
+                        out.write_u8(i as u8)
+                            .map_err(|_| anyhow!("Failed writing"))?;
                     } else if variants_ty.len() <= 256 * 256 {
-                        out.write_u16(i as u16).map_err(|_| anyhow!("Failed writing"))?;
+                        out.write_u16(i as u16)
+                            .map_err(|_| anyhow!("Failed writing"))?;
                     } else {
                         bail!("Enums with more than 65536 variants are not supported.");
                     };
@@ -289,8 +308,9 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
                 let contract = fields
                     .get("contract")
                     .context("Missing field 'contract' of type JSON String.")?;
-                let func =
-                    fields.get("func").context("Missing field 'func' of type JSON String.")?;
+                let func = fields
+                    .get("func")
+                    .context("Missing field 'func' of type JSON String.")?;
                 ensure!(
                     fields.len() == 2,
                     "Expected exactly two fields but {} were provided.",
@@ -438,7 +458,11 @@ fn write_bytes_from_json_schema_fields<W: Write>(
         }
         Fields::Unnamed(fields) => {
             if let Value::Array(values) = json {
-                ensure!(fields.len() == values.len(), "Expected {} unnamed fields", fields.len());
+                ensure!(
+                    fields.len() == values.len(),
+                    "Expected {} unnamed fields",
+                    fields.len()
+                );
                 for (field_ty, value) in fields.iter().zip(values.iter()) {
                     write_bytes_from_json_schema_type(field_ty, value, out)?;
                 }

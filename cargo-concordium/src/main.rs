@@ -46,7 +46,10 @@ enum Command {
         about = "Locally simulate invocation method of a smart contract and inspect the state."
     )]
     Run(Box<RunCommand>),
-    #[structopt(name = "display-state", about = "Display the contract state as a tree.")]
+    #[structopt(
+        name = "display-state",
+        about = "Display the contract state as a tree."
+    )]
     DisplayState {
         #[structopt(
             name = "state-bin",
@@ -64,7 +67,10 @@ enum Command {
         )]
         args: Vec<String>,
     },
-    #[structopt(name = "build", about = "Build a deployment ready smart-contract module.")]
+    #[structopt(
+        name = "build",
+        about = "Build a deployment ready smart-contract module."
+    )]
     Build {
         #[structopt(
             name = "schema-embed",
@@ -275,14 +281,8 @@ pub fn main() -> anyhow::Result<()> {
     match cmd {
         Command::Run(run_cmd) => {
             let runner = match *run_cmd {
-                RunCommand::Init {
-                    ref runner,
-                    ..
-                } => runner,
-                RunCommand::Receive {
-                    ref runner,
-                    ..
-                } => runner,
+                RunCommand::Init { ref runner, .. } => runner,
+                RunCommand::Receive { ref runner, .. } => runner,
             };
             // Expect a versioned module. The first 4 bytes are the WasmVersion.
             let versioned_module =
@@ -293,7 +293,9 @@ pub fn main() -> anyhow::Result<()> {
 
             let len = {
                 let mut buf = [0u8; 4];
-                cursor.read_exact(&mut buf).context("Could not parse supplied module.")?;
+                cursor
+                    .read_exact(&mut buf)
+                    .context("Could not parse supplied module.")?;
                 u32::from_be_bytes(buf)
             };
             let module = &cursor.into_inner()[8..];
@@ -307,9 +309,7 @@ pub fn main() -> anyhow::Result<()> {
                 utils::WasmVersion::V1 => handle_run_v1(*run_cmd, module)?,
             }
         }
-        Command::Test {
-            args,
-        } => {
+        Command::Test { args } => {
             let success =
                 build_and_run_wasm_test(&args).context("Could not build and run tests.")?;
             ensure!(success, "Test failed");
@@ -368,9 +368,7 @@ pub fn main() -> anyhow::Result<()> {
                 bold_style.paint(size)
             )
         }
-        Command::DisplayState {
-            state_bin_path,
-        } => display_state_from_file(state_bin_path)?,
+        Command::DisplayState { state_bin_path } => display_state_from_file(state_bin_path)?,
     };
     Ok(())
 }
@@ -403,7 +401,10 @@ fn display_state(state: &v1::trie::PersistentState) -> Result<(), anyhow::Error>
 
 /// Print the summary of the contract schema.
 fn print_schema_info(contract_name: &str, len: usize) {
-    eprintln!("\n     Contract schema: '{}' in total {} B.", contract_name, len,);
+    eprintln!(
+        "\n     Contract schema: '{}' in total {} B.",
+        contract_name, len,
+    );
 }
 
 /// Based on the list of receive names compute the colon position for aligning
@@ -541,7 +542,10 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     eprintln!("The new state is: (Using embedded schema)\n{}", s)
                 }
             }
-            _ => eprintln!("The new state is: (No schema found for contract state) {:?}\n", state),
+            _ => eprintln!(
+                "The new state is: (No schema found for contract state) {:?}\n",
+                state
+            ),
         };
 
         if let Some(file_path) = &runner.out_bin {
@@ -573,10 +577,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
     .context("Could not get parameter.")?;
 
     match run_cmd {
-        RunCommand::Init {
-            ref context,
-            ..
-        } => {
+        RunCommand::Init { ref context, .. } => {
             let init_ctx: InitContextOpt = match context {
                 Some(context_file) => {
                     let ctx_content =
@@ -660,7 +661,8 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     let mut file = File::open(&file_path).context("Could not read state file.")?;
                     let metadata = file.metadata().context("Could not read file metadata.")?;
                     let mut init_state = Vec::with_capacity(metadata.len() as usize);
-                    file.read_to_end(&mut init_state).context("Reading the state file failed.")?;
+                    file.read_to_end(&mut init_state)
+                        .context("Reading the state file failed.")?;
                     init_state
                 }
                 (None, Some(file_path)) => {
@@ -700,9 +702,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     eprintln!("The following actions were produced.");
                     for (i, action) in actions.iter().enumerate() {
                         match action {
-                            v0::Action::Send {
-                                data,
-                            } => {
+                            v0::Action::Send { data } => {
                                 let name_str = std::str::from_utf8(&data.name)
                                     .context("Target name is not a valid UTF8 sequence.")?;
                                 eprintln!(
@@ -716,9 +716,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                                     data.parameter
                                 )
                             }
-                            v0::Action::SimpleTransfer {
-                                data,
-                            } => {
+                            v0::Action::SimpleTransfer { data } => {
                                 eprintln!(
                                     "{}: simple transfer to account {} of amount {}",
                                     i,
@@ -727,14 +725,12 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                                     data.amount
                                 );
                             }
-                            v0::Action::And {
-                                l,
-                                r,
-                            } => eprintln!("{}: AND composition of {} and {}", i, l, r),
-                            v0::Action::Or {
-                                l,
-                                r,
-                            } => eprintln!("{}: OR composition of {} and {}", i, l, r),
+                            v0::Action::And { l, r } => {
+                                eprintln!("{}: AND composition of {} and {}", i, l, r)
+                            }
+                            v0::Action::Or { l, r } => {
+                                eprintln!("{}: OR composition of {} and {}", i, l, r)
+                            }
                             v0::Action::Accept => eprintln!("{}: ACCEPT", i),
                         }
                     }
@@ -836,7 +832,9 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         if let Some(file_path) = &runner.out_bin {
             let mut out_file = std::fs::File::create(file_path)
                 .context("Could not create file to write state into.")?;
-            frozen.serialize(loader, &mut out_file).context("Could not write the state.")?;
+            frozen
+                .serialize(loader, &mut out_file)
+                .context("Could not write the state.")?;
             eprintln!("Resulting state written to {}.", file_path.display());
         }
         if should_display_state {
@@ -854,7 +852,10 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             eprintln!("Return value: {}", out);
             Ok::<_, anyhow::Error>(())
         } else {
-            eprintln!("No schema for the return value. The raw return value is {:?}.", rv);
+            eprintln!(
+                "No schema for the return value. The raw return value is {:?}.",
+                rv
+            );
             Ok(())
         }
     };
@@ -1080,10 +1081,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                         eprintln!("The state of the contract did not change.");
                     }
                     match interrupt {
-                        v1::Interrupt::Transfer {
-                            to,
-                            amount,
-                        } => eprintln!(
+                        v1::Interrupt::Transfer { to, amount } => eprintln!(
                             "Receive call invoked a transfer of {} CCD to {}.",
                             amount, to
                         ),

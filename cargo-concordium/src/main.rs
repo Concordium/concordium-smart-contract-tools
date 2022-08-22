@@ -477,7 +477,6 @@ fn print_contract_schema_v1(
     }
 }
 
-// TODO: Consider refactoring to reuse v1 version.
 /// Print the contract name and its entrypoints.
 fn print_contract_schema_v2(
     contract_name: &str,

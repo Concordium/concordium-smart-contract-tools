@@ -1,9 +1,15 @@
 # Changelog
 
+## Unreleased changes
+
+- Use schemas for error values when simulating contracts.
+
 ## 2.0.2
 
 - Support schema types for LEB128 and byte arrays.
 - Support schema modules which includes version information.
+- Add support for v2 schemas.
+  - Use v2 schemas when building v1 contracts.
 
 ## 2.0.0
 - Add support for V1 contract builds, testing, and execution.

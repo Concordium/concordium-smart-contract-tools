@@ -7,7 +7,7 @@ use anyhow::{bail, ensure, Context};
 use clap::AppSettings;
 use concordium_contracts_common::{
     from_bytes,
-    schema::{Function, Type, VersionedModuleSchema},
+    schema::{Type, VersionedModuleSchema},
     to_bytes, Amount, OwnedReceiveName, Parameter, ReceiveName,
 };
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
@@ -344,6 +344,12 @@ pub fn main() -> anyhow::Result<()> {
                             print_contract_schema_v1(contract_name, contract_schema);
                         }
                     }
+                    VersionedModuleSchema::V2(module_schema) => {
+                        eprintln!("\n   Module schema includes:");
+                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                            print_contract_schema_v2(contract_name, contract_schema);
+                        }
+                    }
                 };
                 let module_schema_bytes = to_bytes(module_schema);
                 eprintln!(
@@ -444,10 +450,37 @@ fn print_contract_schema_v0(
     }
 }
 
-/// Print the contract name and its entrypoints
+/// Print the contract name and its entrypoints.
 fn print_contract_schema_v1(
     contract_name: &str,
     contract_schema: &concordium_contracts_common::schema::ContractV1,
+) {
+    let receive_iter = contract_schema.receive.iter().map(|(n, _)| n.as_str());
+    let colon_position = get_colon_position(receive_iter);
+
+    print_schema_info(contract_name, to_bytes(contract_schema).len());
+
+    if let Some(init_schema) = &contract_schema.init {
+        eprintln!("       init    : {} B", to_bytes(init_schema).len())
+    }
+
+    if !contract_schema.receive.is_empty() {
+        eprintln!("       receive");
+        for (method_name, param_type) in contract_schema.receive.iter() {
+            eprintln!(
+                "        - {:width$} : {} B",
+                format!("'{}'", method_name),
+                to_bytes(param_type).len(),
+                width = colon_position + 2
+            );
+        }
+    }
+}
+
+/// Print the contract name and its entrypoints.
+fn print_contract_schema_v2(
+    contract_name: &str,
+    contract_schema: &concordium_contracts_common::schema::ContractV2,
 ) {
     let receive_iter = contract_schema.receive.iter().map(|(n, _)| n.as_str());
     let colon_position = get_colon_position(receive_iter);
@@ -798,21 +831,58 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         res.ok()
     };
 
-    let contract_schema_opt = match module_schema_opt.as_ref() {
-        Some(VersionedModuleSchema::V1(module_schema)) => {
-            module_schema.contracts.get(contract_name)
-        }
-        Some(_) => bail!("Schema version mismatches the smart contract version"),
-        None => None,
-    };
+    let (contract_has_schema, schema_parameter, schema_return_value, schema_error) =
+        match module_schema_opt.as_ref() {
+            Some(VersionedModuleSchema::V1(module_schema)) => {
+                match module_schema.contracts.get(contract_name) {
+                    Some(contract_schema) => {
+                        let func_schema_opt = if let Some(func_name) = is_receive {
+                            contract_schema.receive.get(func_name)
+                        } else {
+                            contract_schema.init.as_ref()
+                        };
 
-    let contract_schema_func_opt = contract_schema_opt.and_then(|contract_schema| {
-        if let Some(func) = is_receive {
-            contract_schema.receive.get(func)
-        } else {
-            contract_schema.init.as_ref()
-        }
-    });
+                        match func_schema_opt {
+                            Some(func_schema) => {
+                                // V1 schemas don't have schemas for errors.
+                                (
+                                    true,
+                                    func_schema.parameter(),
+                                    func_schema.return_value(),
+                                    None,
+                                )
+                            }
+                            None => (true, None, None, None),
+                        }
+                    }
+                    None => (false, None, None, None),
+                }
+            }
+            Some(VersionedModuleSchema::V2(module_schema)) => {
+                match module_schema.contracts.get(contract_name) {
+                    Some(contract_schema) => {
+                        let func_schema_opt = if let Some(func_name) = is_receive {
+                            contract_schema.receive.get(func_name)
+                        } else {
+                            contract_schema.init.as_ref()
+                        };
+
+                        match func_schema_opt {
+                            Some(func_schema) => (
+                                true,
+                                func_schema.parameter(),
+                                func_schema.return_value(),
+                                func_schema.error(),
+                            ),
+                            None => (true, None, None, None),
+                        }
+                    }
+                    None => (true, None, None, None),
+                }
+            }
+            Some(_) => bail!("Schema version mismatches the smart contract version"),
+            None => (false, None, None, None),
+        };
 
     let print_logs = |logs: v0::Logs| {
         for (i, item) in logs.iterate().enumerate() {
@@ -842,10 +912,9 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         }
         Ok(())
     };
-    let return_value_schema = contract_schema_func_opt.and_then(Function::return_value);
 
     let print_return_value = |rv: ReturnValue| {
-        if let Some(schema) = return_value_schema {
+        if let Some(schema) = schema_return_value {
             let out = schema
                 .to_json_string_pretty(&rv)
                 .map_err(|_| anyhow::anyhow!("Could not output return value in JSON"))?;
@@ -860,11 +929,27 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         }
     };
 
+    let print_error = |rv: ReturnValue| {
+        if let Some(schema) = schema_error {
+            let out = schema
+                .to_json_string_pretty(&rv)
+                .map_err(|_| anyhow::anyhow!("Could not output error value in JSON"))?;
+            eprintln!("Error: {}", out);
+            Ok::<_, anyhow::Error>(())
+        } else {
+            eprintln!(
+                "No schema for the error value. The raw error value is {:?}.",
+                rv
+            );
+            Ok(())
+        }
+    };
+
     let parameter = get_parameter(
         runner.parameter_bin_path.as_deref(),
         runner.parameter_json_path.as_deref(),
-        contract_schema_opt.is_some(),
-        contract_schema_func_opt.and_then(Function::parameter),
+        contract_has_schema,
+        schema_parameter,
     )
     .context("Could not get parameter.")?;
 
@@ -905,7 +990,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     eprintln!("Init call succeeded. The following logs were produced:");
                     print_logs(logs);
                     print_state(state, &mut loader, should_display_state)?;
-                    eprintln!("\nThe following return value was returned.");
+                    eprintln!("\nThe following return value was returned:");
                     print_return_value(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
@@ -918,8 +1003,8 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     return_value,
                 } => {
                     eprintln!("Init call rejected with reason {}.", reason);
-                    eprintln!("\nThe following return value was returned.");
-                    print_return_value(return_value)?;
+                    eprintln!("\nThe following error value was returned:");
+                    print_error(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
                         runner.energy.subtract(remaining_energy)
@@ -1040,7 +1125,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     } else {
                         eprintln!("The state of the contract did not change.");
                     }
-                    eprintln!("\nThe following return value was returned.");
+                    eprintln!("\nThe following return value was returned:");
                     print_return_value(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
@@ -1053,8 +1138,8 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     return_value,
                 } => {
                     eprintln!("Receive call rejected with reason {}", reason);
-                    eprintln!("\nThe following return value was returned.");
-                    print_return_value(return_value)?;
+                    eprintln!("\nThe following error value was returned:");
+                    print_error(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
                         runner.energy.subtract(remaining_energy)

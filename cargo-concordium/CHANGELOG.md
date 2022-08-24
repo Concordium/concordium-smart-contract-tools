@@ -2,7 +2,11 @@
 
 ## Unreleased changes
 
-- Use schemas for error values when simulating contracts.
+## 2.1.0
+
+- Add support for V2 schemas that include support for error values. This enables
+  `cargo-concordium` to build and interact with smart contracts using
+  `concordium-std` version 4.
 
 ## 2.0.2
 

@@ -1,3 +1,7 @@
+use crate::{
+    CIS2NFT_CARGO_TOML_TEMPLATE, CIS2NFT_SMART_CONTRACT_TEMPLATE, DEFAULT_CARGO_TOML_TEMPLATE,
+    DEFAULT_SMART_CONTRACT_TEMPLATE,
+};
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use cargo_toml::Manifest;
@@ -6,6 +10,7 @@ use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     fs,
+    io::Write,
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -312,6 +317,61 @@ pub fn build_contract_schema<A>(
     let schema =
         generate_schema(&wasm).context("Could not generate module schema from Wasm module.")?;
     Ok(schema)
+}
+
+pub fn create_concordium_smart_contract_project(
+    cargo_toml: &str,
+    smart_contract: &str,
+) -> anyhow::Result<()> {
+    // Loading toml template
+    let mut cargo_toml_file = fs::File::create("Cargo.toml")?;
+
+    cargo_toml_file.write_all(cargo_toml.as_bytes())?;
+
+    fs::create_dir("./src/").context(
+        "Could not create `src` folder. A new project has to be created in an empty folder.",
+    )?;
+    let mut smart_contract_file =
+        fs::File::create("./src/lib.rs").context("Could not create `lib` file.")?;
+    smart_contract_file.write_all(smart_contract.as_bytes())?;
+    Ok(())
+}
+
+/// Create a new Concordium smart contract project, or there
+/// are runtime exceptions that are not expected then this function returns
+/// Err(...).
+///
+/// Otherwise a boolean is returned, signifying that the creation was successful
+/// or failed.
+pub fn init_concordium_project(template: String) -> anyhow::Result<bool> {
+    match template.as_str() {
+        "default" => {
+            // Loading default smart contract template
+            create_concordium_smart_contract_project(
+                DEFAULT_CARGO_TOML_TEMPLATE,
+                DEFAULT_SMART_CONTRACT_TEMPLATE,
+            )?;
+            println!("Created the default smart contract template.");
+            Ok(true)
+        }
+        "cis2-nft" => {
+            // Loading cis2-nft smart contract template
+            create_concordium_smart_contract_project(
+                CIS2NFT_CARGO_TOML_TEMPLATE,
+                CIS2NFT_SMART_CONTRACT_TEMPLATE,
+            )?;
+            println!("Created the cis2-nft smart contract template.");
+            Ok(true)
+        }
+        _ => {
+            // Smart contract template is not supported.
+            println!(
+                "This template is not supported. Only `default` and `cis2-nft` are supported as \
+                 templates."
+            );
+            Ok(false)
+        }
+    }
 }
 
 /// Build tests and run them. If errors occur in building the tests, or there

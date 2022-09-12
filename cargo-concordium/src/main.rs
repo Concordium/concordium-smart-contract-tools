@@ -2,6 +2,7 @@ use crate::{
     build::*,
     context::{InitContextOpt, ReceiveContextOpt, ReceiveContextV1Opt},
     schema_json::write_bytes_from_json_schema_type,
+    templates::*,
 };
 use anyhow::{bail, ensure, Context};
 use clap::AppSettings;
@@ -25,6 +26,7 @@ use wasm_chain_integration::{
 mod build;
 mod context;
 mod schema_json;
+mod templates;
 
 /// Versioned schemas always start with two fully set bytes.
 /// This is used to determine whether we are looking at a versioned or
@@ -66,6 +68,21 @@ enum Command {
             help = "Extra arguments passed to `cargo build` when building the test Wasm module."
         )]
         args: Vec<String>,
+    },
+    #[structopt(
+        name = "init",
+        about = "Create a new Concordium smart contract project in the existing directory."
+    )]
+    Init {
+        #[structopt(
+            name = "template",
+            long = "template",
+            short = "t",
+            default_value = "default",
+            help = "Loading a specific smart contract template. `default` and `cis2-nft` \
+                    templates are supported."
+        )]
+        template: String,
     },
     #[structopt(
         name = "build",
@@ -313,6 +330,14 @@ pub fn main() -> anyhow::Result<()> {
             let success =
                 build_and_run_wasm_test(&args).context("Could not build and run tests.")?;
             ensure!(success, "Test failed");
+        }
+        Command::Init { template } => {
+            let success = init_concordium_project(template)
+                .context("Could not create a new Concordium smart contract project.")?;
+            ensure!(
+                success,
+                "Concordium smart contract project creation failed."
+            );
         }
         Command::Build {
             schema_embed,

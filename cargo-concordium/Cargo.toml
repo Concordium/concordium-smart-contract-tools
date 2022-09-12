@@ -36,6 +36,6 @@ features = ["display-state"]
 criterion = "0.3"
 
 [dependencies.concordium-contracts-common]
-version = "3.0"
+version = "4.0"
 path = "../concordium-base/concordium-contracts-common/concordium-contracts-common"
 features = ["derive-serde", "std"]

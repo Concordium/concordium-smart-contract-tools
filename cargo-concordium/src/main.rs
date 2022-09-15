@@ -2,7 +2,6 @@ use crate::{
     build::*,
     context::{InitContextOpt, ReceiveContextOpt, ReceiveContextV1Opt},
     schema_json::write_bytes_from_json_schema_type,
-    templates::*,
 };
 use anyhow::{bail, ensure, Context};
 use clap::AppSettings;
@@ -13,9 +12,11 @@ use concordium_contracts_common::{
 };
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use std::{
+    fmt,
     fs::{self, File},
-    io::Read,
+    io::{Error, ErrorKind, Read},
     path::{Path, PathBuf},
+    str::FromStr,
 };
 use structopt::StructOpt;
 use wasm_chain_integration::{
@@ -26,7 +27,6 @@ use wasm_chain_integration::{
 mod build;
 mod context;
 mod schema_json;
-mod templates;
 
 /// Versioned schemas always start with two fully set bytes.
 /// This is used to determine whether we are looking at a versioned or
@@ -38,6 +38,36 @@ const VERSIONED_SCHEMA_MAGIC_HASH: &[u8] = &[0xff, 0xff];
 enum CargoCommand {
     #[structopt(name = "concordium")]
     Concordium(Command),
+}
+
+#[derive(PartialEq)]
+pub enum TemplateType {
+    Default,
+    Cis2Nft,
+}
+
+impl fmt::Debug for TemplateType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TemplateType::Default => write!(f, "TemplateType::Default"),
+            TemplateType::Cis2Nft => write!(f, "TemplateType::Cis2Nft"),
+        }
+    }
+}
+
+impl FromStr for TemplateType {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "default" => Ok(TemplateType::Default),
+            "cis2-nft" => Ok(TemplateType::Cis2Nft),
+            _ => Err(Error::new(
+                ErrorKind::Other,
+                "Only `default` and `cis2-nft` are supported as templates.",
+            )),
+        }
+    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -75,6 +105,13 @@ enum Command {
     )]
     Init {
         #[structopt(
+            name = "path",
+            long = "path",
+            short = "p",
+            help = "Path were the project should be created. [default: .]"
+        )]
+        path:     Option<PathBuf>,
+        #[structopt(
             name = "template",
             long = "template",
             short = "t",
@@ -82,7 +119,7 @@ enum Command {
             help = "Loading a specific smart contract template. `default` and `cis2-nft` \
                     templates are supported."
         )]
-        template: String,
+        template: TemplateType,
     },
     #[structopt(
         name = "build",
@@ -331,8 +368,8 @@ pub fn main() -> anyhow::Result<()> {
                 build_and_run_wasm_test(&args).context("Could not build and run tests.")?;
             ensure!(success, "Test failed");
         }
-        Command::Init { template } => {
-            let success = init_concordium_project(template)
+        Command::Init { path, template } => {
+            let success = init_concordium_project(path, template)
                 .context("Could not create a new Concordium smart contract project.")?;
             ensure!(
                 success,

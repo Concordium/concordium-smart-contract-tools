@@ -1,5 +1,3 @@
-use crate::TemplateType;
-
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use cargo_toml::Manifest;
@@ -8,7 +6,6 @@ use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     fs,
-    io::{Error, ErrorKind, Write},
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -317,36 +314,26 @@ pub fn build_contract_schema<A>(
     Ok(schema)
 }
 
-pub fn create_concordium_smart_contract_project(
-    path: Option<PathBuf>,
-    cargo_toml: &str,
-    smart_contract: &str,
-) -> anyhow::Result<()> {
-    let base_path = if let Some(path) = path {
-        path
-    } else {
-        PathBuf::from("./")
-    };
+pub fn create_concordium_smart_contract_project() -> anyhow::Result<()> {
+    // ToDo: using https://github.com/Concordium/concordium-rust-smart-contracts.git and
+    // .args(&["--branch", "164-add-default-and-cis2-nft-smart-contract-templates"])
+    // causes an error; Templates are in this MR: https://github.com/Concordium/concordium-rust-smart-contracts/pull/165
+    let result = Command::new("cargo")
+        .arg("generate")
+        .args(&[
+            "--git",
+            "https://github.com/DOBEN/test_cargo_template_generation.git",
+        ])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .stdin(Stdio::inherit())
+        .output()
+        .context("Could not run git clone github_link")?;
 
-    let is_not_empty = base_path.read_dir()?.next().is_some();
-    if is_not_empty {
-        return Err(anyhow::Error::new(Error::new(
-            ErrorKind::Other,
-            "A new project has to be created in an empty folder.",
-        )));
+    if !result.status.success() {
+        anyhow::bail!("Git clone failed.");
     }
 
-    // Loading toml template
-    let mut cargo_toml_file = fs::File::create(base_path.join("Cargo.toml"))?;
-
-    cargo_toml_file.write_all(cargo_toml.as_bytes())?;
-    cargo_toml_file.flush()?;
-
-    fs::create_dir(base_path.join("src"))?;
-    let mut smart_contract_file = fs::File::create(base_path.join("src").join("lib.rs"))
-        .context("Could not create `lib` file.")?;
-    smart_contract_file.write_all(smart_contract.as_bytes())?;
-    smart_contract_file.flush()?;
     Ok(())
 }
 
@@ -356,37 +343,10 @@ pub fn create_concordium_smart_contract_project(
 ///
 /// Otherwise a boolean is returned, signifying that the creation was successful
 /// or failed.
-pub fn init_concordium_project(
-    path: Option<PathBuf>,
-    template: TemplateType,
-) -> anyhow::Result<bool> {
-    let cis2_nft_lib = include_bytes!("./templates/cis2-nft-lib.rs");
-    let cis2_nft_cargo_toml = include_bytes!("./templates/cis2-nft-cargo.toml");
-    let default_lib = include_bytes!("./templates/default-lib.rs");
-    let default_cargo_toml = include_bytes!("./templates/default-cargo.toml");
-
-    match template {
-        TemplateType::Cis2Nft => {
-            // Loading cis2-nft smart contract template
-            create_concordium_smart_contract_project(
-                path,
-                &String::from_utf8_lossy(cis2_nft_cargo_toml),
-                &String::from_utf8_lossy(cis2_nft_lib),
-            )?;
-            println!("Created the cis2-nft smart contract template.");
-            Ok(true)
-        }
-        TemplateType::Default => {
-            // Loading default smart contract template
-            create_concordium_smart_contract_project(
-                path,
-                &String::from_utf8_lossy(default_cargo_toml),
-                &String::from_utf8_lossy(default_lib),
-            )?;
-            println!("Created the default smart contract template.");
-            Ok(true)
-        }
-    }
+pub fn init_concordium_project() -> anyhow::Result<bool> {
+    create_concordium_smart_contract_project()?;
+    println!("Created the smart contract template.");
+    Ok(true)
 }
 
 /// Build tests and run them. If errors occur in building the tests, or there

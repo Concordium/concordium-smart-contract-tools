@@ -12,11 +12,9 @@ use concordium_contracts_common::{
 };
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use std::{
-    fmt,
     fs::{self, File},
-    io::{Error, ErrorKind, Read},
+    io::Read,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 use structopt::StructOpt;
 use wasm_chain_integration::{
@@ -38,36 +36,6 @@ const VERSIONED_SCHEMA_MAGIC_HASH: &[u8] = &[0xff, 0xff];
 enum CargoCommand {
     #[structopt(name = "concordium")]
     Concordium(Command),
-}
-
-#[derive(PartialEq)]
-pub enum TemplateType {
-    Default,
-    Cis2Nft,
-}
-
-impl fmt::Debug for TemplateType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            TemplateType::Default => write!(f, "TemplateType::Default"),
-            TemplateType::Cis2Nft => write!(f, "TemplateType::Cis2Nft"),
-        }
-    }
-}
-
-impl FromStr for TemplateType {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "default" => Ok(TemplateType::Default),
-            "cis2-nft" => Ok(TemplateType::Cis2Nft),
-            _ => Err(Error::new(
-                ErrorKind::Other,
-                "Only `default` and `cis2-nft` are supported as templates.",
-            )),
-        }
-    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -103,24 +71,7 @@ enum Command {
         name = "init",
         about = "Create a new Concordium smart contract project in the existing directory."
     )]
-    Init {
-        #[structopt(
-            name = "path",
-            long = "path",
-            short = "p",
-            help = "Path were the project should be created. [default: .]"
-        )]
-        path:     Option<PathBuf>,
-        #[structopt(
-            name = "template",
-            long = "template",
-            short = "t",
-            default_value = "default",
-            help = "Loading a specific smart contract template. `default` and `cis2-nft` \
-                    templates are supported."
-        )]
-        template: TemplateType,
-    },
+    Init {},
     #[structopt(
         name = "build",
         about = "Build a deployment ready smart-contract module."
@@ -368,8 +319,8 @@ pub fn main() -> anyhow::Result<()> {
                 build_and_run_wasm_test(&args).context("Could not build and run tests.")?;
             ensure!(success, "Test failed");
         }
-        Command::Init { path, template } => {
-            let success = init_concordium_project(path, template)
+        Command::Init {} => {
+            let success = init_concordium_project()
                 .context("Could not create a new Concordium smart contract project.")?;
             ensure!(
                 success,

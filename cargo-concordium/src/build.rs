@@ -5,8 +5,8 @@ use concordium_contracts_common::*;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
-    fs,
-    path::PathBuf,
+    env, fs,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 use wasm_chain_integration::{
@@ -320,8 +320,14 @@ pub fn build_contract_schema<A>(
 ///
 /// Otherwise a boolean is returned, signifying that the creation was
 /// successful.
-pub fn init_concordium_project(path: PathBuf) -> anyhow::Result<bool> {
-    let path_str = path.into_os_string().into_string().unwrap();
+pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<bool> {
+    let path = path.as_ref();
+
+    let absolute_path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        env::current_dir()?.join(path)
+    };
 
     let result = Command::new("cargo")
         .arg("generate")
@@ -332,7 +338,7 @@ pub fn init_concordium_project(path: PathBuf) -> anyhow::Result<bool> {
             "164-add-default-and-cis2-nft-smart-contract-templates",
             "templates",
         ])
-        .args(&["--destination", &path_str])
+        .args(&["--destination", absolute_path.to_str().unwrap()])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .stdin(Stdio::inherit())

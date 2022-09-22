@@ -77,7 +77,7 @@ enum Command {
             long = "path",
             short = "p",
             default_value = ".",
-            help = "The absolute path where the project should be created."
+            help = "The path where the project should be created."
         )]
         path: PathBuf,
     },

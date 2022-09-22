@@ -314,16 +314,25 @@ pub fn build_contract_schema<A>(
     Ok(schema)
 }
 
-pub fn create_concordium_smart_contract_project() -> anyhow::Result<()> {
-    // ToDo: using https://github.com/Concordium/concordium-rust-smart-contracts.git and
-    // .args(&["--branch", "164-add-default-and-cis2-nft-smart-contract-templates"])
-    // causes an error; Templates are in this MR: https://github.com/Concordium/concordium-rust-smart-contracts/pull/165
+/// Create a new Concordium smart contract project from a template, or there
+/// are runtime exceptions that are not expected then this function returns
+/// Err(...).
+///
+/// Otherwise a boolean is returned, signifying that the creation was
+/// successful.
+pub fn init_concordium_project(path: PathBuf) -> anyhow::Result<bool> {
+    let path_str = path.into_os_string().into_string().unwrap();
+
     let result = Command::new("cargo")
         .arg("generate")
         .args(&[
             "--git",
-            "https://github.com/DOBEN/test_cargo_template_generation.git",
+            "https://github.com/Concordium/concordium-rust-smart-contracts",
+            "--branch",
+            "164-add-default-and-cis2-nft-smart-contract-templates",
+            "templates",
         ])
+        .args(&["--destination", &path_str])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .stdin(Stdio::inherit())
@@ -334,17 +343,6 @@ pub fn create_concordium_smart_contract_project() -> anyhow::Result<()> {
         anyhow::bail!("Git clone failed.");
     }
 
-    Ok(())
-}
-
-/// Create a new Concordium smart contract project, or there
-/// are runtime exceptions that are not expected then this function returns
-/// Err(...).
-///
-/// Otherwise a boolean is returned, signifying that the creation was successful
-/// or failed.
-pub fn init_concordium_project() -> anyhow::Result<bool> {
-    create_concordium_smart_contract_project()?;
     println!("Created the smart contract template.");
     Ok(true)
 }

@@ -71,7 +71,16 @@ enum Command {
         name = "init",
         about = "Create a new Concordium smart contract project in the existing directory."
     )]
-    Init {},
+    Init {
+        #[structopt(
+            name = "path",
+            long = "path",
+            short = "p",
+            default_value = ".",
+            help = "The absolute path where the project should be created."
+        )]
+        path: PathBuf,
+    },
     #[structopt(
         name = "build",
         about = "Build a deployment ready smart-contract module."
@@ -319,8 +328,8 @@ pub fn main() -> anyhow::Result<()> {
                 build_and_run_wasm_test(&args).context("Could not build and run tests.")?;
             ensure!(success, "Test failed");
         }
-        Command::Init {} => {
-            let success = init_concordium_project()
+        Command::Init { path } => {
+            let success = init_concordium_project(path)
                 .context("Could not create a new Concordium smart contract project.")?;
             ensure!(
                 success,

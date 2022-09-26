@@ -316,11 +316,8 @@ pub fn build_contract_schema<A>(
 
 /// Create a new Concordium smart contract project from a template, or there
 /// are runtime exceptions that are not expected then this function returns
-/// Err(...).
-///
-/// Otherwise a boolean is returned, signifying that the creation was
-/// successful.
-pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<bool> {
+/// `Err(...)`.
+pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
     let path = path.as_ref();
 
     let absolute_path = if path.is_absolute() {
@@ -328,6 +325,13 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<bool> {
     } else {
         env::current_dir()?.join(path)
     };
+
+    if let Err(which::Error::CannotFindBinaryPath) = which::which("cargo-generate") {
+        anyhow::bail!(
+            "`cargo concordium init` requires `cargo-generate` which does not appear to be \
+             installed. You can install it by running `cargo install --locked cargo-generate`"
+        )
+    }
 
     let result = Command::new("cargo")
         .arg("generate")
@@ -343,14 +347,15 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<bool> {
         .stderr(Stdio::inherit())
         .stdin(Stdio::inherit())
         .output()
-        .context("Could not run git clone github_link")?;
+        .context("Could not obtain the template.")?;
 
-    if !result.status.success() {
-        anyhow::bail!("Git clone failed.");
-    }
+    anyhow::ensure!(
+        result.status.success(),
+        "Could not use the template to initialize the project."
+    );
 
     println!("Created the smart contract template.");
-    Ok(true)
+    Ok(())
 }
 
 /// Build tests and run them. If errors occur in building the tests, or there

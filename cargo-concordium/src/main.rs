@@ -69,7 +69,9 @@ enum Command {
     },
     #[structopt(
         name = "init",
-        about = "Create a new Concordium smart contract project in the existing directory."
+        about = "Create a new Concordium smart contract project. This command requires \
+                 `cargo-generate` which can be installed by running `cargo install --locked \
+                 cargo-generate`."
     )]
     Init {
         #[structopt(
@@ -329,12 +331,8 @@ pub fn main() -> anyhow::Result<()> {
             ensure!(success, "Test failed");
         }
         Command::Init { path } => {
-            let success = init_concordium_project(path)
+            init_concordium_project(path)
                 .context("Could not create a new Concordium smart contract project.")?;
-            ensure!(
-                success,
-                "Concordium smart contract project creation failed."
-            );
         }
         Command::Build {
             schema_embed,

@@ -1,6 +1,15 @@
 
 # Cargo Concordium
 
+## Creating a new Concordium smart contract project
+
+To start a new Concordium smart contract project, run the command:
+
+```
+cargo concordium init
+```
+
+This command will generate a new project from the templates in the [template folder](https://github.com/Concordium/concordium-rust-smart-contracts).
 
 ## Compiling smart contracts to Wasm
 

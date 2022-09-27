@@ -5,8 +5,8 @@ use concordium_contracts_common::*;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
-    fs,
-    path::PathBuf,
+    env, fs,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 use wasm_chain_integration::{
@@ -312,6 +312,48 @@ pub fn build_contract_schema<A>(
     let schema =
         generate_schema(&wasm).context("Could not generate module schema from Wasm module.")?;
     Ok(schema)
+}
+
+/// Create a new Concordium smart contract project from a template, or there
+/// are runtime exceptions that are not expected then this function returns
+/// `Err(...)`.
+pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
+    let path = path.as_ref();
+
+    let absolute_path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        env::current_dir()?.join(path)
+    };
+
+    if let Err(which::Error::CannotFindBinaryPath) = which::which("cargo-generate") {
+        anyhow::bail!(
+            "`cargo concordium init` requires `cargo-generate` which does not appear to be \
+             installed. You can install it by running `cargo install --locked cargo-generate`"
+        )
+    }
+
+    let result = Command::new("cargo")
+        .arg("generate")
+        .args(&[
+            "--git",
+            "https://github.com/Concordium/concordium-rust-smart-contracts",
+            "templates",
+        ])
+        .args(&["--destination", absolute_path.to_str().unwrap()])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .stdin(Stdio::inherit())
+        .output()
+        .context("Could not obtain the template.")?;
+
+    anyhow::ensure!(
+        result.status.success(),
+        "Could not use the template to initialize the project."
+    );
+
+    println!("Created the smart contract template.");
+    Ok(())
 }
 
 /// Build tests and run them. If errors occur in building the tests, or there

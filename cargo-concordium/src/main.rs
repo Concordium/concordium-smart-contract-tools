@@ -68,6 +68,22 @@ enum Command {
         args: Vec<String>,
     },
     #[structopt(
+        name = "init",
+        about = "Create a new Concordium smart contract project. This command requires \
+                 `cargo-generate` which can be installed by running `cargo install --locked \
+                 cargo-generate`."
+    )]
+    Init {
+        #[structopt(
+            name = "path",
+            long = "path",
+            short = "p",
+            default_value = ".",
+            help = "The path where the project should be created."
+        )]
+        path: PathBuf,
+    },
+    #[structopt(
         name = "build",
         about = "Build a deployment ready smart-contract module."
     )]
@@ -313,6 +329,10 @@ pub fn main() -> anyhow::Result<()> {
             let success =
                 build_and_run_wasm_test(&args).context("Could not build and run tests.")?;
             ensure!(success, "Test failed");
+        }
+        Command::Init { path } => {
+            init_concordium_project(path)
+                .context("Could not create a new Concordium smart contract project.")?;
         }
         Command::Build {
             schema_embed,

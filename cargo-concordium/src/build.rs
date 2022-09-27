@@ -338,8 +338,6 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
         .args(&[
             "--git",
             "https://github.com/Concordium/concordium-rust-smart-contracts",
-            "--branch",
-            "164-add-default-and-cis2-nft-smart-contract-templates",
             "templates",
         ])
         .args(&["--destination", absolute_path.to_str().unwrap()])

@@ -2,6 +2,11 @@
 
 ## Unreleased changes
 
+## 2.2.0
+
+- Introduce the `init` subcommand that can initialize a new project and
+  use contract templates to set up an initial project.
+
 ## 2.1.0
 
 - Add support for V2 schemas that include support for error values. This enables

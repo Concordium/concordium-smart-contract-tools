@@ -370,6 +370,12 @@ pub fn main() -> anyhow::Result<()> {
                             print_contract_schema_v2(contract_name, contract_schema);
                         }
                     }
+                    VersionedModuleSchema::V3(module_schema) => {
+                        eprintln!("\n   Module schema includes:");
+                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                            print_contract_schema_v3(contract_name, contract_schema);
+                        }
+                    }
                 };
                 let module_schema_bytes = to_bytes(module_schema);
                 eprintln!(
@@ -509,6 +515,37 @@ fn print_contract_schema_v2(
 
     if let Some(init_schema) = &contract_schema.init {
         eprintln!("       init    : {} B", to_bytes(init_schema).len())
+    }
+
+    if !contract_schema.receive.is_empty() {
+        eprintln!("       receive");
+        for (method_name, param_type) in contract_schema.receive.iter() {
+            eprintln!(
+                "        - {:width$} : {} B",
+                format!("'{}'", method_name),
+                to_bytes(param_type).len(),
+                width = colon_position + 2
+            );
+        }
+    }
+}
+
+/// Print the contract name and its entrypoints.
+fn print_contract_schema_v3(
+    contract_name: &str,
+    contract_schema: &concordium_contracts_common::schema::ContractV3,
+) {
+    let receive_iter = contract_schema.receive.iter().map(|(n, _)| n.as_str());
+    let colon_position = get_colon_position(receive_iter);
+
+    print_schema_info(contract_name, to_bytes(contract_schema).len());
+
+    if let Some(init_schema) = &contract_schema.init {
+        eprintln!("       init    : {} B", to_bytes(init_schema).len())
+    }
+
+    if let Some(event_schema) = &contract_schema.event {
+        eprintln!("       event   : {} B", to_bytes(event_schema).len())
     }
 
     if !contract_schema.receive.is_empty() {
@@ -856,7 +893,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         res.ok()
     };
 
-    let (contract_has_schema, schema_parameter, schema_return_value, schema_error) =
+    let (contract_has_schema, schema_parameter, schema_return_value, schema_error, schema_event) =
         match module_schema_opt.as_ref() {
             Some(VersionedModuleSchema::V1(module_schema)) => {
                 match module_schema.contracts.get(contract_name) {
@@ -869,21 +906,52 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
 
                         match func_schema_opt {
                             Some(func_schema) => {
-                                // V1 schemas don't have schemas for errors.
+                                // V1 schemas don't have schemas for errors or events.
                                 (
                                     true,
                                     func_schema.parameter(),
                                     func_schema.return_value(),
                                     None,
+                                    None,
                                 )
                             }
-                            None => (true, None, None, None),
+                            None => (true, None, None, None, None),
                         }
                     }
-                    None => (false, None, None, None),
+                    None => (false, None, None, None, None),
                 }
             }
             Some(VersionedModuleSchema::V2(module_schema)) => {
+                match module_schema.contracts.get(contract_name) {
+                    Some(contract_schema) => {
+                        let func_schema_opt = if let Some(func_name) = is_receive {
+                            contract_schema.receive.get(func_name)
+                        } else {
+                            contract_schema.init.as_ref()
+                        };
+
+                        match func_schema_opt {
+                            // V2 schemas don't have schemas for events.
+                            Some(func_schema) => (
+                                true,
+                                func_schema.parameter(),
+                                func_schema.return_value(),
+                                func_schema.error(),
+                                None,
+                            ),
+                            None => (true, None, None, None, None),
+                        }
+                    }
+                    None => (true, None, None, None, None),
+                }
+            }
+            Some(VersionedModuleSchema::V3(module_schema)) => {
+                // Getting the event schema from the init function if attached.
+                let schema_event = match module_schema.contracts.get(contract_name) {
+                    Some(contract_schema) => contract_schema.event(),
+                    None => None,
+                };
+
                 match module_schema.contracts.get(contract_name) {
                     Some(contract_schema) => {
                         let func_schema_opt = if let Some(func_name) = is_receive {
@@ -898,22 +966,48 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                                 func_schema.parameter(),
                                 func_schema.return_value(),
                                 func_schema.error(),
+                                schema_event,
                             ),
-                            None => (true, None, None, None),
+                            None => (true, None, None, None, schema_event),
                         }
                     }
-                    None => (true, None, None, None),
+                    None => (true, None, None, None, schema_event),
                 }
             }
             Some(_) => bail!("Schema version mismatches the smart contract version"),
-            None => (false, None, None, None),
+            None => (false, None, None, None, None),
         };
 
     let print_logs = |logs: v0::Logs| {
         for (i, item) in logs.iterate().enumerate() {
-            eprintln!("{}: {:?}", i, item)
+            match schema_event {
+                Some(schema) => {
+                    let out = schema
+                        .to_json_string_pretty(item)
+                        .map_err(|_| anyhow::anyhow!("Could not output event value in JSON"));
+                    match out {
+                        Ok(event_json) => {
+                            // Print JSON representation of the event value if the event schema is
+                            // available.
+                            eprintln!("The JSON representation of event {} is:\n{}", i, event_json);
+                        }
+                        Err(error) => {
+                            // Print the raw event value if there is an error in the event schema.
+                            eprintln!(
+                                "Event schema had an error. {:?}. The raw value of event {} \
+                                 is:\n{:?}",
+                                error, i, item
+                            );
+                        }
+                    }
+                }
+                None => {
+                    eprintln!("The raw value of event {} is:\n{:?}", i, item);
+                }
+            }
         }
     };
+
     let print_state = |mut state: v1::trie::MutableState,
                        loader: &mut v1::trie::Loader<&[u8]>,
                        should_display_state: bool|
@@ -921,7 +1015,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         let mut collector = v1::trie::SizeCollector::default();
         let frozen = state.freeze(loader, &mut collector);
         println!(
-            "The contract will produce {}B of additional state that will be charged for.",
+            "\nThe contract will produce {}B of additional state that will be charged for.",
             collector.collect()
         );
         if let Some(file_path) = &runner.out_bin {
@@ -1017,7 +1111,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     remaining_energy,
                     return_value,
                 } => {
-                    eprintln!("Init call succeeded. The following logs were produced:");
+                    eprintln!("\nInit call succeeded. The following logs were produced:");
                     print_logs(logs);
                     print_state(state, &mut loader, should_display_state)?;
                     eprintln!("\nThe following return value was returned:");
@@ -1133,7 +1227,11 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             let mut mutable_state = init_state.thaw();
             let inner = mutable_state.get_inner(&mut loader);
             let instance_state = v1::InstanceState::new(loader, inner);
+<<<<<<< HEAD
             let res = v1::invoke_receive::<_, _, _, _, ReceiveContextV1Opt, ReceiveContextV1Opt>(
+=======
+            let res = v1::invoke_receive::<_, _, _, _, _, ReceiveContextV1Opt>(
+>>>>>>> Change: add initial schema for events
                 std::sync::Arc::new(artifact),
                 receive_ctx,
                 v1::ReceiveInvocation {
@@ -1158,7 +1256,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     remaining_energy,
                     return_value,
                 } => {
-                    eprintln!("Receive method succeeded. The following logs were produced.");
+                    eprintln!("\nReceive method succeeded. The following logs were produced.");
                     print_logs(logs);
                     if state_changed {
                         print_state(mutable_state, &mut loader, should_display_state)?;

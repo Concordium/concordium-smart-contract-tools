@@ -646,6 +646,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 init_ctx,
                 &name,
                 Parameter::from(&parameter[..]),
+                false, // Whether number of logs should be limited. Limit removed in PV5.
                 runner.energy,
             )
             .context("Initialization failed due to a runtime error.")?;
@@ -735,12 +736,16 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             let name = format!("{}.{}", contract_name, entrypoint);
             let res = v0::invoke_receive_with_metering_from_source(
                 module,
-                runner.amount.micro_ccd,
                 receive_ctx,
+                v0::ReceiveInvocation {
+                    amount:       runner.amount.micro_ccd,
+                    receive_name: &name,
+                    parameter:    Parameter::from(&parameter[..]),
+                    energy:       runner.energy,
+                },
                 &init_state,
-                &name,
-                Parameter::from(&parameter[..]),
-                runner.energy,
+                u16::MAX as usize, // Max parameter size in PV5.
+                false,             // Whether to limit number of logs. Limit removed in PV5.
             )
             .context("Calling receive failed.")?;
             match res {
@@ -991,13 +996,18 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             // empty initial backing store.
             let mut loader = v1::trie::Loader::new(&[][..]);
             let res = v1::invoke_init_with_metering_from_source(
-                module,
-                runner.amount.micro_ccd,
+                v1::InvokeFromSourceCtx {
+                    source:          module,
+                    amount:          runner.amount,
+                    parameter:       &parameter,
+                    energy:          runner.energy,
+                    support_upgrade: true, // Upgrades are supported in PV5 and onward.
+                },
                 init_ctx,
                 &name,
-                &parameter,
-                runner.energy,
                 loader,
+                false, /* Whether number of logs and size of return values should be limited.
+                        * Limits removed in PV5. */
             )
             .context("Initialization failed due to a runtime error.")?;
             match res {
@@ -1088,7 +1098,9 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             };
 
             let artifact = wasm_transform::utils::instantiate_with_metering(
-                &v1::ConcordiumAllowedImports,
+                &v1::ConcordiumAllowedImports {
+                    support_upgrade: true,
+                },
                 module,
             )?;
             let name = {
@@ -1120,15 +1132,23 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
 
             let mut mutable_state = init_state.thaw();
             let inner = mutable_state.get_inner(&mut loader);
-            let instance_state = v1::InstanceState::new(0, loader, inner);
-            let res = v1::invoke_receive::<_, _, _, ReceiveContextV1Opt>(
+            let instance_state = v1::InstanceState::new(loader, inner);
+            let res = v1::invoke_receive::<_, _, _, _, ReceiveContextV1Opt, ReceiveContextV1Opt>(
                 std::sync::Arc::new(artifact),
-                runner.amount.micro_ccd,
                 receive_ctx,
-                name.as_receive_name(),
-                &parameter,
-                runner.energy,
+                v1::ReceiveInvocation {
+                    amount:       runner.amount,
+                    receive_name: name.as_receive_name(),
+                    parameter:    &parameter,
+                    energy:       runner.energy,
+                },
                 instance_state,
+                v1::ReceiveParams {
+                    // These are the parameters in PV5.
+                    max_parameter_size:           u16::MAX as usize,
+                    limit_logs_and_return_values: false,
+                    support_queries:              true,
+                },
             )
             .context("Calling receive failed.")?;
             match res {
@@ -1200,6 +1220,22 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                              amount {} and parameter {:?}.",
                             address.index, address.subindex, name, amount, parameter
                         ),
+                        v1::Interrupt::Upgrade { module_ref } => eprintln!(
+                            "Contract was upgraded to module reference: {:?}.",
+                            module_ref
+                        ),
+
+                        v1::Interrupt::QueryAccountBalance { address } => {
+                            eprintln!("Receive method queried balance of the account {}.", address)
+                        }
+
+                        v1::Interrupt::QueryContractBalance { address } => eprintln!(
+                            "Receive method queried balance of the contract {}.",
+                            address
+                        ),
+                        v1::Interrupt::QueryExchangeRates => {
+                            eprintln!("Receive method queried the exchange rates.")
+                        }
                     }
                     eprintln!(
                         "Interpreter energy spent is {}",

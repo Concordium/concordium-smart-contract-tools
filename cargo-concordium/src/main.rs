@@ -1221,22 +1221,23 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                             address.index, address.subindex, name, amount, parameter
                         ),
                         v1::Interrupt::Upgrade { module_ref } => eprintln!(
-                            "Request to upgrade the contract to module reference {}.",
+                            "Receive call requested to upgrade the contract to module reference \
+                             {}.",
                             hex::encode(module_ref.as_ref()) /* use direct hex encoding until we
                                                               * have a proper Display
                                                               * implementation. */
                         ),
 
                         v1::Interrupt::QueryAccountBalance { address } => {
-                            eprintln!("Receive method queried balance of the account {}.", address)
+                            eprintln!("Receive call requested balance of the account {}.", address)
                         }
 
                         v1::Interrupt::QueryContractBalance { address } => eprintln!(
-                            "Receive method queried balance of the contract {}.",
+                            "Receive call requested balance of the contract {}.",
                             address
                         ),
                         v1::Interrupt::QueryExchangeRates => {
-                            eprintln!("Receive method queried the exchange rates.")
+                            eprintln!("Receive call requested exchange rates.")
                         }
                     }
                     eprintln!(

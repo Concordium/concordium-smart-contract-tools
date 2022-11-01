@@ -2,7 +2,13 @@
 
 ## Unreleased changes
 
-- Add support for handling the new events about upgradeability and chain queries.
+## 2.3.0
+
+- Suppor building and testing contracts using new protocol 5 features;
+  upgradability and chain queries.
+- Support for relaxed smart contract resource restrictions in `cargo concordium run`.
+- `cargo concordium build` now checks contracts with respect to protocol version
+  5 semantics.
 
 ## 2.2.0
 

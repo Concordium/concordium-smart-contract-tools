@@ -1221,8 +1221,10 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                             address.index, address.subindex, name, amount, parameter
                         ),
                         v1::Interrupt::Upgrade { module_ref } => eprintln!(
-                            "Contract was upgraded to module reference: {:?}.",
-                            module_ref
+                            "Request to upgrade the contract to module reference {}.",
+                            hex::encode(module_ref.as_ref()) /* use direct hex encoding until we
+                                                              * have a proper Display
+                                                              * implementation. */
                         ),
 
                         v1::Interrupt::QueryAccountBalance { address } => {

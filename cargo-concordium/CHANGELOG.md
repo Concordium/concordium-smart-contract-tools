@@ -2,6 +2,8 @@
 
 ## Unreleased changes
 
+- Add support for handling the new events about upgradeability and chain queries.
+
 ## 2.2.0
 
 - Introduce the `init` subcommand that can initialize a new project and

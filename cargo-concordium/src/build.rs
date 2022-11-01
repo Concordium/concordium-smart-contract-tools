@@ -139,8 +139,13 @@ pub fn build_contract(
             module
         }
         utils::WasmVersion::V1 => {
-            let module = validate_module(&v1::ConcordiumAllowedImports, &skeleton)
-                .context("Could not validate resulting smart contract module as a V1 contract.")?;
+            let module = validate_module(
+                &v1::ConcordiumAllowedImports {
+                    support_upgrade: true,
+                },
+                &skeleton,
+            )
+            .context("Could not validate resulting smart contract module as a V1 contract.")?;
             check_exports(&module, WasmVersion::V1)
                 .context("Contract and entrypoint validation failed for a V1 contract.")?;
             module

@@ -2,6 +2,14 @@
 
 ## Unreleased changes
 
+## 2.3.0
+
+- Suppor building and testing contracts using new protocol 5 features;
+  upgradability and chain queries.
+- Support for relaxed smart contract resource restrictions in `cargo concordium run`.
+- `cargo concordium build` now checks contracts with respect to protocol version
+  5 semantics.
+
 ## 2.2.0
 
 - Introduce the `init` subcommand that can initialize a new project and

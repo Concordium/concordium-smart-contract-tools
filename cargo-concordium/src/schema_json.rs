@@ -270,7 +270,7 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
                 bail!("JSON Object with one field required for an Enum")
             }
         }
-        Type::EnumTag(variants_ty) => {
+        Type::TaggedEnum(variants_ty) => {
             if let Value::Object(fields) = json {
                 ensure!(fields.len() == 1, "Only one variant allowed.");
                 let (variant_name, fields_value) = fields.iter().next().unwrap(); // Safe since we already checked the length
@@ -285,7 +285,7 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
                     bail!("Unknown variant: {}", variant_name);
                 }
             } else {
-                bail!("JSON Object required for an EnumTag")
+                bail!("JSON Object required for an TaggedEnum")
             }
         }
         Type::String(size_len) => {

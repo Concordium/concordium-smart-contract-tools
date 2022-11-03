@@ -1,6 +1,6 @@
 [package]
 name = "cargo-concordium"
-version = "2.3.0"
+version = "2.4.0"
 authors = ["Concordium <developers@concordium.com>"]
 edition = "2018"
 license-file = "../LICENSE"

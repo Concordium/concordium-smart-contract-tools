@@ -1227,11 +1227,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             let mut mutable_state = init_state.thaw();
             let inner = mutable_state.get_inner(&mut loader);
             let instance_state = v1::InstanceState::new(loader, inner);
-<<<<<<< HEAD
             let res = v1::invoke_receive::<_, _, _, _, ReceiveContextV1Opt, ReceiveContextV1Opt>(
-=======
-            let res = v1::invoke_receive::<_, _, _, _, _, ReceiveContextV1Opt>(
->>>>>>> Change: add initial schema for events
                 std::sync::Arc::new(artifact),
                 receive_ctx,
                 v1::ReceiveInvocation {

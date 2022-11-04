@@ -946,7 +946,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 }
             }
             Some(VersionedModuleSchema::V3(module_schema)) => {
-                // Getting the event schema from the init function if attached.
+                // Getting the event schema.
                 let schema_event = match module_schema.contracts.get(contract_name) {
                     Some(contract_schema) => contract_schema.event(),
                     None => None,

@@ -2,9 +2,13 @@
 
 ## Unreleased changes
 
+- Add support for V3 schemas that include support for event schemas. This enables
+  `cargo-concordium` to build and interact with smart contracts using
+  `concordium-std` version 4.1. `Cargo-concordium` now always generates V3 schemas.
+
 ## 2.3.0
 
-- Suppor building and testing contracts using new protocol 5 features;
+- Support building and testing contracts using new protocol 5 features;
   upgradability and chain queries.
 - Support for relaxed smart contract resource restrictions in `cargo concordium run`.
 - `cargo concordium build` now checks contracts with respect to protocol version

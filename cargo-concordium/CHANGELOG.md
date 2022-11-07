@@ -4,7 +4,7 @@
 
 - Add support for V3 schemas that include support for event schemas. This enables
   `cargo-concordium` to build and interact with smart contracts using
-  `concordium-std` version 4.2.
+  `concordium-std` version 4.1.
 
 ## 2.3.0
 

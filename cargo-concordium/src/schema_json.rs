@@ -285,7 +285,7 @@ pub fn write_bytes_from_json_schema_type<W: Write>(
                     bail!("Unknown variant: {}", variant_name);
                 }
             } else {
-                bail!("JSON Object required for an TaggedEnum")
+                bail!("JSON Object required for a TaggedEnum")
             }
         }
         Type::String(size_len) => {

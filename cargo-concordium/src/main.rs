@@ -946,14 +946,12 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 }
             }
             Some(VersionedModuleSchema::V3(module_schema)) => {
-                // Getting the event schema.
-                let schema_event = match module_schema.contracts.get(contract_name) {
-                    Some(contract_schema) => contract_schema.event(),
-                    None => None,
-                };
-
                 match module_schema.contracts.get(contract_name) {
                     Some(contract_schema) => {
+                        // Getting event schema.
+                        let schema_event = contract_schema.event();
+
+                        // Getting function schema.
                         let func_schema_opt = if let Some(func_name) = is_receive {
                             contract_schema.receive.get(func_name)
                         } else {
@@ -971,7 +969,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                             None => (true, None, None, None, schema_event),
                         }
                     }
-                    None => (true, None, None, None, schema_event),
+                    None => (true, None, None, None, None),
                 }
             }
             Some(_) => bail!("Schema version mismatches the smart contract version"),

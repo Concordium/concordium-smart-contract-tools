@@ -61,6 +61,8 @@ enum Command {
     },
     #[structopt(name = "test", about = "Build and run tests using a Wasm interpreter.")]
     Test {
+        #[structopt(name = "seed", long = "seed", help = "Seed for randomised testing")]
+        seed: Option<u64>,
         #[structopt(
             raw = true,
             help = "Extra arguments passed to `cargo build` when building the test Wasm module."
@@ -325,9 +327,9 @@ pub fn main() -> anyhow::Result<()> {
                 utils::WasmVersion::V1 => handle_run_v1(*run_cmd, module)?,
             }
         }
-        Command::Test { args } => {
+        Command::Test { args, seed } => {
             let success =
-                build_and_run_wasm_test(&args).context("Could not build and run tests.")?;
+                build_and_run_wasm_test(&args, seed).context("Could not build and run tests.")?;
             ensure!(success, "Test failed");
         }
         Command::Init { path } => {

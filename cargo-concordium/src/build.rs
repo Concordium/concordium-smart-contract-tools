@@ -2,6 +2,7 @@ use ansi_term::{Color, Style};
 use anyhow::Context;
 use cargo_toml::Manifest;
 use concordium_contracts_common::*;
+use rand::thread_rng;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
@@ -367,7 +368,7 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
 ///
 /// Otherwise a boolean is returned, signifying whether the tests succeeded or
 /// failed.
-pub fn build_and_run_wasm_test(extra_args: &[String]) -> anyhow::Result<bool> {
+pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
     let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
     let package = manifest
         .package
@@ -422,7 +423,18 @@ pub fn build_and_run_wasm_test(extra_args: &[String]) -> anyhow::Result<bool> {
 
     eprintln!("\n{}", Color::Green.bold().paint("Running tests ..."));
 
-    let results = utils::run_module_tests(&wasm)?;
+    let seed_u64 = match seed {
+        Some(s) => s,
+        None => {
+            // this is a bit awkward, but `SmallRng::from_entropy()` constructs
+            // the whole RNG, so the seed is not visible from the outside
+            let mut seed: [u8; 8] = Default::default();
+            rand::Rng::fill(&mut thread_rng(), &mut seed);
+            u64::from_be_bytes(seed)
+        }
+    };
+
+    let results = utils::run_module_tests(&wasm, seed_u64)?;
     let mut num_failed = 0;
     for result in results {
         let test_name = result.0;
@@ -438,7 +450,17 @@ pub fn build_and_run_wasm_test(extra_args: &[String]) -> anyhow::Result<bool> {
                     "    {} ... {}",
                     Color::Red.bold().paint("Error"),
                     Style::new().italic().paint(err.to_string())
-                )
+                );
+                if let utils::ReportError::Reported {
+                    quickcheck: true, ..
+                } = err
+                {
+                    eprintln!(
+                        "    {}: {}",
+                        Style::new().bold().paint("Seed"),
+                        Style::new().bold().paint(seed_u64.to_string())
+                    )
+                };
             }
             None => {
                 eprintln!("  - {} ... {}", test_name, Color::Green.bold().paint("ok"));

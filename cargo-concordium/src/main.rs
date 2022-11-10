@@ -385,6 +385,15 @@ pub fn main() -> anyhow::Result<()> {
                 );
 
                 if let Some(schema_out) = schema_out {
+                    // A path name and a filename needs to be provided when using the `--schema-out`
+                    // flag.
+                    if schema_out.file_name().is_none() {
+                        anyhow::bail!(
+                            "The `--schema-out` flag requires a path and a filename e.g. \
+                             `./my/path/schema.bin`"
+                        );
+                    }
+
                     eprintln!("   Writing schema to {}.", schema_out.display());
                     fs::write(schema_out, &module_schema_bytes)
                         .context("Could not write schema file.")?;

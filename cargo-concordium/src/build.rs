@@ -175,13 +175,26 @@ pub fn build_contract(
     let data_size = (output_bytes.len() - 8) as u32;
     (&mut output_bytes[4..8]).copy_from_slice(&data_size.to_be_bytes());
 
-    let out_filename = out.unwrap_or_else(|| {
-        let extension = match version {
-            utils::WasmVersion::V0 => "v0",
-            utils::WasmVersion::V1 => "v1",
-        };
-        PathBuf::from(format!("{}.{}", filename, extension))
-    });
+    let out_filename = match out {
+        Some(out) => {
+            // A path name and a filename needs to be provided when using the `--out` flag.
+            if out.file_name().is_none() {
+                anyhow::bail!(
+                    "The `--out` flag requires a path and a filename e.g. \
+                     `./my/path/my_smart_contract.wasm.v1`"
+                );
+            }
+            out
+        }
+        None => {
+            let extension = match version {
+                utils::WasmVersion::V0 => "v0",
+                utils::WasmVersion::V1 => "v1",
+            };
+            PathBuf::from(format!("{}.{}", filename, extension))
+        }
+    };
+
     let total_module_len = output_bytes.len();
     fs::write(out_filename, output_bytes)?;
     Ok((total_module_len, return_schema))

@@ -385,12 +385,12 @@ pub fn main() -> anyhow::Result<()> {
                 );
 
                 if let Some(schema_out) = schema_out {
-                    // A path name and a filename needs to be provided when using the `--schema-out`
+                    // A path and a filename need to be provided when using the `--schema-out`
                     // flag.
-                    if schema_out.file_name().is_none() {
+                    if schema_out.file_name().is_none() || schema_out.is_dir() {
                         anyhow::bail!(
-                            "The `--schema-out` flag requires a path and a filename e.g. \
-                             `./my/path/schema.bin`"
+                            "The `--schema-out` flag requires a path and a filename (expected \
+                             input: `./my/path/schema.bin`)"
                         );
                     }
 

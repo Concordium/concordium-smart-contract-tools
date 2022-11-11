@@ -177,11 +177,11 @@ pub fn build_contract(
 
     let out_filename = match out {
         Some(out) => {
-            // A path name and a filename needs to be provided when using the `--out` flag.
-            if out.file_name().is_none() {
+            // A path and a filename need to be provided when using the `--out` flag.
+            if out.file_name().is_none() || out.is_dir() {
                 anyhow::bail!(
-                    "The `--out` flag requires a path and a filename e.g. \
-                     `./my/path/my_smart_contract.wasm.v1`"
+                    "The `--out` flag requires a path and a filename (expected input: \
+                     `./my/path/my_smart_contract.wasm.v1`)"
                 );
             }
             out

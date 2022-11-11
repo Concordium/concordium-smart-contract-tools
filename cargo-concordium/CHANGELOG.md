@@ -2,6 +2,7 @@
 
 ## Unreleased changes
 
+- `cargo-concordium` now checks that the user input from the output flags consists of a path and a file name.
 - Add support for V3 schemas that include support for event schemas. This enables
   `cargo-concordium` to build and interact with smart contracts using
   `concordium-std` version 4.1. `Cargo-concordium` now always generates V3 schemas.

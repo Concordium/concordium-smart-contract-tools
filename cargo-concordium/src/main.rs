@@ -1,7 +1,6 @@
 use crate::{
     build::*,
     context::{InitContextOpt, ReceiveContextOpt, ReceiveContextV1Opt},
-    schema_json::write_bytes_from_json_schema_type,
 };
 use anyhow::{bail, ensure, Context};
 use clap::AppSettings;
@@ -24,7 +23,6 @@ use wasm_chain_integration::{
 };
 mod build;
 mod context;
-mod schema_json;
 
 /// Versioned schemas always start with two fully set bytes.
 /// This is used to determine whether we are looking at a versioned or
@@ -773,8 +771,12 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     let state_json: serde_json::Value =
                         serde_json::from_slice(&file).context("Could not parse state JSON.")?;
                     let mut state_bytes = Vec::new();
-                    write_bytes_from_json_schema_type(schema_state, &state_json, &mut state_bytes)
-                        .context("Could not generate state bytes using schema and JSON.")?;
+                    Type::write_bytes_from_json_schema_type(
+                        schema_state,
+                        &state_json,
+                        &mut state_bytes,
+                    )
+                    .context("Could not generate state bytes using schema and JSON.")?;
                     state_bytes
                 }
             };
@@ -1385,7 +1387,7 @@ fn get_parameter(
             let parameter_json: serde_json::Value = serde_json::from_slice(&file)
                 .context("Could not parse the JSON in parameter-json file.")?;
             let mut parameter_bytes = Vec::new();
-            write_bytes_from_json_schema_type(
+            Type::write_bytes_from_json_schema_type(
                 parameter_schema,
                 &parameter_json,
                 &mut parameter_bytes,

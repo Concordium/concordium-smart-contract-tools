@@ -426,8 +426,10 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
     let seed_u64 = match seed {
         Some(s) => s,
         None => {
-            // this is a bit awkward, but `SmallRng::from_entropy()` constructs
-            // the whole RNG, so the seed is not visible from the outside
+            // We cannot use `SmallRng::from_entropy()` directly, because is returns an
+            // instance of a RNG and it is not possible to obtain the seed from this
+            // instance. Instead, we generate the seed explicitly and then
+            // instantiate a RNG with it.
             let mut seed: [u8; 8] = Default::default();
             rand::Rng::fill(&mut thread_rng(), &mut seed);
             u64::from_be_bytes(seed)

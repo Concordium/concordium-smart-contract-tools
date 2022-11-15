@@ -2,7 +2,7 @@ use ansi_term::{Color, Style};
 use anyhow::Context;
 use cargo_toml::Manifest;
 use concordium_contracts_common::*;
-use rand::thread_rng;
+use rand::{thread_rng, RngCore};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
@@ -368,6 +368,9 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
 ///
 /// Otherwise a boolean is returned, signifying whether the tests succeeded or
 /// failed.
+///
+/// The `seed` argument allows for providing the seed to instantiate a random
+/// number generator. If `None` is given, a random seed will be sampled.
 pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
     let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
     let package = manifest
@@ -430,9 +433,7 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
             // instance of a RNG and it is not possible to obtain the seed from this
             // instance. Instead, we generate the seed explicitly and then
             // instantiate a RNG with it.
-            let mut seed: [u8; 8] = Default::default();
-            rand::Rng::fill(&mut thread_rng(), &mut seed);
-            u64::from_be_bytes(seed)
+            thread_rng().next_u64()
         }
     };
 

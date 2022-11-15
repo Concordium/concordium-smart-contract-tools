@@ -61,7 +61,7 @@ enum Command {
     },
     #[structopt(name = "test", about = "Build and run tests using a Wasm interpreter.")]
     Test {
-        #[structopt(name = "seed", long = "seed", help = "Seed for randomised testing")]
+        #[structopt(name = "seed", long = "seed", help = "Seed for randomized testing")]
         seed: Option<u64>,
         #[structopt(
             raw = true,

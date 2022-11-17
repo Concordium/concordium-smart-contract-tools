@@ -8,6 +8,11 @@
 - Add support for V3 schemas that include support for event schemas. This enables
   `cargo-concordium` to build and interact with smart contracts using
   `concordium-std` version 4.1. `Cargo-concordium` now always generates V3 schemas.
+- Add support for sampling random numbers for randomized testing with `cargo concordium test`.
+- Add support for providing a seed to initialize a random generator to 
+  `cargo-concordium`. The generator can be used for randomized testing.
+  Command format: `cargo concordium test --seed 1234567890`. The provided seed value
+  is a `u64` number. If the seed is not provided, a random one will be sampled.
 
 ## 2.3.0
 

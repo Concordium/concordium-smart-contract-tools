@@ -2,6 +2,7 @@ use ansi_term::{Color, Style};
 use anyhow::Context;
 use cargo_toml::Manifest;
 use concordium_contracts_common::*;
+use rand::{thread_rng, Rng};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
@@ -380,7 +381,10 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
 ///
 /// Otherwise a boolean is returned, signifying whether the tests succeeded or
 /// failed.
-pub fn build_and_run_wasm_test(extra_args: &[String]) -> anyhow::Result<bool> {
+///
+/// The `seed` argument allows for providing the seed to instantiate a random
+/// number generator. If `None` is given, a random seed will be sampled.
+pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
     let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
     let package = manifest
         .package
@@ -435,12 +439,22 @@ pub fn build_and_run_wasm_test(extra_args: &[String]) -> anyhow::Result<bool> {
 
     eprintln!("\n{}", Color::Green.bold().paint("Running tests ..."));
 
-    let results = utils::run_module_tests(&wasm)?;
+    let seed_u64 = match seed {
+        Some(s) => s,
+        None => {
+            // Since the seed was not provided, we use system randomness to sample a random
+            // one and use is to seed a deterministic RNG. We store the seed so
+            // we may report it to the user in case of test failure.
+            thread_rng().gen()
+        }
+    };
+
+    let results = utils::run_module_tests(&wasm, seed_u64)?;
     let mut num_failed = 0;
     for result in results {
         let test_name = result.0;
         match result.1 {
-            Some(err) => {
+            Some((err, is_randomized)) => {
                 num_failed += 1;
                 eprintln!(
                     "  - {} ... {}",
@@ -451,7 +465,14 @@ pub fn build_and_run_wasm_test(extra_args: &[String]) -> anyhow::Result<bool> {
                     "    {} ... {}",
                     Color::Red.bold().paint("Error"),
                     Style::new().italic().paint(err.to_string())
-                )
+                );
+                if is_randomized {
+                    eprintln!(
+                        "    {}: {}",
+                        Style::new().bold().paint("Seed"),
+                        Style::new().bold().paint(seed_u64.to_string())
+                    )
+                };
             }
             None => {
                 eprintln!("  - {} ... {}", test_name, Color::Green.bold().paint("ok"));

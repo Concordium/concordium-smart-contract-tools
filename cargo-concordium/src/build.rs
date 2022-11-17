@@ -2,7 +2,7 @@ use ansi_term::{Color, Style};
 use anyhow::Context;
 use cargo_toml::Manifest;
 use concordium_contracts_common::*;
-use rand::{thread_rng, RngCore};
+use rand::{thread_rng, Rng};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
@@ -433,7 +433,7 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
             // instance of a RNG and it is not possible to obtain the seed from this
             // instance. Instead, we generate the seed explicitly and then
             // instantiate a RNG with it.
-            thread_rng().next_u64()
+            thread_rng().gen()
         }
     };
 

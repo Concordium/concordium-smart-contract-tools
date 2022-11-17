@@ -429,10 +429,9 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
     let seed_u64 = match seed {
         Some(s) => s,
         None => {
-            // We cannot use `SmallRng::from_entropy()` directly, because is returns an
-            // instance of a RNG and it is not possible to obtain the seed from this
-            // instance. Instead, we generate the seed explicitly and then
-            // instantiate a RNG with it.
+            // Since the seed was not provided, we use system randomness to sample a random
+            // one and use is to seed a deterministic RNG. We store the seed so
+            // we may report it to the user in case of test failure.
             thread_rng().gen()
         }
     };

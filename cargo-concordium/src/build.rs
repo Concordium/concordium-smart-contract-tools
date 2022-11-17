@@ -442,7 +442,7 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
     for result in results {
         let test_name = result.0;
         match result.1 {
-            Some(err) => {
+            Some((err, is_randomized)) => {
                 num_failed += 1;
                 eprintln!(
                     "  - {} ... {}",
@@ -454,10 +454,7 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
                     Color::Red.bold().paint("Error"),
                     Style::new().italic().paint(err.to_string())
                 );
-                if let utils::ReportError::Reported {
-                    quickcheck: true, ..
-                } = err
-                {
+                if is_randomized {
                     eprintln!(
                         "    {}: {}",
                         Style::new().bold().paint("Seed"),

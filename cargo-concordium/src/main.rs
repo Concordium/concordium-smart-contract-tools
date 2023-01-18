@@ -13,7 +13,7 @@ use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use std::{
     env,
     fs::{self, File},
-    io::{Read, Write},
+    io::Read,
     path::{Path, PathBuf},
 };
 use structopt::StructOpt;
@@ -382,7 +382,7 @@ pub fn main() -> anyhow::Result<()> {
         } => {
             let out: &Path = out.as_ref();
 
-            let mut absolute_path_of_out = if out.is_absolute() {
+            let absolute_path_of_out = if out.is_absolute() {
                 out.to_path_buf()
             } else {
                 env::current_dir()?.join(out)
@@ -401,9 +401,22 @@ pub fn main() -> anyhow::Result<()> {
                 let wasm_version = utils::WasmVersion::read(&mut cursor)
                     .context("Could not read module version from the supplied module file.")?;
 
-                match wasm_version {
+                let schema = match wasm_version {
                     utils::WasmVersion::V0 => {
-                        println!("TODO");
+                        let module = &cursor.into_inner()[8..];
+
+                        let schema = utils::get_embedded_schema_v0(module);
+                        if let Err(err) = &schema {
+                            eprintln!(
+                                "{}",
+                                WARNING_STYLE.paint(format!(
+                                    "No schema was embedded in the module: {}.\nPlease provide a \
+                                     smart contract module with an embedded module.",
+                                    err
+                                ))
+                            );
+                        }
+                        schema
                     }
                     utils::WasmVersion::V1 => {
                         let module = &cursor.into_inner()[8..];
@@ -420,56 +433,49 @@ pub fn main() -> anyhow::Result<()> {
                                 ))
                             );
                         }
-
                         schema
-                            .as_ref()
-                            .map_err(|_| anyhow::anyhow!("Could not deserialize schema file."))?;
+                    }
+                };
 
-                        match schema.as_ref().unwrap() {
-                            VersionedModuleSchema::V0(module_schema) => {
-                                for (contract_name, contract_schema) in
-                                    module_schema.contracts.iter()
-                                {
-                                    write_json_schema_to_file_v0(
-                                        absolute_path_of_out.clone(),
-                                        contract_name,
-                                        contract_schema,
-                                    )?
-                                }
-                            }
-                            VersionedModuleSchema::V1(module_schema) => {
-                                for (contract_name, contract_schema) in
-                                    module_schema.contracts.iter()
-                                {
-                                    write_json_schema_to_file_v1(
-                                        absolute_path_of_out.clone(),
-                                        contract_name,
-                                        contract_schema,
-                                    )?
-                                }
-                            }
-                            VersionedModuleSchema::V2(module_schema) => {
-                                for (contract_name, contract_schema) in
-                                    module_schema.contracts.iter()
-                                {
-                                    write_json_schema_to_file_v2(
-                                        absolute_path_of_out.clone(),
-                                        contract_name,
-                                        contract_schema,
-                                    )?
-                                }
-                            }
-                            VersionedModuleSchema::V3(module_schema) => {
-                                for (contract_name, contract_schema) in
-                                    module_schema.contracts.iter()
-                                {
-                                    write_json_schema_to_file_v3(
-                                        absolute_path_of_out.clone(),
-                                        contract_name,
-                                        contract_schema,
-                                    )?
-                                }
-                            }
+                schema
+                    .as_ref()
+                    .map_err(|_| anyhow::anyhow!("Could not deserialize schema file."))?;
+
+                match schema.as_ref().unwrap() {
+                    VersionedModuleSchema::V0(module_schema) => {
+                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                            write_json_schema_to_file_v0(
+                                absolute_path_of_out.clone(),
+                                contract_name,
+                                contract_schema,
+                            )?
+                        }
+                    }
+                    VersionedModuleSchema::V1(module_schema) => {
+                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                            write_json_schema_to_file_v1(
+                                absolute_path_of_out.clone(),
+                                contract_name,
+                                contract_schema,
+                            )?
+                        }
+                    }
+                    VersionedModuleSchema::V2(module_schema) => {
+                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                            write_json_schema_to_file_v2(
+                                absolute_path_of_out.clone(),
+                                contract_name,
+                                contract_schema,
+                            )?
+                        }
+                    }
+                    VersionedModuleSchema::V3(module_schema) => {
+                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                            write_json_schema_to_file_v3(
+                                absolute_path_of_out.clone(),
+                                contract_name,
+                                contract_schema,
+                            )?
                         }
                     }
                 }
@@ -481,6 +487,8 @@ pub fn main() -> anyhow::Result<()> {
                 let schema = if bytes.starts_with(VERSIONED_SCHEMA_MAGIC_HASH) {
                     from_bytes::<VersionedModuleSchema>(&bytes)
                 } else {
+                    // Question: What is if we this is a schema originated from a `WasmVersion::V0`
+                    // module, then this should be 'VersionedModuleSchema::V0', isn't it?
                     from_bytes(&bytes).map(VersionedModuleSchema::V1)
                 };
 
@@ -491,30 +499,38 @@ pub fn main() -> anyhow::Result<()> {
                 match schema.as_ref().unwrap() {
                     VersionedModuleSchema::V0(module_schema) => {
                         for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
-                            let mut w = File::create(absolute_path_of_out.clone())?;
-                            writeln!(&mut w, "{:?}", contract_schema)?;
+                            write_json_schema_to_file_v0(
+                                absolute_path_of_out.clone(),
+                                contract_name,
+                                contract_schema,
+                            )?
                         }
                     }
                     VersionedModuleSchema::V1(module_schema) => {
                         for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
-                            let mut w = File::create(absolute_path_of_out.clone())?;
-                            writeln!(&mut w, "{:?}", contract_schema)?;
+                            write_json_schema_to_file_v1(
+                                absolute_path_of_out.clone(),
+                                contract_name,
+                                contract_schema,
+                            )?
                         }
                     }
                     VersionedModuleSchema::V2(module_schema) => {
                         for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
-                            let mut w = File::create(absolute_path_of_out.clone())?;
-                            writeln!(&mut w, "{:?}", contract_schema)?;
+                            write_json_schema_to_file_v2(
+                                absolute_path_of_out.clone(),
+                                contract_name,
+                                contract_schema,
+                            )?
                         }
                     }
                     VersionedModuleSchema::V3(module_schema) => {
                         for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
-                            let mut w = File::create(absolute_path_of_out.clone())?;
-                            writeln!(&mut w, "{:?}", contract_schema)?;
+                            write_json_schema_to_file_v3(
+                                absolute_path_of_out.clone(),
+                                contract_name,
+                                contract_schema,
+                            )?
                         }
                     }
                 }

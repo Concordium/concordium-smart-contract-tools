@@ -423,7 +423,12 @@ pub fn write_json_schema_to_file_v0(
     let mut out_path = absolute_path_of_out.to_owned();
     out_path.push(contract_name.to_owned() + "_schema.json");
 
-    std::fs::write(out_path, serde_json::to_string(&schema_json)?)
+    println!(
+        "   Writing schema for {} to {}.",
+        contract_name,
+        out_path.display()
+    );
+    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
         .context("Unable to write schema output.")?;
 
     Ok(())
@@ -479,7 +484,12 @@ pub fn write_json_schema_to_file_v1(
     let mut out_path = absolute_path_of_out.to_owned();
     out_path.push(contract_name.to_owned() + "_schema.json");
 
-    std::fs::write(out_path, serde_json::to_string(&schema_json)?)
+    println!(
+        "   Writing schema for {} to {}.",
+        contract_name,
+        out_path.display()
+    );
+    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
         .context("Unable to write schema output.")?;
 
     Ok(())
@@ -544,7 +554,12 @@ pub fn write_json_schema_to_file_v2(
     let mut out_path = absolute_path_of_out.to_owned();
     out_path.push(contract_name.to_owned() + "_schema.json");
 
-    std::fs::write(out_path, serde_json::to_string(&schema_json)?)
+    println!(
+        "   Writing schema for {} to {}.",
+        contract_name,
+        out_path.display()
+    );
+    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
         .context("Unable to write schema output.")?;
 
     Ok(())
@@ -589,7 +604,12 @@ pub fn write_json_schema_to_file_v3(
     let mut out_path = absolute_path_of_out.to_path_buf();
     out_path.push(contract_name.to_owned() + "_schema.json");
 
-    std::fs::write(out_path, serde_json::to_string(&schema_json)?)
+    println!(
+        "   Writing schema for {} to {}.",
+        contract_name,
+        out_path.display()
+    );
+    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
         .context("Unable to write schema output.")?;
 
     Ok(())

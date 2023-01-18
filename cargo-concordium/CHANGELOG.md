@@ -2,7 +2,10 @@
 
 ## 2.6.0
 
-- Add `schema-expand` option to get schemas for individual entrypoints.
+- Add `schema-json` command to get schemas for individual entrypoints from the
+  binary schema file.
+- Add `--schema-json-out` option to `cargo concordium build` to optionally
+  output the schema in JSON format.
 
 ## 2.5.0
 

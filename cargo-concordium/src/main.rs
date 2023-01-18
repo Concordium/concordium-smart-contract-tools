@@ -11,7 +11,6 @@ use concordium_contracts_common::{
 };
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use std::{
-    env,
     fs::{self, File},
     io::Read,
     path::{Path, PathBuf},
@@ -86,10 +85,10 @@ enum Command {
         path: PathBuf,
     },
     #[structopt(
-        name = "schema-to-JSON",
+        name = "schema-json",
         about = "Convert a schema into its JSON representation and output it to a file.
         A schema has to be provided either as part of a smart contract module or with the schema \
-                 flag. You need to use exactly one of the two flags(``--schema`` or ``--module``) \
+                 flag. You need to use exactly one of the two flags(`--schema` or `--module`) \
                  with this command."
     )]
     SchemaJSON {
@@ -144,29 +143,29 @@ enum Command {
             short = "e",
             help = "Builds the contract schema and embeds it into the wasm module."
         )]
-        schema_embed:      bool,
+        schema_embed:    bool,
         #[structopt(
             name = "schema-out",
             long = "schema-out",
             short = "s",
             help = "Builds the contract schema and writes it to file at specified location."
         )]
-        schema_out:        Option<PathBuf>,
+        schema_out:      Option<PathBuf>,
         #[structopt(
-            name = "schema-expand-out",
-            long = "schema-expand-out",
+            name = "schema-json-out",
+            long = "schema-json-out",
             short = "s",
             help = "Builds the contract schema and writes it in JSON format to the specified \
                     directory."
         )]
-        schema_expand_out: Option<PathBuf>,
+        schema_json_out: Option<PathBuf>,
         #[structopt(
             name = "out",
             long = "out",
             short = "o",
             help = "Writes the resulting module to file at specified location."
         )]
-        out:               Option<PathBuf>,
+        out:             Option<PathBuf>,
         #[structopt(
             name = "contract-version",
             long = "contract-version",
@@ -174,12 +173,12 @@ enum Command {
             help = "Build a module of the given version.",
             default_value = "V1"
         )]
-        version:           utils::WasmVersion,
+        version:         utils::WasmVersion,
         #[structopt(
             raw = true,
             help = "Extra arguments passed to `cargo build` when building Wasm module."
         )]
-        cargo_args:        Vec<String>,
+        cargo_args:      Vec<String>,
     },
 }
 
@@ -398,15 +397,9 @@ pub fn main() -> anyhow::Result<()> {
             schema_path,
             wasm_version,
         } => {
-            let absolute_path_of_out = if out.is_absolute() {
-                out
-            } else {
-                env::current_dir()?.join(out)
-            };
-
             // A valid path needs to be provided when using the `--out` flag.
             ensure!(
-                absolute_path_of_out.is_dir() && !absolute_path_of_out.is_file(),
+                out.is_dir() && !out.is_file(),
                 "The `--out` flag requires a valid path (expected input: `./my/path/`)"
             );
 
@@ -456,20 +449,19 @@ pub fn main() -> anyhow::Result<()> {
                 bail!("Exactly one of `--schema` or `--module` must be provided.");
             };
 
-            write_json_schema(&absolute_path_of_out, &schema)
-                .context("Unable to output schemas.")?
+            write_json_schema(&out, &schema).context("Unable to output schemas.")?
         }
         Command::Build {
             schema_embed,
             schema_out,
-            schema_expand_out,
+            schema_json_out,
             out,
             version,
             cargo_args,
         } => {
             let build_schema = if schema_embed {
                 SchemaBuildOptions::BuildAndEmbed
-            } else if schema_out.is_some() || schema_expand_out.is_some() {
+            } else if schema_out.is_some() || schema_json_out.is_some() {
                 SchemaBuildOptions::JustBuild
             } else {
                 SchemaBuildOptions::DoNotBuild
@@ -520,24 +512,17 @@ pub fn main() -> anyhow::Result<()> {
                         );
                     }
 
-                    eprintln!("   Writing schema to {}.", schema_out.display());
                     fs::write(schema_out, &module_schema_bytes)
                         .context("Could not write schema file.")?;
                 }
-                if let Some(schema_expand_out) = schema_expand_out {
+                if let Some(schema_json_out) = schema_json_out {
                     ensure!(
-                        schema_expand_out.is_dir(),
-                        "The `--schema-expand-out` flag requires a directory (expected input \
-                         `./my/path`)."
+                        schema_json_out.is_dir(),
+                        "The `--schema-expand-out` flag should point to an existing directory \
+                         (expected input `./my/path`)."
                     );
-                    eprintln!("   Writing schema to {}.", schema_expand_out.display());
-                    let absolute_path_of_out = if schema_expand_out.is_absolute() {
-                        schema_expand_out
-                    } else {
-                        env::current_dir()?.join(&schema_expand_out)
-                    };
-
-                    write_json_schema(&absolute_path_of_out, module_schema)
+                    eprintln!("   Writing schema to {}.", schema_json_out.display());
+                    write_json_schema(&schema_json_out, module_schema)
                         .context("Could not write schema file.")?;
                 }
                 if schema_embed {

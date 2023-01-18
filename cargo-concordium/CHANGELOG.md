@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased changes
+## 2.6.0
+
+- Add `schema-expand` option to get schemas for individual entrypoints.
 
 ## 2.5.0
 

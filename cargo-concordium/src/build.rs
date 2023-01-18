@@ -3,16 +3,15 @@ use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
 use cargo_toml::Manifest;
 use concordium_contracts_common::{
-    schema::{ContractV0, ContractV1, ContractV2, ContractV3},
+    schema::{ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2},
     *,
 };
 use rand::{thread_rng, Rng};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     env, fs,
-    fs::File,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -27,6 +26,10 @@ use wasm_transform::{
     utils::strip,
     validate::validate_module,
 };
+
+/// Encode all base64 strings using the standard alphabet and no padding.
+/// Padding is not useful since strings are just put as JSON strings.
+const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD_NO_PAD;
 
 fn to_snake_case(string: String) -> String { string.to_lowercase().replace('-', "_") }
 
@@ -384,33 +387,32 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
 /// Converts the ContractV0 schema of the given contract_name to JSON and writes
 /// it to a file named after the smart contract name at the specified location.
 pub fn write_json_schema_to_file_v0(
-    mut absolute_path_of_out: PathBuf,
+    absolute_path_of_out: &Path,
     contract_name: &str,
     contract_schema: &ContractV0,
 ) -> anyhow::Result<()> {
     // create empty schema_json
-    let mut schema_json: Value = serde_json::from_str(r#"{}"#)?;
+    let mut schema_json: Value = Value::Object(serde_json::Map::new());
 
     // add init schema
     if let Some(init_schema) = &contract_schema.init {
-        schema_json["init"] = json!(general_purpose::STANDARD.encode(to_bytes(init_schema)))
+        schema_json["init"] = type_to_json(init_schema);
     }
 
     // add state schema
     if let Some(state_schema) = &contract_schema.state {
-        schema_json["state"] = json!(general_purpose::STANDARD.encode(to_bytes(state_schema)))
+        schema_json["state"] = type_to_json(state_schema);
     }
 
     // add receive entrypoints
     if !contract_schema.receive.is_empty() {
         // create empty entrypoints
-        let mut entrypoints: Value = serde_json::from_str(r#"{}"#)?;
+        let mut entrypoints: Value = Value::Object(serde_json::Map::new());
 
         // iterate through the entrypoints and add their schemas
         for (method_name, receive_schema) in contract_schema.receive.iter() {
             // add `method_name` entrypoint
-            entrypoints[method_name] =
-                json!(general_purpose::STANDARD.encode(to_bytes(receive_schema)))
+            entrypoints[method_name] = type_to_json(receive_schema);
         }
 
         // add all receive entrypoints
@@ -418,69 +420,55 @@ pub fn write_json_schema_to_file_v0(
     }
 
     // save the schema JSON representation into the file.
-    absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
+    let mut out_path = absolute_path_of_out.to_owned();
+    out_path.push(contract_name.to_owned() + "_schema.json");
 
-    File::create(absolute_path_of_out.clone())?;
-
-    std::fs::write(absolute_path_of_out, serde_json::to_string(&schema_json)?)?;
+    std::fs::write(out_path, serde_json::to_string(&schema_json)?)
+        .context("Unable to write schema output.")?;
 
     Ok(())
+}
+
+fn function_v1_schema(schema: &FunctionV1) -> Value {
+    // create empty function object
+    let mut function_object: Value = Value::Object(serde_json::Map::new());
+
+    // add parameter schema to function object
+    if let Some(parameter_schema) = &schema.parameter() {
+        function_object["parameter"] = type_to_json(*parameter_schema);
+    }
+
+    // add return_value schema to function object
+    if let Some(return_value_schema) = &schema.return_value() {
+        function_object["returnValue"] = type_to_json(*return_value_schema);
+    }
+    function_object
 }
 
 /// Converts the ContractV1 schema of the given contract_name to JSON and writes
 /// it to a file named after the smart contract name at the specified location.
 pub fn write_json_schema_to_file_v1(
-    mut absolute_path_of_out: PathBuf,
+    absolute_path_of_out: &Path,
     contract_name: &str,
     contract_schema: &ContractV1,
 ) -> anyhow::Result<()> {
     // create empty schema_json
-    let mut schema_json: Value = serde_json::from_str(r#"{}"#)?;
+    let mut schema_json: Value = Value::Object(serde_json::Map::new());
 
     // add init schema
     if let Some(init_schema) = &contract_schema.init {
-        // create empty init_function_object
-        let mut init_function_object: Value = serde_json::from_str(r#"{}"#)?;
-
-        // add parameter schema to init_function_object
-        if let Some(parameter_schema) = &init_schema.parameter() {
-            init_function_object["parameter"] =
-                json!(general_purpose::STANDARD.encode(to_bytes(*parameter_schema)))
-        }
-
-        // add return_value schema to init_function_object
-        if let Some(return_value_schema) = &init_schema.return_value() {
-            init_function_object["return_value"] =
-                json!(general_purpose::STANDARD.encode(to_bytes(*return_value_schema)))
-        }
-
-        schema_json["init"] = init_function_object;
+        schema_json["init"] = function_v1_schema(init_schema);
     }
 
     // add receive entrypoints
     if !contract_schema.receive.is_empty() {
         // create empty entrypoints
-        let mut entrypoints: Value = serde_json::from_str(r#"{}"#)?;
+        let mut entrypoints: Value = Value::Object(serde_json::Map::new());
 
         // iterate through the entrypoints and add their schemas
         for (method_name, receive_schema) in contract_schema.receive.iter() {
-            // create empty receive_function_object
-            let mut receive_function_object: Value = serde_json::from_str(r#"{}"#)?;
-
-            // add parameter schema to receive_function_object
-            if let Some(parameter_schema) = &receive_schema.parameter() {
-                receive_function_object["parameter"] =
-                    json!(general_purpose::STANDARD.encode(to_bytes(*parameter_schema)))
-            }
-
-            // add return_value schema to receive_function_object
-            if let Some(return_value_schema) = &receive_schema.return_value() {
-                receive_function_object["return_value"] =
-                    json!(general_purpose::STANDARD.encode(to_bytes(*return_value_schema)))
-            }
-
             // add `method_name` entrypoint
-            entrypoints[method_name] = receive_function_object;
+            entrypoints[method_name] = function_v1_schema(receive_schema);
         }
 
         // add all receive entrypoints
@@ -488,81 +476,64 @@ pub fn write_json_schema_to_file_v1(
     }
 
     // save the schema JSON representation into the file.
-    absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
+    let mut out_path = absolute_path_of_out.to_owned();
+    out_path.push(contract_name.to_owned() + "_schema.json");
 
-    File::create(absolute_path_of_out.clone())?;
-
-    std::fs::write(absolute_path_of_out, serde_json::to_string(&schema_json)?)?;
+    std::fs::write(out_path, serde_json::to_string(&schema_json)?)
+        .context("Unable to write schema output.")?;
 
     Ok(())
+}
+
+/// Convert a [schema type](schema::Type) to a base64 string.
+fn type_to_json(ty: &schema::Type) -> Value { ENCODER.encode(to_bytes(ty)).into() }
+
+/// Convert a [`FunctionV2`] schema to a JSON representation.
+fn function_v2_schema(schema: &FunctionV2) -> Value {
+    // create empty object
+    let mut function_object: Value = Value::Object(serde_json::Map::new());
+
+    // add parameter schema
+    if let Some(parameter_schema) = &schema.parameter {
+        function_object["parameter"] = type_to_json(parameter_schema);
+    }
+
+    // add return_value schema
+    if let Some(return_value_schema) = &schema.return_value {
+        function_object["returnValue"] = type_to_json(return_value_schema);
+    }
+
+    // add error schema
+    if let Some(error_schema) = &schema.error {
+        function_object["error"] = type_to_json(error_schema);
+    }
+    function_object
 }
 
 /// Converts the ContractV2 schema of the given contract_name to JSON and writes
 /// it to a file named after the smart contract name at the specified location.
 pub fn write_json_schema_to_file_v2(
-    mut absolute_path_of_out: PathBuf,
-    contract_name: &String,
+    absolute_path_of_out: &Path,
+    contract_name: &str,
     contract_schema: &ContractV2,
 ) -> anyhow::Result<()> {
     // create empty schema_json
-    let mut schema_json: Value = serde_json::from_str(r#"{}"#)?;
+    let mut schema_json: Value = Value::Object(serde_json::Map::new());
 
     // add init schema
     if let Some(init_schema) = &contract_schema.init {
-        // create empty init_function_object
-        let mut init_function_object: Value = serde_json::from_str(r#"{}"#)?;
-
-        // add parameter schema to init_function_object
-        if let Some(parameter_schema) = &init_schema.parameter {
-            init_function_object["parameter"] =
-                json!(general_purpose::STANDARD.encode(to_bytes(parameter_schema)))
-        }
-
-        // add return_value schema to init_function_object
-        if let Some(return_value_schema) = &init_schema.return_value {
-            init_function_object["return_value"] =
-                json!(general_purpose::STANDARD.encode(to_bytes(return_value_schema)))
-        }
-
-        // add error schema to init_function_object
-        if let Some(error_schema) = &init_schema.error {
-            init_function_object["error"] =
-                json!(general_purpose::STANDARD.encode(to_bytes(error_schema)))
-        }
-
-        schema_json["init"] = init_function_object;
+        schema_json["init"] = function_v2_schema(init_schema);
     }
 
     // add receive entrypoints
     if !contract_schema.receive.is_empty() {
         // create empty entrypoints
-        let mut entrypoints: Value = serde_json::from_str(r#"{}"#)?;
+        let mut entrypoints: Value = Value::Object(serde_json::Map::new());
 
         // iterate through the entrypoints and add their schemas
         for (method_name, receive_schema) in contract_schema.receive.iter() {
-            // create empty receive_function_object
-            let mut receive_function_object: Value = serde_json::from_str(r#"{}"#)?;
-
-            // add parameter schema to receive_function_object
-            if let Some(parameter_schema) = &receive_schema.parameter {
-                receive_function_object["parameter"] =
-                    json!(general_purpose::STANDARD.encode(to_bytes(parameter_schema)))
-            }
-
-            // add return_value schema to receive_function_object
-            if let Some(return_value_schema) = &receive_schema.return_value {
-                receive_function_object["return_value"] =
-                    json!(general_purpose::STANDARD.encode(to_bytes(return_value_schema)))
-            }
-
-            // add error schema to receive_function_object
-            if let Some(error_schema) = &receive_schema.error {
-                receive_function_object["error"] =
-                    json!(general_purpose::STANDARD.encode(to_bytes(error_schema)))
-            }
-
             // add `method_name` entrypoint
-            entrypoints[method_name] = receive_function_object;
+            entrypoints[method_name] = function_v2_schema(receive_schema)
         }
 
         // add all receive entrypoints
@@ -570,11 +541,11 @@ pub fn write_json_schema_to_file_v2(
     }
 
     // save the schema JSON representation into the file.
-    absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
+    let mut out_path = absolute_path_of_out.to_owned();
+    out_path.push(contract_name.to_owned() + "_schema.json");
 
-    File::create(absolute_path_of_out.clone())?;
-
-    std::fs::write(absolute_path_of_out, serde_json::to_string(&schema_json)?)?;
+    std::fs::write(out_path, serde_json::to_string(&schema_json)?)
+        .context("Unable to write schema output.")?;
 
     Ok(())
 }
@@ -582,74 +553,32 @@ pub fn write_json_schema_to_file_v2(
 /// Converts the ContractV3 schema of the given contract_name to JSON and writes
 /// it to a file named after the smart contract name at the specified location.
 pub fn write_json_schema_to_file_v3(
-    mut absolute_path_of_out: PathBuf,
-    contract_name: &String,
+    absolute_path_of_out: &Path,
+    contract_name: &str,
     contract_schema: &ContractV3,
 ) -> anyhow::Result<()> {
     // create empty schema_json
-    let mut schema_json: Value = serde_json::from_str(r#"{}"#)?;
+    let mut schema_json: Value = Value::Object(serde_json::Map::new());
 
     // add init schema
     if let Some(init_schema) = &contract_schema.init {
-        // create empty init_function_object
-        let mut init_function_object: Value = serde_json::from_str(r#"{}"#)?;
-
-        // add parameter schema to init_function_object
-        if let Some(parameter_schema) = &init_schema.parameter {
-            init_function_object["parameter"] =
-                json!(general_purpose::STANDARD.encode(to_bytes(parameter_schema)))
-        }
-
-        // add return_value schema to init_function_object
-        if let Some(return_value_schema) = &init_schema.return_value {
-            init_function_object["return_value"] =
-                json!(general_purpose::STANDARD.encode(to_bytes(return_value_schema)))
-        }
-
-        // add error schema to init_function_object
-        if let Some(error_schema) = &init_schema.error {
-            init_function_object["error"] =
-                json!(general_purpose::STANDARD.encode(to_bytes(error_schema)))
-        }
-
-        schema_json["init"] = init_function_object;
+        schema_json["init"] = function_v2_schema(init_schema)
     }
 
     // add event schema
     if let Some(event_schema) = &contract_schema.event {
-        schema_json["event"] = json!(general_purpose::STANDARD.encode(to_bytes(event_schema)))
+        schema_json["event"] = type_to_json(event_schema);
     }
 
     // add receive entrypoints
     if !contract_schema.receive.is_empty() {
         // create empty entrypoints
-        let mut entrypoints: Value = serde_json::from_str(r#"{}"#)?;
+        let mut entrypoints: Value = Value::Object(serde_json::Map::new());
 
         // iterate through the entrypoints and add their schemas
         for (method_name, receive_schema) in contract_schema.receive.iter() {
-            // create empty receive_function_object
-            let mut receive_function_object: Value = serde_json::from_str(r#"{}"#)?;
-
-            // add parameter schema to receive_function_object
-            if let Some(parameter_schema) = &receive_schema.parameter {
-                receive_function_object["parameter"] =
-                    json!(general_purpose::STANDARD.encode(to_bytes(parameter_schema)))
-            }
-
-            // add return_value schema to receive_function_object
-            if let Some(return_value_schema) = &receive_schema.return_value {
-                receive_function_object["return_value"] =
-                    json!(general_purpose::STANDARD.encode(to_bytes(return_value_schema)))
-            }
-
-            // add error schema to receive_function_object
-            if let Some(error_schema) = &receive_schema.error {
-                receive_function_object["error"] =
-                    json!(general_purpose::STANDARD.encode(to_bytes(error_schema)))
-            }
-
             // add `method_name` entrypoint
-            entrypoints[method_name] = receive_function_object;
+            entrypoints[method_name] = function_v2_schema(receive_schema)
         }
 
         // add all receive entrypoints
@@ -657,11 +586,11 @@ pub fn write_json_schema_to_file_v3(
     }
 
     // save the schema JSON representation into the file.
-    absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
+    let mut out_path = absolute_path_of_out.to_path_buf();
+    out_path.push(contract_name.to_owned() + "_schema.json");
 
-    File::create(absolute_path_of_out.clone())?;
-
-    std::fs::write(absolute_path_of_out, serde_json::to_string(&schema_json)?)?;
+    std::fs::write(out_path, serde_json::to_string(&schema_json)?)
+        .context("Unable to write schema output.")?;
 
     Ok(())
 }

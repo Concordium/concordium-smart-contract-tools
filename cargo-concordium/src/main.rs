@@ -487,7 +487,7 @@ pub fn main() -> anyhow::Result<()> {
                 let schema = if bytes.starts_with(VERSIONED_SCHEMA_MAGIC_HASH) {
                     from_bytes::<VersionedModuleSchema>(&bytes)
                 } else {
-                    // Question: What is if we this is a schema originated from a `WasmVersion::V0`
+                    // Question: What is if this is a schema originated from a `WasmVersion::V0`
                     // module, then this should be 'VersionedModuleSchema::V0', isn't it?
                     from_bytes(&bytes).map(VersionedModuleSchema::V1)
                 };

@@ -397,7 +397,7 @@ pub fn write_json_schema_to_file_v0(
     }
 
     // add state schema
-    if let Some(state_schema) = &contract_schema.init {
+    if let Some(state_schema) = &contract_schema.state {
         schema_json["state"] = json!(general_purpose::STANDARD.encode(to_bytes(state_schema)))
     }
 
@@ -463,18 +463,18 @@ pub fn write_json_schema_to_file_v1(
         let mut entrypoints: Value = serde_json::from_str(r#"{}"#)?;
 
         // iterate through the entrypoints and add their schemas
-        for (method_name, param_type) in contract_schema.receive.iter() {
+        for (method_name, receive_schema) in contract_schema.receive.iter() {
             // create empty receive_function_object
             let mut receive_function_object: Value = serde_json::from_str(r#"{}"#)?;
 
             // add parameter schema to receive_function_object
-            if let Some(parameter_schema) = &param_type.parameter() {
+            if let Some(parameter_schema) = &receive_schema.parameter() {
                 receive_function_object["parameter"] =
                     json!(general_purpose::STANDARD.encode(to_bytes(*parameter_schema)))
             }
 
             // add return_value schema to receive_function_object
-            if let Some(return_value_schema) = &param_type.return_value() {
+            if let Some(return_value_schema) = &receive_schema.return_value() {
                 receive_function_object["return_value"] =
                     json!(general_purpose::STANDARD.encode(to_bytes(*return_value_schema)))
             }
@@ -539,24 +539,24 @@ pub fn write_json_schema_to_file_v2(
         let mut entrypoints: Value = serde_json::from_str(r#"{}"#)?;
 
         // iterate through the entrypoints and add their schemas
-        for (method_name, param_type) in contract_schema.receive.iter() {
+        for (method_name, receive_schema) in contract_schema.receive.iter() {
             // create empty receive_function_object
             let mut receive_function_object: Value = serde_json::from_str(r#"{}"#)?;
 
             // add parameter schema to receive_function_object
-            if let Some(parameter_schema) = &param_type.parameter {
+            if let Some(parameter_schema) = &receive_schema.parameter {
                 receive_function_object["parameter"] =
                     json!(general_purpose::STANDARD.encode(to_bytes(parameter_schema)))
             }
 
             // add return_value schema to receive_function_object
-            if let Some(return_value_schema) = &param_type.return_value {
+            if let Some(return_value_schema) = &receive_schema.return_value {
                 receive_function_object["return_value"] =
                     json!(general_purpose::STANDARD.encode(to_bytes(return_value_schema)))
             }
 
             // add error schema to receive_function_object
-            if let Some(error_schema) = &param_type.error {
+            if let Some(error_schema) = &receive_schema.error {
                 receive_function_object["error"] =
                     json!(general_purpose::STANDARD.encode(to_bytes(error_schema)))
             }
@@ -626,24 +626,24 @@ pub fn write_json_schema_to_file_v3(
         let mut entrypoints: Value = serde_json::from_str(r#"{}"#)?;
 
         // iterate through the entrypoints and add their schemas
-        for (method_name, param_type) in contract_schema.receive.iter() {
+        for (method_name, receive_schema) in contract_schema.receive.iter() {
             // create empty receive_function_object
             let mut receive_function_object: Value = serde_json::from_str(r#"{}"#)?;
 
             // add parameter schema to receive_function_object
-            if let Some(parameter_schema) = &param_type.parameter {
+            if let Some(parameter_schema) = &receive_schema.parameter {
                 receive_function_object["parameter"] =
                     json!(general_purpose::STANDARD.encode(to_bytes(parameter_schema)))
             }
 
             // add return_value schema to receive_function_object
-            if let Some(return_value_schema) = &param_type.return_value {
+            if let Some(return_value_schema) = &receive_schema.return_value {
                 receive_function_object["return_value"] =
                     json!(general_purpose::STANDARD.encode(to_bytes(return_value_schema)))
             }
 
             // add error schema to receive_function_object
-            if let Some(error_schema) = &param_type.error {
+            if let Some(error_schema) = &receive_schema.error {
                 receive_function_object["error"] =
                     json!(general_purpose::STANDARD.encode(to_bytes(error_schema)))
             }

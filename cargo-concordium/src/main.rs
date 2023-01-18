@@ -97,22 +97,28 @@ enum Command {
             long = "out",
             short = "o",
             default_value = ".",
-            help = "Writes the converted JSON representation of the schema to a file named after \
-                    the smart contract name at the specified location (expected input: \
-                    `./my/path/`)."
+            help = "Writes the converted JSON representation of the schema to files named after \
+                    the smart contract names at the specified location. Directory path must \
+                    exist. (expected input: `./my/path/`)."
         )]
         out:         PathBuf,
         #[structopt(
             name = "schema",
             long = "schema",
-            help = "Path + filename to a file with a schema (expected input: \
+            short = "s",
+            conflicts_with = "module",
+            required_unless = "module",
+            help = "Path and filename to a file with a schema (expected input: \
                     `./my/path/schema.bin`)."
         )]
         schema_path: Option<PathBuf>,
         #[structopt(
             name = "module",
             long = "module",
-            help = "Path + filename to a file with a smart contract module (expected input: \
+            short = "m",
+            conflicts_with = "schema",
+            required_unless = "schema",
+            help = "Path and filename to a file with a smart contract module (expected input: \
                     `./my/path/module.wasm.v1`)."
         )]
         module_path: Option<PathBuf>,
@@ -374,17 +380,6 @@ pub fn main() -> anyhow::Result<()> {
             module_path,
             schema_path,
         } => {
-            // Either the `--schema` flag or the `--module` flag should be used with this
-            // command.
-            if (schema_path.is_some() && module_path.is_some())
-                || (schema_path.is_none() && module_path.is_none())
-            {
-                anyhow::bail!(
-                    "You need to use exactly one of the two flags(``--schema`` or ``--module``) \
-                     with this command."
-                );
-            }
-
             let out: &Path = out.as_ref();
 
             let mut absolute_path_of_out = if out.is_absolute() {
@@ -394,15 +389,90 @@ pub fn main() -> anyhow::Result<()> {
             };
 
             // A valid path needs to be provided when using the `--out` flag.
-            if !absolute_path_of_out.is_dir() || absolute_path_of_out.is_file() {
-                anyhow::bail!(
-                    "The `--out` flag requires a valid path (expected input: `./my/path/`)"
-                );
-            }
+            ensure!(
+                absolute_path_of_out.is_dir() && !absolute_path_of_out.is_file(),
+                "The `--out` flag requires a valid path (expected input: `./my/path/`)"
+            );
 
-            if let Some(_module_path) = module_path {
-                // TODO: extract the module schema and convert it to JSON and
-                // write it into the output file.
+            if let Some(module_path) = module_path {
+                let bytes = fs::read(module_path).context("Could not read module file.")?;
+
+                let mut cursor = std::io::Cursor::new(&bytes[..]);
+                let wasm_version = utils::WasmVersion::read(&mut cursor)
+                    .context("Could not read module version from the supplied module file.")?;
+
+                match wasm_version {
+                    utils::WasmVersion::V0 => {
+                        println!("TODO");
+                    }
+                    utils::WasmVersion::V1 => {
+                        let module = &cursor.into_inner()[8..];
+
+                        // get the module schema if available.
+                        let schema = utils::get_embedded_schema_v1(module);
+                        if let Err(err) = &schema {
+                            eprintln!(
+                                "{}",
+                                WARNING_STYLE.paint(format!(
+                                    "No schema was embedded in the module: {}.\nPlease provide a \
+                                     smart contract module with an embedded module.",
+                                    err
+                                ))
+                            );
+                        }
+
+                        schema
+                            .as_ref()
+                            .map_err(|_| anyhow::anyhow!("Could not deserialize schema file."))?;
+
+                        match schema.as_ref().unwrap() {
+                            VersionedModuleSchema::V0(module_schema) => {
+                                for (contract_name, contract_schema) in
+                                    module_schema.contracts.iter()
+                                {
+                                    write_json_schema_to_file_v0(
+                                        absolute_path_of_out.clone(),
+                                        contract_name,
+                                        contract_schema,
+                                    )?
+                                }
+                            }
+                            VersionedModuleSchema::V1(module_schema) => {
+                                for (contract_name, contract_schema) in
+                                    module_schema.contracts.iter()
+                                {
+                                    write_json_schema_to_file_v1(
+                                        absolute_path_of_out.clone(),
+                                        contract_name,
+                                        contract_schema,
+                                    )?
+                                }
+                            }
+                            VersionedModuleSchema::V2(module_schema) => {
+                                for (contract_name, contract_schema) in
+                                    module_schema.contracts.iter()
+                                {
+                                    write_json_schema_to_file_v2(
+                                        absolute_path_of_out.clone(),
+                                        contract_name,
+                                        contract_schema,
+                                    )?
+                                }
+                            }
+                            VersionedModuleSchema::V3(module_schema) => {
+                                for (contract_name, contract_schema) in
+                                    module_schema.contracts.iter()
+                                {
+                                    write_json_schema_to_file_v3(
+                                        absolute_path_of_out.clone(),
+                                        contract_name,
+                                        contract_schema,
+                                    )?
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             if let Some(schema_path) = schema_path {
@@ -421,28 +491,28 @@ pub fn main() -> anyhow::Result<()> {
                 match schema.as_ref().unwrap() {
                     VersionedModuleSchema::V0(module_schema) => {
                         for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            absolute_path_of_out.push(contract_name.to_owned() + ".json");
+                            absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
                             let mut w = File::create(absolute_path_of_out.clone())?;
                             writeln!(&mut w, "{:?}", contract_schema)?;
                         }
                     }
                     VersionedModuleSchema::V1(module_schema) => {
                         for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            absolute_path_of_out.push(contract_name.to_owned() + ".json");
+                            absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
                             let mut w = File::create(absolute_path_of_out.clone())?;
                             writeln!(&mut w, "{:?}", contract_schema)?;
                         }
                     }
                     VersionedModuleSchema::V2(module_schema) => {
                         for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            absolute_path_of_out.push(contract_name.to_owned() + ".json");
+                            absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
                             let mut w = File::create(absolute_path_of_out.clone())?;
                             writeln!(&mut w, "{:?}", contract_schema)?;
                         }
                     }
                     VersionedModuleSchema::V3(module_schema) => {
                         for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            absolute_path_of_out.push(contract_name.to_owned() + ".json");
+                            absolute_path_of_out.push(contract_name.to_owned() + "_schema.json");
                             let mut w = File::create(absolute_path_of_out.clone())?;
                             writeln!(&mut w, "{:?}", contract_schema)?;
                         }

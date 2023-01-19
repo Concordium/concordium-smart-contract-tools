@@ -154,7 +154,7 @@ enum Command {
         #[structopt(
             name = "schema-json-out",
             long = "schema-json-out",
-            short = "s",
+            short = "j",
             help = "Builds the contract schema and writes it in JSON format to the specified \
                     directory."
         )]
@@ -421,13 +421,13 @@ pub fn main() -> anyhow::Result<()> {
 
                 match wasm_version {
                     utils::WasmVersion::V0 => utils::get_embedded_schema_v0(module).context(
-                        "No schema was embedded in the module.\nPlease provide a smart contract \
-                         module with an embedded schema.",
+                        "Failed to get schema embedded in the module.\nPlease provide a smart \
+                         contract module with an embedded schema.",
                     )?,
                     utils::WasmVersion::V1 => {
                         // get the module schema if available.
                         utils::get_embedded_schema_v1(module).context(
-                            "No schema was embedded in the module.\nPlease provide a smart \
+                            "Failed to get schema embedded in the module.\nPlease provide a smart \
                              contract module with an embedded schema.",
                         )?
                     }

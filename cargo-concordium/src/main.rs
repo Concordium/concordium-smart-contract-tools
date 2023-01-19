@@ -115,9 +115,9 @@ enum Command {
         #[structopt(
             name = "wasm-version",
             long = "wasm-version",
-            conflicts_with = "module",
-            help = "If the supplied schema is the legacy unversioned one this flag should be used to \
-                    supply the version explicitly."
+            short = "v",
+            help = "If the supplied schema is the legacy unversioned one this flag should be used \
+                    to supply the version explicitly."
         )]
         wasm_version: Option<WasmVersion>,
         #[structopt(
@@ -407,21 +407,23 @@ pub fn main() -> anyhow::Result<()> {
                 let bytes = fs::read(module_path).context("Could not read module file.")?;
 
                 let mut cursor = std::io::Cursor::new(&bytes[..]);
-                let wasm_version = utils::WasmVersion::read(&mut cursor)
-                    .context("Could not read module version from the supplied module file.")?;
+                let (wasm_version, module) = match wasm_version {
+                    Some(v) => (v, &bytes[..]),
+                    None => {
+                        let wasm_version = utils::WasmVersion::read(&mut cursor).context(
+                            "Could not read module version from the supplied module file. Supply \
+                             the version using `--wasm-version`.",
+                        )?;
+                        (wasm_version, &cursor.into_inner()[8..])
+                    }
+                };
 
                 match wasm_version {
-                    utils::WasmVersion::V0 => {
-                        let module = &cursor.into_inner()[8..];
-
-                        utils::get_embedded_schema_v0(module).context(
-                            "No schema was embedded in the module.\nPlease provide a smart \
-                             contract module with an embedded schema.",
-                        )?
-                    }
+                    utils::WasmVersion::V0 => utils::get_embedded_schema_v0(module).context(
+                        "No schema was embedded in the module.\nPlease provide a smart contract \
+                         module with an embedded schema.",
+                    )?,
                     utils::WasmVersion::V1 => {
-                        let module = &cursor.into_inner()[8..];
-
                         // get the module schema if available.
                         utils::get_embedded_schema_v1(module).context(
                             "No schema was embedded in the module.\nPlease provide a smart \
@@ -519,9 +521,8 @@ pub fn main() -> anyhow::Result<()> {
                     ensure!(
                         schema_json_out.is_dir(),
                         "The `--schema-expand-out` flag should point to an existing directory \
-                         (expected input `./my/path`)."
+                         (expected input `./my/path/`)."
                     );
-                    eprintln!("   Writing schema to {}.", schema_json_out.display());
                     write_json_schema(&schema_json_out, module_schema)
                         .context("Could not write schema file.")?;
                 }

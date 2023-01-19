@@ -116,7 +116,7 @@ enum Command {
             name = "wasm-version",
             long = "wasm-version",
             conflicts_with = "module",
-            help = "If the supplied schema is the legacy unversioned one this should used to \
+            help = "If the supplied schema is the legacy unversioned one this flag should be used to \
                     supply the version explicitly."
         )]
         wasm_version: Option<WasmVersion>,

@@ -399,8 +399,9 @@ pub fn main() -> anyhow::Result<()> {
         } => {
             // A valid path needs to be provided when using the `--out` flag.
             ensure!(
-                out.is_dir() && !out.is_file(),
-                "The `--out` flag requires a valid path (expected input: `./my/path/`)"
+                out.is_dir(),
+                "The `--out` value must point to an existing directory (expected input: \
+                 `./my/path/`)."
             );
 
             let schema = if let Some(module_path) = module_path {
@@ -520,7 +521,7 @@ pub fn main() -> anyhow::Result<()> {
                 if let Some(schema_json_out) = schema_json_out {
                     ensure!(
                         schema_json_out.is_dir(),
-                        "The `--schema-expand-out` flag should point to an existing directory \
+                        "The `--schema-json-out` flag should point to an existing directory \
                          (expected input `./my/path/`)."
                     );
                     write_json_schema(&schema_json_out, module_schema)
@@ -1533,23 +1534,31 @@ fn get_parameter(
 fn write_json_schema(out: &Path, schema: &VersionedModuleSchema) -> anyhow::Result<()> {
     match schema {
         VersionedModuleSchema::V0(module_schema) => {
-            for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                write_json_schema_to_file_v0(out, contract_name, contract_schema)?
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v0(out, contract_name, contract_counter, contract_schema)?
             }
         }
         VersionedModuleSchema::V1(module_schema) => {
-            for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                write_json_schema_to_file_v1(out, contract_name, contract_schema)?
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v1(out, contract_name, contract_counter, contract_schema)?
             }
         }
         VersionedModuleSchema::V2(module_schema) => {
-            for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                write_json_schema_to_file_v2(out, contract_name, contract_schema)?
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v2(out, contract_name, contract_counter, contract_schema)?
             }
         }
         VersionedModuleSchema::V3(module_schema) => {
-            for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                write_json_schema_to_file_v3(out, contract_name, contract_schema)?
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v3(out, contract_name, contract_counter, contract_schema)?
             }
         }
     }

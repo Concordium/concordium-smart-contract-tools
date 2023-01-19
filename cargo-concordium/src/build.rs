@@ -384,11 +384,44 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn write_schema_json(
+    root: &Path,
+    contract_name: &str,
+    counter: usize,
+    mut schema_json: Value,
+) -> anyhow::Result<()> {
+    schema_json["contractName"] = contract_name.into();
+    // save the schema JSON representation into the file.
+    let mut out_path = root.to_path_buf();
+
+    // Make sure the path is valid on all platforms.
+    let file_name = if contract_name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || "-_[]{}".contains(c))
+    {
+        contract_name.to_owned() + "_schema.json"
+    } else {
+        format!("contract-schema_{}.json", counter)
+    };
+
+    out_path.push(file_name);
+
+    println!(
+        "   Writing schema for {} to {}.",
+        contract_name,
+        out_path.display()
+    );
+    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
+        .context("Unable to write schema output.")?;
+    Ok(())
+}
+
 /// Converts the ContractV0 schema of the given contract_name to JSON and writes
 /// it to a file named after the smart contract name at the specified location.
 pub fn write_json_schema_to_file_v0(
-    absolute_path_of_out: &Path,
+    path_of_out: &Path,
     contract_name: &str,
+    contract_counter: usize,
     contract_schema: &ContractV0,
 ) -> anyhow::Result<()> {
     // create empty schema_json
@@ -419,19 +452,7 @@ pub fn write_json_schema_to_file_v0(
         schema_json["entrypoints"] = entrypoints;
     }
 
-    // save the schema JSON representation into the file.
-    let mut out_path = absolute_path_of_out.to_owned();
-    out_path.push(contract_name.to_owned() + "_schema.json");
-
-    println!(
-        "   Writing schema for {} to {}.",
-        contract_name,
-        out_path.display()
-    );
-    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
-        .context("Unable to write schema output.")?;
-
-    Ok(())
+    write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
 }
 
 fn function_v1_schema(schema: &FunctionV1) -> Value {
@@ -453,8 +474,9 @@ fn function_v1_schema(schema: &FunctionV1) -> Value {
 /// Converts the ContractV1 schema of the given contract_name to JSON and writes
 /// it to a file named after the smart contract name at the specified location.
 pub fn write_json_schema_to_file_v1(
-    absolute_path_of_out: &Path,
+    path_of_out: &Path,
     contract_name: &str,
+    contract_counter: usize,
     contract_schema: &ContractV1,
 ) -> anyhow::Result<()> {
     // create empty schema_json
@@ -480,19 +502,7 @@ pub fn write_json_schema_to_file_v1(
         schema_json["entrypoints"] = entrypoints;
     }
 
-    // save the schema JSON representation into the file.
-    let mut out_path = absolute_path_of_out.to_owned();
-    out_path.push(contract_name.to_owned() + "_schema.json");
-
-    println!(
-        "   Writing schema for {} to {}.",
-        contract_name,
-        out_path.display()
-    );
-    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
-        .context("Unable to write schema output.")?;
-
-    Ok(())
+    write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
 }
 
 /// Convert a [schema type](schema::Type) to a base64 string.
@@ -523,8 +533,9 @@ fn function_v2_schema(schema: &FunctionV2) -> Value {
 /// Converts the ContractV2 schema of the given contract_name to JSON and writes
 /// it to a file named after the smart contract name at the specified location.
 pub fn write_json_schema_to_file_v2(
-    absolute_path_of_out: &Path,
+    path_of_out: &Path,
     contract_name: &str,
+    contract_counter: usize,
     contract_schema: &ContractV2,
 ) -> anyhow::Result<()> {
     // create empty schema_json
@@ -550,26 +561,15 @@ pub fn write_json_schema_to_file_v2(
         schema_json["entrypoints"] = entrypoints;
     }
 
-    // save the schema JSON representation into the file.
-    let mut out_path = absolute_path_of_out.to_owned();
-    out_path.push(contract_name.to_owned() + "_schema.json");
-
-    println!(
-        "   Writing schema for {} to {}.",
-        contract_name,
-        out_path.display()
-    );
-    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
-        .context("Unable to write schema output.")?;
-
-    Ok(())
+    write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
 }
 
 /// Converts the ContractV3 schema of the given contract_name to JSON and writes
 /// it to a file named after the smart contract name at the specified location.
 pub fn write_json_schema_to_file_v3(
-    absolute_path_of_out: &Path,
+    path_of_out: &Path,
     contract_name: &str,
+    contract_counter: usize,
     contract_schema: &ContractV3,
 ) -> anyhow::Result<()> {
     // create empty schema_json
@@ -600,19 +600,7 @@ pub fn write_json_schema_to_file_v3(
         schema_json["entrypoints"] = entrypoints;
     }
 
-    // save the schema JSON representation into the file.
-    let mut out_path = absolute_path_of_out.to_path_buf();
-    out_path.push(contract_name.to_owned() + "_schema.json");
-
-    println!(
-        "   Writing schema for {} to {}.",
-        contract_name,
-        out_path.display()
-    );
-    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
-        .context("Unable to write schema output.")?;
-
-    Ok(())
+    write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
 }
 
 /// Build tests and run them. If errors occur in building the tests, or there

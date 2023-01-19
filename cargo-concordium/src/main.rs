@@ -116,8 +116,9 @@ enum Command {
             name = "wasm-version",
             long = "wasm-version",
             short = "v",
-            help = "If the supplied schema is the legacy unversioned one this flag should be used \
-                    to supply the version explicitly."
+            help = "If the supplied schema or module is the unversioned one this flag should be \
+                    used to supply the version explicitly. Unversioned schemas and modules were \
+                    produced by older versions of `concordium-std` and `cargo-concordium`."
         )]
         wasm_version: Option<WasmVersion>,
         #[structopt(

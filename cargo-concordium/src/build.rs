@@ -384,6 +384,9 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Write the provided JSON value to the file inside the `root` directory.
+/// The file is named after contract_name, except if contract_name contains
+/// unsuitable chracters. Then the counter is used to name the file.
 fn write_schema_json(
     root: &Path,
     contract_name: &str,

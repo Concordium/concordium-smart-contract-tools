@@ -17,7 +17,8 @@ use std::{
 };
 use structopt::StructOpt;
 use wasm_chain_integration::{
-    utils, v0,
+    utils::{self, WasmVersion},
+    v0,
     v1::{self, ReturnValue},
     InterpreterEnergy,
 };
@@ -84,6 +85,55 @@ enum Command {
         path: PathBuf,
     },
     #[structopt(
+        name = "schema-json",
+        about = "Convert a schema into its JSON representation and output it to a file.
+        A schema has to be provided either as part of a smart contract module or with the schema \
+                 flag. You need to use exactly one of the two flags(`--schema` or `--module`) \
+                 with this command."
+    )]
+    SchemaJSON {
+        #[structopt(
+            name = "out",
+            long = "out",
+            short = "o",
+            default_value = ".",
+            help = "Writes the converted JSON representation of the schema to files named after \
+                    the smart contract names at the specified location. Directory path must \
+                    exist. (expected input: `./my/path/`)."
+        )]
+        out:          PathBuf,
+        #[structopt(
+            name = "schema",
+            long = "schema",
+            short = "s",
+            conflicts_with = "module",
+            required_unless = "module",
+            help = "Path and filename to a file with a schema (expected input: \
+                    `./my/path/schema.bin`)."
+        )]
+        schema_path:  Option<PathBuf>,
+        #[structopt(
+            name = "wasm-version",
+            long = "wasm-version",
+            short = "v",
+            help = "If the supplied schema or module is the unversioned one this flag should be \
+                    used to supply the version explicitly. Unversioned schemas and modules were \
+                    produced by older versions of `concordium-std` and `cargo-concordium`."
+        )]
+        wasm_version: Option<WasmVersion>,
+        #[structopt(
+            name = "module",
+            long = "module",
+            short = "m",
+            conflicts_with = "schema",
+            required_unless = "schema",
+            help = "Path and filename to a file with a smart contract module (expected input: \
+                    `./my/path/module.wasm.v1`)."
+        )]
+        module_path:  Option<PathBuf>,
+    },
+
+    #[structopt(
         name = "build",
         about = "Build a deployment ready smart-contract module."
     )]
@@ -94,21 +144,29 @@ enum Command {
             short = "e",
             help = "Builds the contract schema and embeds it into the wasm module."
         )]
-        schema_embed: bool,
+        schema_embed:    bool,
         #[structopt(
             name = "schema-out",
             long = "schema-out",
             short = "s",
             help = "Builds the contract schema and writes it to file at specified location."
         )]
-        schema_out:   Option<PathBuf>,
+        schema_out:      Option<PathBuf>,
+        #[structopt(
+            name = "schema-json-out",
+            long = "schema-json-out",
+            short = "j",
+            help = "Builds the contract schema and writes it in JSON format to the specified \
+                    directory."
+        )]
+        schema_json_out: Option<PathBuf>,
         #[structopt(
             name = "out",
             long = "out",
             short = "o",
             help = "Writes the resulting module to file at specified location."
         )]
-        out:          Option<PathBuf>,
+        out:             Option<PathBuf>,
         #[structopt(
             name = "contract-version",
             long = "contract-version",
@@ -116,12 +174,12 @@ enum Command {
             help = "Build a module of the given version.",
             default_value = "V1"
         )]
-        version:      utils::WasmVersion,
+        version:         utils::WasmVersion,
         #[structopt(
             raw = true,
             help = "Extra arguments passed to `cargo build` when building Wasm module."
         )]
-        cargo_args:   Vec<String>,
+        cargo_args:      Vec<String>,
     },
 }
 
@@ -334,16 +392,80 @@ pub fn main() -> anyhow::Result<()> {
             init_concordium_project(path)
                 .context("Could not create a new Concordium smart contract project.")?;
         }
+        Command::SchemaJSON {
+            out,
+            module_path,
+            schema_path,
+            wasm_version,
+        } => {
+            // A valid path needs to be provided when using the `--out` flag.
+            ensure!(
+                out.is_dir(),
+                "The `--out` value must point to an existing directory (expected input: \
+                 `./my/path/`)."
+            );
+
+            let schema = if let Some(module_path) = module_path {
+                let bytes = fs::read(module_path).context("Could not read module file.")?;
+
+                let mut cursor = std::io::Cursor::new(&bytes[..]);
+                let (wasm_version, module) = match wasm_version {
+                    Some(v) => (v, &bytes[..]),
+                    None => {
+                        let wasm_version = utils::WasmVersion::read(&mut cursor).context(
+                            "Could not read module version from the supplied module file. Supply \
+                             the version using `--wasm-version`.",
+                        )?;
+                        (wasm_version, &cursor.into_inner()[8..])
+                    }
+                };
+
+                match wasm_version {
+                    utils::WasmVersion::V0 => utils::get_embedded_schema_v0(module).context(
+                        "Failed to get schema embedded in the module.\nPlease provide a smart \
+                         contract module with an embedded schema.",
+                    )?,
+                    utils::WasmVersion::V1 => {
+                        // get the module schema if available.
+                        utils::get_embedded_schema_v1(module).context(
+                            "Failed to get schema embedded in the module.\nPlease provide a smart \
+                             contract module with an embedded schema.",
+                        )?
+                    }
+                }
+            } else if let Some(schema_path) = schema_path {
+                let bytes = fs::read(schema_path).context("Could not read schema file.")?;
+
+                if bytes.starts_with(VERSIONED_SCHEMA_MAGIC_HASH) {
+                    from_bytes::<VersionedModuleSchema>(&bytes)?
+                } else if let Some(wv) = wasm_version {
+                    match wv {
+                        WasmVersion::V0 => from_bytes(&bytes).map(VersionedModuleSchema::V0)?,
+                        WasmVersion::V1 => from_bytes(&bytes).map(VersionedModuleSchema::V1)?,
+                    }
+                } else {
+                    bail!(
+                        "Legacy unversioned schema was supplied, but no version was provided. Use \
+                         `--wasm-version` to specify the version."
+                    );
+                }
+            } else {
+                bail!("Exactly one of `--schema` or `--module` must be provided.");
+            };
+
+            write_json_schema(&out, &schema).context("Unable to output schemas.")?
+        }
         Command::Build {
             schema_embed,
             schema_out,
+            schema_json_out,
             out,
             version,
             cargo_args,
         } => {
             let build_schema = if schema_embed {
                 SchemaBuildOptions::BuildAndEmbed
-            } else if schema_out.is_some() {
+            } else if schema_out.is_some() || schema_json_out.is_some() {
                 SchemaBuildOptions::JustBuild
             } else {
                 SchemaBuildOptions::DoNotBuild
@@ -394,8 +516,16 @@ pub fn main() -> anyhow::Result<()> {
                         );
                     }
 
-                    eprintln!("   Writing schema to {}.", schema_out.display());
                     fs::write(schema_out, &module_schema_bytes)
+                        .context("Could not write schema file.")?;
+                }
+                if let Some(schema_json_out) = schema_json_out {
+                    ensure!(
+                        schema_json_out.is_dir(),
+                        "The `--schema-json-out` flag should point to an existing directory \
+                         (expected input `./my/path/`)."
+                    );
+                    write_json_schema(&schema_json_out, module_schema)
                         .context("Could not write schema file.")?;
                 }
                 if schema_embed {
@@ -1400,4 +1530,38 @@ fn get_parameter(
     } else {
         Ok(Vec::new())
     }
+}
+
+fn write_json_schema(out: &Path, schema: &VersionedModuleSchema) -> anyhow::Result<()> {
+    match schema {
+        VersionedModuleSchema::V0(module_schema) => {
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v0(out, contract_name, contract_counter, contract_schema)?
+            }
+        }
+        VersionedModuleSchema::V1(module_schema) => {
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v1(out, contract_name, contract_counter, contract_schema)?
+            }
+        }
+        VersionedModuleSchema::V2(module_schema) => {
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v2(out, contract_name, contract_counter, contract_schema)?
+            }
+        }
+        VersionedModuleSchema::V3(module_schema) => {
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v3(out, contract_name, contract_counter, contract_schema)?
+            }
+        }
+    }
+    Ok(())
 }

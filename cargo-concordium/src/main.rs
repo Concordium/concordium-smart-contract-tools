@@ -178,6 +178,13 @@ enum Command {
                     `./my/path/module.wasm.v1`)."
         )]
         module_path:  Option<PathBuf>,
+        #[structopt(
+            name = "base64-log",
+            long = "base64-log",
+            short = "l",
+            help = "Prints the base64 schema string to console."
+        )]
+        base64_log:   bool,
     },
     #[structopt(
         name = "build",
@@ -214,6 +221,13 @@ enum Command {
                     directory."
         )]
         schema_base64_out: Option<PathBuf>,
+        #[structopt(
+            name = "base64-log",
+            long = "base64-log",
+            short = "l",
+            help = "Prints the base64 schema string to console."
+        )]
+        base64_log:        bool,
         #[structopt(
             name = "out",
             long = "out",
@@ -469,6 +483,7 @@ pub fn main() -> anyhow::Result<()> {
             module_path,
             schema_path,
             wasm_version,
+            base64_log,
         } => {
             // A valid path needs to be provided when using the `--out` flag.
             ensure!(
@@ -480,13 +495,15 @@ pub fn main() -> anyhow::Result<()> {
             let schema = get_schema(module_path, schema_path, wasm_version)
                 .context("Could not get schema.")?;
 
-            write_schema_base64(&out, &schema).context("Could not write base64 schema file.")?
+            write_schema_base64(&out, &schema, base64_log)
+                .context("Could not write base64 schema file.")?
         }
         Command::Build {
             schema_embed,
             schema_out,
             schema_json_out,
             schema_base64_out,
+            base64_log,
             out,
             version,
             cargo_args,
@@ -565,7 +582,7 @@ pub fn main() -> anyhow::Result<()> {
                         "The `--schema-base64-out` flag should point to an existing directory \
                          (expected input `./my/path/`)."
                     );
-                    write_schema_base64(&schema_base64_out, module_schema)
+                    write_schema_base64(&schema_base64_out, module_schema, base64_log)
                         .context("Could not write base64 schema file.")?;
                 }
                 if schema_embed {
@@ -1572,6 +1589,9 @@ fn get_parameter(
     }
 }
 
+/// Attempt to get a schema (either from a smart contract module file or a
+/// schema file) from the supplied paths, signalling failure if this is not
+/// possible.
 fn get_schema(
     module_path: Option<PathBuf>,
     schema_path: Option<PathBuf>,
@@ -1624,6 +1644,10 @@ fn get_schema(
     Ok(schema)
 }
 
+/// Write the JSON representation of the schema into files in the `out`
+/// directory. The files are named after contract_names, except if a
+/// contract_name contains unsuitable characters. Then the counter is used to
+/// name the file.
 fn write_json_schema(out: &Path, schema: &VersionedModuleSchema) -> anyhow::Result<()> {
     match schema {
         VersionedModuleSchema::V0(module_schema) => {

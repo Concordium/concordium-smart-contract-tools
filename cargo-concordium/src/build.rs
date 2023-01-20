@@ -389,7 +389,7 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
 
 /// Write the provided JSON value to the file inside the `root` directory.
 /// The file is named after contract_name, except if contract_name contains
-/// unsuitable chracters. Then the counter is used to name the file.
+/// unsuitable characters. Then the counter is used to name the file.
 fn write_schema_json(
     root: &Path,
     contract_name: &str,
@@ -424,7 +424,11 @@ fn write_schema_json(
 
 /// Write the provided schema in its base64 representation to a file inside the
 /// `root` directory as well as print the base64 representation to the console.
-pub fn write_schema_base64(root: &Path, schema: &VersionedModuleSchema) -> anyhow::Result<()> {
+pub fn write_schema_base64(
+    root: &Path,
+    schema: &VersionedModuleSchema,
+    base64_log: bool,
+) -> anyhow::Result<()> {
     let mut out_path = root.to_path_buf();
 
     let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
@@ -437,10 +441,12 @@ pub fn write_schema_base64(root: &Path, schema: &VersionedModuleSchema) -> anyho
 
     let schema_base64 = ENCODER.encode(to_bytes(schema));
 
-    println!(
-        "    The base64 conversion of the schema is:\n{}",
-        schema_base64
-    );
+    if base64_log {
+        println!(
+            "    The base64 conversion of the schema is:\n{}",
+            schema_base64
+        );
+    }
 
     println!("    Writing base64 schema to {}.", out_path.display());
 

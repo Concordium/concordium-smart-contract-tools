@@ -413,7 +413,7 @@ fn write_schema_json(
     out_path.push(file_name);
 
     println!(
-        "    Writing json schema for {} to {}.",
+        "   Writing json schema for {} to {}.",
         contract_name,
         out_path.display()
     );
@@ -423,35 +423,41 @@ fn write_schema_json(
 }
 
 /// Write the provided schema in its base64 representation to a file inside the
-/// `root` directory as well as print the base64 representation to the console.
+/// `root` directory if `Some(root)` is given.
+/// Print the provided schema in its base64 representation to the console if
+/// `schema_base64_log` is true.
 pub fn write_schema_base64(
-    root: &Path,
+    root: Option<PathBuf>,
     schema: &VersionedModuleSchema,
-    base64_log: bool,
+    schema_base64_log: bool,
 ) -> anyhow::Result<()> {
-    let mut out_path = root.to_path_buf();
-
-    let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-
-    let package = manifest
-        .package
-        .context("Manifest needs to specify [package]")?;
-
-    out_path.push(to_snake_case(package.name) + "_schema.b64");
-
     let schema_base64 = ENCODER.encode(to_bytes(schema));
 
-    if base64_log {
+    // printing base64 schema to console
+    if schema_base64_log {
         println!(
-            "    The base64 conversion of the schema is:\n{}",
+            "   The base64 conversion of the schema is:\n{}",
             schema_base64
         );
     }
 
-    println!("    Writing base64 schema to {}.", out_path.display());
+    // writing base64 schema to file
+    if let Some(root) = root {
+        let mut out_path = root;
 
-    // save the schema base64 representation into the file
-    std::fs::write(out_path, schema_base64).context("Unable to write schema output.")?;
+        let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
+
+        let package = manifest
+            .package
+            .context("Manifest needs to specify [package]")?;
+
+        out_path.push(to_snake_case(package.name) + "_schema.b64");
+
+        println!("   Writing base64 schema to {}.", out_path.display());
+
+        // save the schema base64 representation into the file
+        std::fs::write(out_path, schema_base64).context("Unable to write schema output.")?;
+    }
 
     Ok(())
 }

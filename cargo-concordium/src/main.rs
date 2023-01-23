@@ -146,9 +146,10 @@ enum Command {
             long = "out",
             short = "o",
             default_value = "-",
-            help = "Write the converted base64 representation of the schema to a file at the \
-                    specified location or print it to the console when the default value `-` is \
-                    used. Directory path must exist. (expected input: `./my/path/` or `-`)."
+            help = "Path and filename to a file to write the converted base64 representation to \
+                    or use the default value `-` to print the base64 schema to the console. \
+                    Directory path must exist. (expected input: `./my/path/base64_schema.b64` or \
+                    `-`)."
         )]
         out:          PathBuf,
         #[structopt(
@@ -213,7 +214,8 @@ enum Command {
             long = "schema-base64-out",
             short = "b",
             help = "Builds the contract schema and writes it in base64 format to the specified \
-                    directory."
+                    directory/filename or prints the base64 schema to the console if the value \
+                    `-` is used (expected input: `./my/path/base64_schema.b64` or `-`)."
         )]
         schema_base64_out: Option<PathBuf>,
         #[structopt(
@@ -475,9 +477,7 @@ pub fn main() -> anyhow::Result<()> {
             let schema = get_schema(module_path, schema_path, wasm_version)
                 .context("Could not get schema.")?;
 
-            let mut path = PathBuf::new();
-            path.push("-");
-            if out == path {
+            if out == PathBuf::from("-") {
                 write_schema_base64(None, &schema).context("Could not log base64 schema.")?;
             } else {
                 // A valid path needs to be provided when using the `--out` flag.
@@ -570,9 +570,7 @@ pub fn main() -> anyhow::Result<()> {
                         .context("Could not write JSON schema files.")?;
                 }
                 if let Some(schema_base64_out) = schema_base64_out {
-                    let mut path = PathBuf::new();
-                    path.push("-");
-                    if schema_base64_out == path {
+                    if schema_base64_out == PathBuf::from("-") {
                         write_schema_base64(None, module_schema)
                             .context("Could not log base64 schema.")?;
                     } else {

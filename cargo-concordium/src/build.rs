@@ -422,38 +422,29 @@ fn write_schema_json(
     Ok(())
 }
 
-/// Write the provided schema in its base64 representation to a file inside the
-/// `root` directory if `Some(root)` is given.
-/// Print the provided schema in its base64 representation to the console if
-/// `schema_base64_log` is true.
+/// Write the provided schema in its base64 representation to a file or print it
+/// to the console if `out` is None.
 pub fn write_schema_base64(
     out: Option<PathBuf>,
     schema: &VersionedModuleSchema,
 ) -> anyhow::Result<()> {
     let schema_base64 = ENCODER.encode(to_bytes(schema));
 
-    // printing base64 schema to console
-    if out.is_none() {
-        println!(
-            "   The base64 conversion of the schema is:\n{}",
-            schema_base64
-        );
-    }
+    match out {
+        // writing base64 schema to file
+        Some(out) => {
+            println!("   Writing base64 schema to {}.", out.display());
 
-    // writing base64 schema to file
-    if let Some(out) = out {
-        // A path and a filename need to be provided when using the `--out` flag.
-        if out.file_name().is_none() || out.is_dir() {
-            anyhow::bail!(
-                "The `--out` flag requires a path and a filename (expected input: \
-                 `./my/path/schema_base64.b64` or `-`)"
-            );
+            // save the schema base64 representation to the file
+            std::fs::write(out, schema_base64).context("Unable to write schema output.")?;
         }
-
-        println!("   Writing base64 schema to {}.", out.display());
-
-        // save the schema base64 representation into the file
-        std::fs::write(out, schema_base64).context("Unable to write schema output.")?;
+        // printing base64 schema to console
+        None => {
+            println!(
+                "   The base64 conversion of the schema is:\n{}",
+                schema_base64
+            )
+        }
     }
 
     Ok(())

@@ -413,7 +413,7 @@ fn write_schema_json(
     out_path.push(file_name);
 
     println!(
-        "   Writing json schema for {} to {}.",
+        "   Writing JSON schema for {} to {}.",
         contract_name,
         out_path.display()
     );
@@ -427,14 +427,13 @@ fn write_schema_json(
 /// Print the provided schema in its base64 representation to the console if
 /// `schema_base64_log` is true.
 pub fn write_schema_base64(
-    root: Option<PathBuf>,
+    out: Option<PathBuf>,
     schema: &VersionedModuleSchema,
-    schema_base64_log: bool,
 ) -> anyhow::Result<()> {
     let schema_base64 = ENCODER.encode(to_bytes(schema));
 
     // printing base64 schema to console
-    if schema_base64_log {
+    if out.is_none() {
         println!(
             "   The base64 conversion of the schema is:\n{}",
             schema_base64
@@ -442,21 +441,19 @@ pub fn write_schema_base64(
     }
 
     // writing base64 schema to file
-    if let Some(root) = root {
-        let mut out_path = root;
+    if let Some(out) = out {
+        // A path and a filename need to be provided when using the `--out` flag.
+        if out.file_name().is_none() || out.is_dir() {
+            anyhow::bail!(
+                "The `--out` flag requires a path and a filename (expected input: \
+                 `./my/path/schema_base64.b64` or `-`)"
+            );
+        }
 
-        let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-
-        let package = manifest
-            .package
-            .context("Manifest needs to specify [package]")?;
-
-        out_path.push(to_snake_case(package.name) + "_schema.b64");
-
-        println!("   Writing base64 schema to {}.", out_path.display());
+        println!("   Writing base64 schema to {}.", out.display());
 
         // save the schema base64 representation into the file
-        std::fs::write(out_path, schema_base64).context("Unable to write schema output.")?;
+        std::fs::write(out, schema_base64).context("Unable to write schema output.")?;
     }
 
     Ok(())

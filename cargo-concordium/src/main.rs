@@ -134,7 +134,8 @@ enum Command {
     },
     #[structopt(
         name = "schema-base64",
-        about = "Convert a schema into its base64 representation and output it to a file.
+        about = "Convert a schema into its base64 representation and output it to a file or print \
+                 it to the console.
         A schema has to be provided either as part of a smart contract module or with the schema \
                  flag. You need to use exactly one of the two flags(`--schema` or `--module`) \
                  with this command."
@@ -144,11 +145,12 @@ enum Command {
             name = "out",
             long = "out",
             short = "o",
-            default_value = ".",
-            help = "Writes the converted bsae64 representation of the schema to a file at the \
-                    specified location. Directory path must exist. (expected input: `./my/path/`)."
+            default_value = "-",
+            help = "Write the converted base64 representation of the schema to a file at the \
+                    specified location or print it to the console when the default value `-` is \
+                    used. Directory path must exist. (expected input: `./my/path/` or `-`)."
         )]
-        out:               PathBuf,
+        out:          PathBuf,
         #[structopt(
             name = "schema",
             long = "schema",
@@ -158,7 +160,7 @@ enum Command {
             help = "Path and filename to a file with a schema (expected input: \
                     `./my/path/schema.bin`)."
         )]
-        schema_path:       Option<PathBuf>,
+        schema_path:  Option<PathBuf>,
         #[structopt(
             name = "wasm-version",
             long = "wasm-version",
@@ -167,7 +169,7 @@ enum Command {
                     used to supply the version explicitly. Unversioned schemas and modules were \
                     produced by older versions of `concordium-std` and `cargo-concordium`."
         )]
-        wasm_version:      Option<WasmVersion>,
+        wasm_version: Option<WasmVersion>,
         #[structopt(
             name = "module",
             long = "module",
@@ -177,14 +179,7 @@ enum Command {
             help = "Path and filename to a file with a smart contract module (expected input: \
                     `./my/path/module.wasm.v1`)."
         )]
-        module_path:       Option<PathBuf>,
-        #[structopt(
-            name = "log",
-            long = "log",
-            short = "l",
-            help = "Prints the base64 schema string to console."
-        )]
-        schema_base64_log: bool,
+        module_path:  Option<PathBuf>,
     },
     #[structopt(
         name = "build",
@@ -221,13 +216,6 @@ enum Command {
                     directory."
         )]
         schema_base64_out: Option<PathBuf>,
-        #[structopt(
-            name = "schema-base64-log",
-            long = "schema-base64-log",
-            short = "l",
-            help = "Prints the base64 schema string to console."
-        )]
-        schema_base64_log: bool,
         #[structopt(
             name = "out",
             long = "out",
@@ -476,34 +464,39 @@ pub fn main() -> anyhow::Result<()> {
             let schema = get_schema(module_path, schema_path, wasm_version)
                 .context("Could not get schema.")?;
 
-            write_json_schema(&out, &schema).context("Could not write json schema files.")?
+            write_json_schema(&out, &schema).context("Could not write JSON schema files.")?
         }
         Command::SchemaBase64 {
             out,
             module_path,
             schema_path,
             wasm_version,
-            schema_base64_log,
         } => {
-            // A valid path needs to be provided when using the `--out` flag.
-            ensure!(
-                out.is_dir(),
-                "The `--out` value must point to an existing directory (expected input: \
-                 `./my/path/`)."
-            );
-
             let schema = get_schema(module_path, schema_path, wasm_version)
                 .context("Could not get schema.")?;
 
-            write_schema_base64(Some(out), &schema, schema_base64_log)
-                .context("Could not write base64 schema file or log it.")?
+            let mut path = PathBuf::new();
+            path.push("-");
+            if out == path {
+                write_schema_base64(None, &schema).context("Could not log base64 schema.")?;
+            } else {
+                // A valid path needs to be provided when using the `--out` flag.
+                if out.file_name().is_none() || out.is_dir() {
+                    anyhow::bail!(
+                        "The `--out` flag should point to an existing directory + filename \
+                         (expected input: `./my/path/base64_schema.b64`) or be `-`."
+                    );
+                }
+
+                write_schema_base64(Some(out), &schema)
+                    .context("Could not write base64 schema file.")?;
+            }
         }
         Command::Build {
             schema_embed,
             schema_out,
             schema_json_out,
             schema_base64_out,
-            schema_base64_log,
             out,
             version,
             cargo_args,
@@ -513,7 +506,6 @@ pub fn main() -> anyhow::Result<()> {
             } else if schema_out.is_some()
                 || schema_json_out.is_some()
                 || schema_base64_out.is_some()
-                || schema_base64_log
             {
                 SchemaBuildOptions::JustBuild
             } else {
@@ -575,18 +567,26 @@ pub fn main() -> anyhow::Result<()> {
                          (expected input `./my/path/`)."
                     );
                     write_json_schema(&schema_json_out, module_schema)
-                        .context("Could not write json schema files.")?;
+                        .context("Could not write JSON schema files.")?;
                 }
-                if schema_base64_out.is_some() || schema_base64_log {
-                    if let Some(ref schema_base64_out) = schema_base64_out {
-                        ensure!(
-                            schema_base64_out.is_dir(),
-                            "The `--schema-base64-out` flag should point to an existing directory \
-                             (expected input `./my/path/`)."
-                        );
+                if let Some(schema_base64_out) = schema_base64_out {
+                    let mut path = PathBuf::new();
+                    path.push("-");
+                    if schema_base64_out == path {
+                        write_schema_base64(None, module_schema)
+                            .context("Could not log base64 schema.")?;
+                    } else {
+                        if schema_base64_out.file_name().is_none() || schema_base64_out.is_dir() {
+                            anyhow::bail!(
+                                "The `--schema-base64-out` flag should point to an existing \
+                                 directory + filename (expected input: \
+                                 `./my/path/base64_schema.b64`) or be `-`."
+                            );
+                        }
+
+                        write_schema_base64(Some(schema_base64_out), module_schema)
+                            .context("Could not write base64 schema file.")?;
                     }
-                    write_schema_base64(schema_base64_out, module_schema, schema_base64_log)
-                        .context("Could not write base64 schema file or log it.")?;
                 }
                 if schema_embed {
                     eprintln!("   Embedding schema into module.\n");

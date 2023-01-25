@@ -3,7 +3,10 @@ use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
 use cargo_toml::Manifest;
 use concordium_contracts_common::{
-    schema::{ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2},
+    schema::{
+        ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
+        VersionedModuleSchema,
+    },
     *,
 };
 use rand::{thread_rng, Rng};
@@ -386,7 +389,7 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
 
 /// Write the provided JSON value to the file inside the `root` directory.
 /// The file is named after contract_name, except if contract_name contains
-/// unsuitable chracters. Then the counter is used to name the file.
+/// unsuitable characters. Then the counter is used to name the file.
 fn write_schema_json(
     root: &Path,
     contract_name: &str,
@@ -394,10 +397,10 @@ fn write_schema_json(
     mut schema_json: Value,
 ) -> anyhow::Result<()> {
     schema_json["contractName"] = contract_name.into();
-    // save the schema JSON representation into the file.
+    // save the schema JSON representation into the file
     let mut out_path = root.to_path_buf();
 
-    // Make sure the path is valid on all platforms.
+    // make sure the path is valid on all platforms
     let file_name = if contract_name
         .chars()
         .all(|c| c.is_ascii_alphanumeric() || "-_[]{}".contains(c))
@@ -410,12 +413,40 @@ fn write_schema_json(
     out_path.push(file_name);
 
     println!(
-        "   Writing schema for {} to {}.",
+        "   Writing JSON schema for {} to {}.",
         contract_name,
         out_path.display()
     );
     std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
         .context("Unable to write schema output.")?;
+    Ok(())
+}
+
+/// Write the provided schema in its base64 representation to a file or print it
+/// to the console if `out` is None.
+pub fn write_schema_base64(
+    out: Option<PathBuf>,
+    schema: &VersionedModuleSchema,
+) -> anyhow::Result<()> {
+    let schema_base64 = ENCODER.encode(to_bytes(schema));
+
+    match out {
+        // writing base64 schema to file
+        Some(out) => {
+            println!("   Writing base64 schema to {}.", out.display());
+
+            // save the schema base64 representation to the file
+            std::fs::write(out, schema_base64).context("Unable to write schema output.")?;
+        }
+        // printing base64 schema to console
+        None => {
+            println!(
+                "   The base64 conversion of the schema is:\n{}",
+                schema_base64
+            )
+        }
+    }
+
     Ok(())
 }
 

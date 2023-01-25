@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.7.0
+
+- Add `schema-base64` command to convert a given schema to base64 format.
+- Add `--schema-base64-out` option to `cargo concordium build` to optionally
+  output the schema in base64 format.
+
 ## 2.6.0
 
 - Add `schema-json` command to get schemas for individual entrypoints from the
@@ -10,7 +16,7 @@
 ## 2.5.0
 
 - Add support for sampling random numbers for randomized testing with `cargo concordium test`.
-- Add support for providing a seed to initialize a random generator to 
+- Add support for providing a seed to initialize a random generator to
   `cargo-concordium`. The generator can be used for randomized testing.
   Command format: `cargo concordium test --seed 1234567890`. The provided seed value
   is a `u64` number. If the seed is not provided, a random one will be sampled.

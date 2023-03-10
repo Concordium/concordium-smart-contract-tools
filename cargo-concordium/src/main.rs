@@ -16,7 +16,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use structopt::StructOpt;
-use wasm_chain_integration::{
+use concordium_smart_contract_engine::{
     utils, v0,
     v1::{self, ReturnValue},
     InterpreterEnergy,
@@ -1202,7 +1202,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 }
             };
 
-            let artifact = wasm_transform::utils::instantiate_with_metering(
+            let artifact = concordium_wasm::utils::instantiate_with_metering(
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
                 },

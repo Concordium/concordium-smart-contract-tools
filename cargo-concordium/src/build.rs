@@ -10,11 +10,11 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-use wasm_chain_integration::{
+use concordium_smart_contract_engine::{
     utils::{self, WasmVersion},
     v0, v1, ExecResult,
 };
-use wasm_transform::{
+use concordium_wasm::{
     output::{write_custom_section, Output},
     parse::parse_skeleton,
     types::{CustomSection, ExportDescription, Module},

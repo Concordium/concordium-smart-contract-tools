@@ -4,7 +4,7 @@ use concordium_contracts_common::{
     OwnedPolicy, Serial, SlotTime,
 };
 use serde::Deserialize;
-use wasm_chain_integration::{v0, v1, ExecResult};
+use concordium_smart_contract_engine::{v0, v1, ExecResult};
 
 /// A chain metadata with an optional field.
 /// Used when simulating contracts to allow the user to only specify the

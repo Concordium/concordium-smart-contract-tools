@@ -35,7 +35,7 @@
           ],
           "scope": "machine-overridable",
           "default": null,
-          "markdownDescription": "Provide a custom path to the cargo-concordium executable to use instead of the bundled one."
+          "markdownDescription": "Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`"
         }
       }
     }
@@ -59,6 +59,7 @@
     "@typescript-eslint/parser": "^5.53.0",
     "@vscode/test-electron": "^2.2.3",
     "eslint": "^8.34.0",
+    "eslint-config-prettier": "^8.8.0",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
     "prettier": "^2.8.7",

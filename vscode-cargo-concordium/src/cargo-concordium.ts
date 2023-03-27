@@ -1,4 +1,4 @@
-/**
+/*
  * This module provide wrappers for cargo-concordium providing a well-typed interface to the executable.
  */
 import * as util from "node:util";
@@ -11,9 +11,13 @@ const execFile = util.promisify(childProcess.execFile);
 
 /** Get the path to the executable shipped with the extension */
 function getBundledExecutablePath(): string {
-  const context = vscode.extensions.getExtension(
-    "concordium.cargo-concordium"
-  )!;
+  const context = vscode.extensions.getExtension("concordium.cargo-concordium");
+
+  if (context === undefined) {
+    throw new Error(
+      "No context found for 'concordium.cargo-concordium' extension"
+    );
+  }
 
   return vscode.Uri.joinPath(
     context.extensionUri,

@@ -24,9 +24,9 @@ The extension relies on [`rustup`](https://rustup.rs/) and `cargo` being install
 This extension contributes the following settings:
 
 * `cargo-concordium.custom-executable`: `string | null` (default `null`) <br>
-  Provide a custom path to the cargo-concordium executable to use instead of the bundled one.
+  Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`
 
-<!-- 
+<!--
 ## Known Issues
 
 Calling out known issues can help limit users opening duplicate issues against your extension.
@@ -34,7 +34,7 @@ Calling out known issues can help limit users opening duplicate issues against y
 
 ## Release Notes
 
-### 1.0.0
+### 1.0.0 (unreleased)
 
 Initial release of this extension
 
@@ -45,10 +45,9 @@ Ensure to read through the extensions guidelines and follow the best practices f
 
 * [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
 
-
 ### Publishing
 
-A guide for publishing can be found here (Skipping the section about creating a publisher): 
+A guide for publishing can be found here (Skipping the section about creating a publisher):
 https://code.visualstudio.com/api/working-with-extensions/publishing-extension
 
 To be able to actually publish the extension, your Azure DevOps user ID must be added as a member of the Concordium Publisher.

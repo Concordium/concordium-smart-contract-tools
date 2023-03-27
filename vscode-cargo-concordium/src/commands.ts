@@ -1,5 +1,6 @@
-/**
+/*
  * This module contains all of the commands exposed by the extension.
+ *
  */
 
 import * as vscode from "vscode";
@@ -11,7 +12,7 @@ import { ConfigError } from "./configuration";
  */
 export async function version() {
   try {
-    let version = await cargoConcordium.version();
+    const version = await cargoConcordium.version();
     vscode.window.showInformationMessage(version);
   } catch (error) {
     if (error instanceof ConfigError) {

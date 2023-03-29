@@ -29,6 +29,7 @@ jobs:
       matrix:
         build-dir:
           - 'cargo-concordium'
+          - 'concordium-smart-contract-testing'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -53,6 +54,7 @@ jobs:
       matrix:
         build-dir:
           - 'cargo-concordium'
+          - 'concordium-smart-contract-testing'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -78,6 +80,11 @@ jobs:
     needs:
       - lint_clippy
       - lint_fmt
+    strategy:
+      matrix:
+        build-dir:
+          - 'cargo-concordium'
+          - 'concordium-smart-contract-testing'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -92,7 +99,7 @@ jobs:
           target: ${{ env.TARGET }}
           components: clippy
       - name: Cargo check
-        working-directory: cargo-concordium
+        working-directory: ${{ matrix.build-dir }}
         run: cargo check --benches --tests
 
   "cargo_test":
@@ -104,6 +111,7 @@ jobs:
       matrix:
         build-dir:
           - 'cargo-concordium'
+          - 'concordium-smart-contract-testing'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -118,6 +126,3 @@ jobs:
       - name: Test
         working-directory: ${{ matrix.build-dir }}
         run: cargo test
-
-
-

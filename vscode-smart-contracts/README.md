@@ -1,7 +1,6 @@
-# `cargo-concordium` VS Code extension
+# Concordium Smart Contract extension for VS Code
 
-This extension provides the functionality of [`cargo-concordium`](https://github.com/Concordium/concordium-smart-contract-tools/tree/main/cargo-concordium) inside [VS Code](https://code.visualstudio.com/).
-Providing tools for [developing rust smart contracts](https://developer.concordium.software/en/mainnet/smart-contracts/general/introduction.html) for the [Concordium Blockchain](https://concordium.com/).
+This extension provides the functionality needed for [developing smart contracts](https://developer.concordium.software/en/mainnet/smart-contracts/general/introduction.html) for the [Concordium Blockchain](https://concordium.com/).
 
 <!--
 ## Features
@@ -23,7 +22,7 @@ The extension relies on [`rustup`](https://rustup.rs/) and `cargo` being install
 
 This extension contributes the following settings:
 
-* `cargo-concordium.custom-executable`: `string | null` (default `null`) <br>
+* `concordium-smart-contracts.custom-executable`: `string | null` (default `null`) <br>
   Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`
 
 <!--
@@ -50,6 +49,7 @@ Ensure to read through the extensions guidelines and follow the best practices f
 - Ensure to have a recent version of VS Code installed.
 - Make sure to have [NodeJS](https://nodejs.org/en) installed.
 - Run `npm install` in the extension project directory.
+- Build `cargo-concordium` and move the resulting executable to `vscode-smart-contracts/executable/` (making the directory).
 
 To compile the typescript run:
 ```
@@ -58,7 +58,7 @@ npm run compile
 
 To launch an instance of vscode only with the extension installed run:
 ```
-code --extensionDevelopmentPath=/absolute/path/to/vscode-cargo-concordium --disable-extensions
+code --extensionDevelopmentPath=/absolute/path/to/vscode-smart-contracts --disable-extensions
 ```
 
 ### Tests

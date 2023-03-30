@@ -11,11 +11,13 @@ const execFile = util.promisify(childProcess.execFile);
 
 /** Get the path to the executable shipped with the extension */
 function getBundledExecutablePath(): string {
-  const context = vscode.extensions.getExtension("concordium.cargo-concordium");
+  const context = vscode.extensions.getExtension(
+    "concordium.concordium-smart-contracts"
+  );
 
   if (context === undefined) {
     throw new Error(
-      "No context found for 'concordium.cargo-concordium' extension"
+      "No context found for 'concordium.concordium-smart-contracts' extension"
     );
   }
 

@@ -1,13 +1,13 @@
 {
-  "name": "cargo-concordium",
+  "name": "concordium-smart-contracts",
   "publisher": "Concordium",
-  "displayName": "cargo-concordium",
-  "description": "Use cargo-concordium without leaving Visual Studio Code",
+  "displayName": "Concordium Smart Contracts",
+  "description": "Develop and build smart contracts on Concordium",
   "version": "1.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/Concordium/concordium-smart-contract-tools.git",
-    "directory": "vscode-cargo-concordium"
+    "directory": "vscode-smart-contracts"
   },
   "license": "Apache-2.0",
   "engines": {
@@ -21,14 +21,14 @@
   "contributes": {
     "commands": [
       {
-        "command": "cargo-concordium.version",
-        "title": "cargo-concordium: Version"
+        "command": "concordium-smart-contracts.version",
+        "title": "Concordium Smart Contracts: cargo-concordium version"
       }
     ],
     "configuration": {
-      "title": "cargo-concordium",
+      "title": "Concordium Smart Contracts",
       "properties": {
-        "cargo-concordium.custom-executable": {
+        "concordium-smart-contracts.custom-executable": {
           "type": [
             "string",
             "null"

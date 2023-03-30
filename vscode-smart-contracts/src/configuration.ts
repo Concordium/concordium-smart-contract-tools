@@ -15,7 +15,7 @@ export class ConfigError extends Error {
 }
 
 /** Name for the section in the settings. */
-export const SECTION = "cargo-concordium";
+export const SECTION = "concordium-smart-contracts";
 /** Name for the setting to provide a path to a custom cargo-concordium executable. */
 export const CUSTOM_EXECUTABLE = "custom-executable";
 

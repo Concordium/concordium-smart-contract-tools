@@ -12,7 +12,7 @@ import * as config from "../../configuration";
 describe("cargo-concordium module", () => {
   before(async () => {
     await vscode.extensions
-      .getExtension("concordium.cargo-concordium")
+      .getExtension("concordium.concordium-smart-contracts")
       ?.activate();
   });
 
@@ -33,7 +33,7 @@ describe("custom-executable setting", () => {
   // Activate the extension
   before(async () => {
     await vscode.extensions
-      .getExtension("concordium.cargo-concordium")
+      .getExtension("concordium.concordium-smart-contracts")
       ?.activate();
   });
   // Before each test: reset the settings.

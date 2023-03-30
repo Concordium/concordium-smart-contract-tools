@@ -1,6 +1,6 @@
 # `cargo-concordium` VS Code extension
 
-This extension provides the functionality of [`cargo-concordium`](https://github.com/Concordium/concordium-smart-contract-tools/tree/main/cargo-concordium) inside [VS Code](https://code.visualstudio.com/). 
+This extension provides the functionality of [`cargo-concordium`](https://github.com/Concordium/concordium-smart-contract-tools/tree/main/cargo-concordium) inside [VS Code](https://code.visualstudio.com/).
 Providing tools for [developing rust smart contracts](https://developer.concordium.software/en/mainnet/smart-contracts/general/introduction.html) for the [Concordium Blockchain](https://concordium.com/).
 
 <!--
@@ -44,6 +44,31 @@ Initial release of this extension
 Ensure to read through the extensions guidelines and follow the best practices for creating an extension.
 
 * [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+
+### Development
+
+- Ensure to have a recent version of VS Code installed.
+- Make sure to have [NodeJS](https://nodejs.org/en) installed.
+- Run `npm install` in the extension project directory.
+
+To compile the typescript run:
+```
+npm run compile
+```
+
+To launch an instance of vscode only with the extension installed run:
+```
+code --extensionDevelopmentPath=/absolute/path/to/vscode-cargo-concordium --disable-extensions
+```
+
+### Tests
+
+Tests live in `src/test/suite` where the test-runner (`src/test/runTest.ts`) consider files with extension `.test.ts` a test suite.
+
+To run the tests use:
+```
+npm test
+```
 
 ### Publishing
 

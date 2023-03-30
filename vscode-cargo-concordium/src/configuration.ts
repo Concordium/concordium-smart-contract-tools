@@ -1,5 +1,5 @@
 /*
- * This module a type inferface for the configuration of the user.
+ * This module provides a typed interface the current configurations.
  */
 import * as vscode from "vscode";
 import * as fs from "node:fs/promises";
@@ -7,7 +7,7 @@ import { constants } from "node:fs";
 import * as os from "node:os";
 
 /** Error type representing a user configuration error.
- * Introduced to allow for differantiate how to display the errors. */
+ * Introduced to allow for differentiate how to display the errors. */
 export class ConfigError extends Error {
   constructor(msg: string) {
     super(msg);
@@ -52,11 +52,13 @@ export async function getCustomExecutablePath(): Promise<string | null> {
     );
   }
 
-  // Ensure it is executable
+  // Ensure permission to execute.
+  // Skipping the check on Windows, since there is no easy way of ensuring this.
   if (
+    os.platform() !== "win32" &&
     (stats.mode &
       (constants.S_IXUSR | constants.S_IXGRP | constants.S_IXOTH)) ===
-    0
+      0
   ) {
     throw new ConfigError(
       `Custom cargo-concordium executable path is not executable. ${customPath}`

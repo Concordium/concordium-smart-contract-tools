@@ -1,0 +1,124 @@
+name: VS Code Extension
+
+# This job checks formatting and linting for the VS code extension.
+
+on:
+  push:
+    branches: main
+
+  pull_request:
+    branches: main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - vscode-cargo-concordium/**/*
+
+  workflow_dispatch: # allows manual trigger
+
+env:
+  NODEJS_VERSION: 18.x
+  RUST_VERSION: 1.62
+
+jobs:
+
+  format:
+    if: ${{ !github.event.pull_request.draft }}
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Nodejs
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODEJS_VERSION }}
+
+      - name: Install dependencies
+        working-directory: ./vscode-cargo-concordium
+        run: npm ci
+
+      - name: Check formatting
+        working-directory: ./vscode-cargo-concordium
+        run: npm run check-formatting
+
+  lint:
+    if: ${{ !github.event.pull_request.draft }}
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Nodejs
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODEJS_VERSION }}
+
+      - name: Install dependencies
+        working-directory: ./vscode-cargo-concordium
+        run: npm ci
+
+      - name: Run linter
+        working-directory: ./vscode-cargo-concordium
+        run: npm run lint
+
+
+  test:
+    if: ${{ !github.event.pull_request.draft }}
+    needs:
+      - format
+      - lint
+    name: "Testing: VS Code extension"
+    strategy:
+      matrix:
+        os:
+          - macos-latest # x86
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ env.RUST_VERSION }}
+          override: true
+
+      - name: Build cargo-concordium
+        working-directory: cargo-concordium
+        run: cargo build --release
+
+      - name: Move cargo-concordium to executables for extension
+        if: runner.os != 'Windows'
+        run: mkdir -p vscode-cargo-concordium/executables && cp cargo-concordium/target/release/cargo-concordium vscode-cargo-concordium/executables/
+      - name: Move cargo-concordium to executables for extension
+        if: runner.os == 'Windows'
+        shell: bash
+        run: mkdir -p vscode-cargo-concordium/executables && cp cargo-concordium/target/release/cargo-concordium.exe vscode-cargo-concordium/executables/
+
+      - name: Install Nodejs
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODEJS_VERSION }}
+
+      - name: Install dependencies
+        working-directory: ./vscode-cargo-concordium
+        run: npm ci
+
+      - name: Run tests
+        if: runner.os == 'Linux'
+        working-directory: ./vscode-cargo-concordium
+        run: xvfb-run -a npm test # This is needed to launch vscode during the tests on the CI.
+      - name: Run tests
+        working-directory: ./vscode-cargo-concordium
+        run: npm test
+        if: runner.os != 'Linux'

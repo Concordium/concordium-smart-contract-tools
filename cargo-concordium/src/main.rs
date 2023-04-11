@@ -7,7 +7,13 @@ use clap::AppSettings;
 use concordium_contracts_common::{
     from_bytes,
     schema::{Type, VersionedModuleSchema},
-    to_bytes, Amount, OwnedReceiveName, Parameter, ReceiveName,
+    to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName,
+};
+use concordium_smart_contract_engine::{
+    utils::{self, WasmVersion},
+    v0,
+    v1::{self, ReturnValue},
+    InterpreterEnergy,
 };
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use std::{
@@ -16,12 +22,6 @@ use std::{
     path::{Path, PathBuf},
 };
 use structopt::StructOpt;
-use wasm_chain_integration::{
-    utils::{self, WasmVersion},
-    v0,
-    v1::{self, ReturnValue},
-    InterpreterEnergy,
-};
 mod build;
 mod context;
 
@@ -880,7 +880,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 runner.amount.micro_ccd,
                 init_ctx,
                 &name,
-                Parameter::from(&parameter[..]),
+                parameter.as_parameter(),
                 false, // Whether number of logs should be limited. Limit removed in PV5.
                 runner.energy,
             )
@@ -895,7 +895,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     print_result(state, logs)?;
                     eprintln!(
                         "Interpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v0::InitResult::Reject {
@@ -905,7 +905,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     eprintln!("Init call rejected with reason {}.", reason);
                     eprintln!(
                         "Interpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v0::InitResult::OutOfEnergy => {
@@ -962,12 +962,9 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     let state_json: serde_json::Value =
                         serde_json::from_slice(&file).context("Could not parse state JSON.")?;
                     let mut state_bytes = Vec::new();
-                    Type::write_bytes_from_json_schema_type(
-                        schema_state,
-                        &state_json,
-                        &mut state_bytes,
-                    )
-                    .context("Could not generate state bytes using schema and JSON.")?;
+                    schema_state
+                        .serial_value_into(&state_json, &mut state_bytes)
+                        .context("Could not generate state bytes using schema and JSON.")?;
                     state_bytes
                 }
             };
@@ -979,7 +976,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 v0::ReceiveInvocation {
                     amount:       runner.amount.micro_ccd,
                     receive_name: &name,
-                    parameter:    Parameter::from(&parameter[..]),
+                    parameter:    parameter.as_parameter(),
                     energy:       runner.energy,
                 },
                 &init_state,
@@ -1000,15 +997,13 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     for (i, action) in actions.iter().enumerate() {
                         match action {
                             v0::Action::Send { data } => {
-                                let name_str = std::str::from_utf8(&data.name)
-                                    .context("Target name is not a valid UTF8 sequence.")?;
                                 eprintln!(
                                     "{}: send a message to contract at ({}, {}), calling method \
                                      {} with amount {} and parameter {:?}",
                                     i,
                                     data.to_addr.index,
                                     data.to_addr.subindex,
-                                    name_str,
+                                    data.name.as_receive_name().entrypoint_name(),
                                     data.amount,
                                     data.parameter
                                 )
@@ -1034,7 +1029,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
 
                     eprintln!(
                         "Interpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v0::ReceiveResult::Reject {
@@ -1044,7 +1039,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     eprintln!("Receive call rejected with reason {}", reason);
                     eprintln!(
                         "Interpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v0::ReceiveResult::OutOfEnergy => {
@@ -1293,7 +1288,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 v1::InvokeFromSourceCtx {
                     source:          module,
                     amount:          runner.amount,
-                    parameter:       &parameter,
+                    parameter:       parameter.as_ref(),
                     energy:          runner.energy,
                     support_upgrade: true, // Upgrades are supported in PV5 and onward.
                 },
@@ -1318,7 +1313,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     print_return_value(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v1::InitResult::Reject {
@@ -1331,7 +1326,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     print_error(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v1::InitResult::Trap {
@@ -1340,7 +1335,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 } => {
                     return Err(error.context(format!(
                         "Execution triggered a runtime error after spending {} interpreter energy.",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )));
                 }
                 v1::InitResult::OutOfEnergy => {
@@ -1391,7 +1386,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 }
             };
 
-            let artifact = wasm_transform::utils::instantiate_with_metering(
+            let artifact = concordium_wasm::utils::instantiate_with_metering(
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
                 },
@@ -1433,7 +1428,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 v1::ReceiveInvocation {
                     amount:       runner.amount,
                     receive_name: name.as_receive_name(),
-                    parameter:    &parameter,
+                    parameter:    parameter.as_ref(),
                     energy:       runner.energy,
                 },
                 instance_state,
@@ -1561,9 +1556,11 @@ fn get_parameter(
     json_path: Option<&Path>,
     has_contract_schema: bool,
     parameter_schema: Option<&Type>,
-) -> anyhow::Result<Vec<u8>> {
+) -> anyhow::Result<OwnedParameter> {
     if let Some(param_file) = bin_path {
-        fs::read(&param_file).context("Could not read parameter-bin file.")
+        Ok(OwnedParameter::new_unchecked(
+            fs::read(&param_file).context("Could not read parameter-bin file.")?,
+        ))
     } else if let Some(param_file) = json_path {
         if !has_contract_schema {
             bail!(
@@ -1578,16 +1575,13 @@ fn get_parameter(
             let parameter_json: serde_json::Value = serde_json::from_slice(&file)
                 .context("Could not parse the JSON in parameter-json file.")?;
             let mut parameter_bytes = Vec::new();
-            Type::write_bytes_from_json_schema_type(
-                parameter_schema,
-                &parameter_json,
-                &mut parameter_bytes,
-            )
-            .context("Could not generate parameter bytes using schema and JSON.")?;
-            Ok(parameter_bytes)
+            parameter_schema
+                .serial_value_into(&parameter_json, &mut parameter_bytes)
+                .context("Could not generate parameter bytes using schema and JSON.")?;
+            Ok(OwnedParameter::new_unchecked(parameter_bytes))
         }
     } else {
-        Ok(Vec::new())
+        Ok(OwnedParameter::empty())
     }
 }
 

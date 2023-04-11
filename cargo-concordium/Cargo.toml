@@ -22,12 +22,12 @@ which = "4.3"
 rand = { version = "=0.7", features = ["small_rng"] }
 cargo_metadata = "0.15"
 
-[dependencies.wasm-transform]
+[dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"
-version = "0"
+version = "1.0"
 
-[dependencies.wasm-chain-integration]
-version = "0.2"
+[dependencies.concordium-smart-contract-engine]
+version = "1.0"
 path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
 
@@ -35,6 +35,6 @@ features = ["display-state"]
 criterion = "0.3"
 
 [dependencies.concordium-contracts-common]
-version = "4.0"
+version = "5.3.1"
 path = "../concordium-base/concordium-contracts-common/concordium-contracts-common"
 features = ["derive-serde", "std"]

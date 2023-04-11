@@ -9,6 +9,17 @@ use concordium_contracts_common::{
     },
     *,
 };
+use concordium_smart_contract_engine::{
+    utils::{self, WasmVersion},
+    v0, v1, ExecResult,
+};
+use concordium_wasm::{
+    output::{write_custom_section, Output},
+    parse::parse_skeleton,
+    types::{CustomSection, ExportDescription, Module},
+    utils::strip,
+    validate::validate_module,
+};
 use rand::{thread_rng, Rng};
 use serde_json::Value;
 use std::{
@@ -17,17 +28,6 @@ use std::{
     env, fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-};
-use wasm_chain_integration::{
-    utils::{self, WasmVersion},
-    v0, v1, ExecResult,
-};
-use wasm_transform::{
-    output::{write_custom_section, Output},
-    parse::parse_skeleton,
-    types::{CustomSection, ExportDescription, Module},
-    utils::strip,
-    validate::validate_module,
 };
 
 /// Encode all base64 strings using the standard alphabet and no padding.
@@ -60,7 +60,7 @@ impl SchemaBuildOptions {
 /// If build_schema is set then the return value will contain the schema of the
 /// version specified.
 pub fn build_contract(
-    version: utils::WasmVersion,
+    version: WasmVersion,
     build_schema: SchemaBuildOptions,
     out: Option<PathBuf>,
     cargo_args: &[String],
@@ -73,7 +73,7 @@ pub fn build_contract(
     // if none do not build. If Some(true) then embed, otherwise
     // just build and return
     let schema = match version {
-        utils::WasmVersion::V0 => {
+        WasmVersion::V0 => {
             if build_schema.build() {
                 let schema = build_contract_schema(cargo_args, utils::generate_contract_schema_v0)
                     .context("Could not build module schema.")?;
@@ -91,7 +91,7 @@ pub fn build_contract(
                 None
             }
         }
-        utils::WasmVersion::V1 => {
+        WasmVersion::V1 => {
             if build_schema.build() {
                 let schema = build_contract_schema(cargo_args, utils::generate_contract_schema_v3)
                     .context("Could not build module schema.")?;
@@ -144,14 +144,14 @@ pub fn build_contract(
     // Remove all custom sections to reduce the size of the module
     strip(&mut skeleton);
     match version {
-        utils::WasmVersion::V0 => {
+        WasmVersion::V0 => {
             let module = validate_module(&v0::ConcordiumAllowedImports, &skeleton)
                 .context("Could not validate resulting smart contract module as a V0 contract.")?;
             check_exports(&module, WasmVersion::V0)
                 .context("Contract and entrypoint validation failed for a V0 contract.")?;
             module
         }
-        utils::WasmVersion::V1 => {
+        WasmVersion::V1 => {
             let module = validate_module(
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
@@ -170,8 +170,8 @@ pub fn build_contract(
     // the version number in big endian. The remaining 4 bytes are a placeholder for
     // length.
     let mut output_bytes = match version {
-        utils::WasmVersion::V0 => vec![0, 0, 0, 0, 0, 0, 0, 0],
-        utils::WasmVersion::V1 => vec![0, 0, 0, 1, 0, 0, 0, 0],
+        WasmVersion::V0 => vec![0, 0, 0, 0, 0, 0, 0, 0],
+        WasmVersion::V1 => vec![0, 0, 0, 1, 0, 0, 0, 0],
     };
     // Embed schema custom section
     skeleton.output(&mut output_bytes)?;
@@ -201,8 +201,8 @@ pub fn build_contract(
         }
         None => {
             let extension = match version {
-                utils::WasmVersion::V0 => "v0",
-                utils::WasmVersion::V1 => "v1",
+                WasmVersion::V0 => "v0",
+                WasmVersion::V1 => "v1",
             };
             PathBuf::from(format!("{}.{}", filename, extension))
         }

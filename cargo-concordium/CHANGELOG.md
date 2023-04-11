@@ -1,5 +1,7 @@
 # Changelog
 
+- Support calling `cargo concordium build` and `cargo concordium test` from a project subdirectory.
+
 ## 2.7.0
 
 - Add `schema-base64` command to convert a given schema to base64 format.

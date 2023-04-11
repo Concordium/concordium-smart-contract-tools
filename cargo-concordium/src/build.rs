@@ -1,7 +1,7 @@
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
-use cargo_toml::Manifest;
+use cargo_metadata::MetadataCommand;
 use concordium_contracts_common::{
     schema::{
         ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
@@ -34,7 +34,7 @@ use wasm_transform::{
 /// Padding is not useful since strings are just put as JSON strings.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD_NO_PAD;
 
-fn to_snake_case(string: String) -> String { string.to_lowercase().replace('-', "_") }
+fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_") }
 
 #[derive(Debug, Clone, Copy)]
 pub enum SchemaBuildOptions {
@@ -111,16 +111,22 @@ pub fn build_contract(
         }
     };
 
-    let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-    let package = manifest
-        .package
-        .context("Manifest needs to specify [package]")?;
+    let metadata = MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .context("Could not access cargo metadata.")?;
+
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package")?;
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let result = Command::new("cargo")
         .arg("build")
         .args(&["--target", "wasm32-unknown-unknown"])
         .args(&["--release"])
-        .args(&["--target-dir", "target/concordium"])
+        .args(&["--target-dir", target_dir.as_str()])
         .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -132,8 +138,9 @@ pub fn build_contract(
     }
 
     let filename = format!(
-        "target/concordium/wasm32-unknown-unknown/release/{}.wasm",
-        to_snake_case(package.name)
+        "{}/wasm32-unknown-unknown/release/{}.wasm",
+        target_dir,
+        to_snake_case(package.name.as_str())
     );
 
     let wasm = fs::read(&filename).context("Could not read cargo build Wasm output.")?;
@@ -312,17 +319,23 @@ pub fn build_contract_schema<A>(
     cargo_args: &[String],
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-    let package = manifest
-        .package
-        .context("Manifest needs to specify [package]")?;
+    let metadata = MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .context("Could not access cargo metadata.")?;
+
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package")?;
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let result = Command::new("cargo")
         .arg("build")
         .args(&["--target", "wasm32-unknown-unknown"])
         .arg("--release")
         .args(&["--features", "concordium-std/build-schema"])
-        .args(&["--target-dir", "target/concordium"])
+        .args(&["--target-dir", target_dir.as_str()])
         .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -334,8 +347,9 @@ pub fn build_contract_schema<A>(
     }
 
     let filename = format!(
-        "target/concordium/wasm32-unknown-unknown/release/{}.wasm",
-        to_snake_case(package.name)
+        "{}/wasm32-unknown-unknown/release/{}.wasm",
+        target_dir,
+        to_snake_case(package.name.as_str())
     );
 
     let wasm =
@@ -647,10 +661,16 @@ pub fn write_json_schema_to_file_v3(
 /// The `seed` argument allows for providing the seed to instantiate a random
 /// number generator. If `None` is given, a random seed will be sampled.
 pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
-    let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-    let package = manifest
-        .package
-        .context("Manifest needs to specify [package]")?;
+    let metadata = MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .context("Could not access cargo metadata.")?;
+
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package")?;
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let cargo_args = [
         "build",
@@ -660,7 +680,7 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
         "--features",
         "concordium-std/wasm-test",
         "--target-dir",
-        "target/concordium",
+        target_dir.as_str(),
     ];
 
     // Output what we are doing so that it is easier to debug if the user
@@ -693,8 +713,9 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
     // If we compiled successfully the artifact is in the place listed below.
     // So we load it, and try to run it.s
     let filename = format!(
-        "target/concordium/wasm32-unknown-unknown/release/{}.wasm",
-        to_snake_case(package.name)
+        "{}/wasm32-unknown-unknown/release/{}.wasm",
+        target_dir,
+        to_snake_case(package.name.as_str())
     );
 
     let wasm = std::fs::read(filename).context("Failed reading contract test output artifact.")?;

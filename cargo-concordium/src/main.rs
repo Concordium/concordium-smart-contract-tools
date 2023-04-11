@@ -7,7 +7,13 @@ use clap::AppSettings;
 use concordium_contracts_common::{
     from_bytes,
     schema::{Type, VersionedModuleSchema},
-    to_bytes, Amount, OwnedReceiveName, Parameter, ReceiveName,
+    to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName,
+};
+use concordium_smart_contract_engine::{
+    utils::{self, WasmVersion},
+    v0,
+    v1::{self, ReturnValue},
+    InterpreterEnergy,
 };
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use std::{
@@ -16,11 +22,6 @@ use std::{
     path::{Path, PathBuf},
 };
 use structopt::StructOpt;
-use concordium_smart_contract_engine::{
-    utils, v0,
-    v1::{self, ReturnValue},
-    InterpreterEnergy,
-};
 mod build;
 mod context;
 
@@ -84,6 +85,104 @@ enum Command {
         path: PathBuf,
     },
     #[structopt(
+        name = "schema-json",
+        about = "Convert a schema into its JSON representation and output it to a file.
+        A schema has to be provided either as part of a smart contract module or with the schema \
+                 flag. You need to use exactly one of the two flags(`--schema` or `--module`) \
+                 with this command."
+    )]
+    SchemaJSON {
+        #[structopt(
+            name = "out",
+            long = "out",
+            short = "o",
+            default_value = ".",
+            help = "Writes the converted JSON representation of the schema to files named after \
+                    the smart contract names at the specified location. Directory path must \
+                    exist. (expected input: `./my/path/`)."
+        )]
+        out:          PathBuf,
+        #[structopt(
+            name = "schema",
+            long = "schema",
+            short = "s",
+            conflicts_with = "module",
+            required_unless = "module",
+            help = "Path and filename to a file with a schema (expected input: \
+                    `./my/path/schema.bin`)."
+        )]
+        schema_path:  Option<PathBuf>,
+        #[structopt(
+            name = "wasm-version",
+            long = "wasm-version",
+            short = "v",
+            help = "If the supplied schema or module is the unversioned one this flag should be \
+                    used to supply the version explicitly. Unversioned schemas and modules were \
+                    produced by older versions of `concordium-std` and `cargo-concordium`."
+        )]
+        wasm_version: Option<WasmVersion>,
+        #[structopt(
+            name = "module",
+            long = "module",
+            short = "m",
+            conflicts_with = "schema",
+            required_unless = "schema",
+            help = "Path and filename to a file with a smart contract module (expected input: \
+                    `./my/path/module.wasm.v1`)."
+        )]
+        module_path:  Option<PathBuf>,
+    },
+    #[structopt(
+        name = "schema-base64",
+        about = "Convert a schema into its base64 representation and output it to a file or print \
+                 it to the console.
+        A schema has to be provided either as part of a smart contract module or with the schema \
+                 flag. You need to use exactly one of the two flags(`--schema` or `--module`) \
+                 with this command."
+    )]
+    SchemaBase64 {
+        #[structopt(
+            name = "out",
+            long = "out",
+            short = "o",
+            default_value = "-",
+            help = "Path and filename to write the converted base64 representation to or use the \
+                    default value `-` to print the base64 schema to the console. The path has to \
+                    exist while the file will be created. (expected input: \
+                    `./my/path/base64_schema.b64` or `-`)."
+        )]
+        out:          PathBuf,
+        #[structopt(
+            name = "schema",
+            long = "schema",
+            short = "s",
+            conflicts_with = "module",
+            required_unless = "module",
+            help = "Path and filename to a file with a schema (expected input: \
+                    `./my/path/schema.bin`)."
+        )]
+        schema_path:  Option<PathBuf>,
+        #[structopt(
+            name = "wasm-version",
+            long = "wasm-version",
+            short = "v",
+            help = "If the supplied schema or module is the unversioned one this flag should be \
+                    used to supply the version explicitly. Unversioned schemas and modules were \
+                    produced by older versions of `concordium-std` and `cargo-concordium`."
+        )]
+        wasm_version: Option<WasmVersion>,
+        #[structopt(
+            name = "module",
+            long = "module",
+            short = "m",
+            conflicts_with = "schema",
+            required_unless = "schema",
+            help = "Path and filename to a file with a smart contract module (expected input: \
+                    `./my/path/module.wasm.v1`)."
+        )]
+        module_path:  Option<PathBuf>,
+    },
+    #[structopt(
         name = "build",
         about = "Build a deployment ready smart-contract module."
     )]
@@ -94,21 +193,39 @@ enum Command {
             short = "e",
             help = "Builds the contract schema and embeds it into the wasm module."
         )]
-        schema_embed: bool,
+        schema_embed:      bool,
         #[structopt(
             name = "schema-out",
             long = "schema-out",
             short = "s",
             help = "Builds the contract schema and writes it to file at specified location."
         )]
-        schema_out:   Option<PathBuf>,
+        schema_out:        Option<PathBuf>,
+        #[structopt(
+            name = "schema-json-out",
+            long = "schema-json-out",
+            short = "j",
+            help = "Builds the contract schema and writes it in JSON format to the specified \
+                    directory."
+        )]
+        schema_json_out:   Option<PathBuf>,
+        #[structopt(
+            name = "schema-base64-out",
+            long = "schema-base64-out",
+            short = "b",
+            help = "Builds the contract schema and writes it in base64 format to file at \
+                    specified location or prints the base64 schema to the console if the value \
+                    `-` is used. The path has to exist while the file will be created. (expected \
+                    input: `./my/path/base64_schema.b64` or `-`)."
+        )]
+        schema_base64_out: Option<PathBuf>,
         #[structopt(
             name = "out",
             long = "out",
             short = "o",
             help = "Writes the resulting module to file at specified location."
         )]
-        out:          Option<PathBuf>,
+        out:               Option<PathBuf>,
         #[structopt(
             name = "contract-version",
             long = "contract-version",
@@ -116,12 +233,12 @@ enum Command {
             help = "Build a module of the given version.",
             default_value = "V1"
         )]
-        version:      utils::WasmVersion,
+        version:           utils::WasmVersion,
         #[structopt(
             raw = true,
             help = "Extra arguments passed to `cargo build` when building Wasm module."
         )]
-        cargo_args:   Vec<String>,
+        cargo_args:        Vec<String>,
     },
 }
 
@@ -334,16 +451,63 @@ pub fn main() -> anyhow::Result<()> {
             init_concordium_project(path)
                 .context("Could not create a new Concordium smart contract project.")?;
         }
+        Command::SchemaJSON {
+            out,
+            module_path,
+            schema_path,
+            wasm_version,
+        } => {
+            // A valid path needs to be provided when using the `--out` flag.
+            ensure!(
+                out.is_dir(),
+                "The `--out` value must point to an existing directory (expected input: \
+                 `./my/path/`)."
+            );
+
+            let schema = get_schema(module_path, schema_path, wasm_version)
+                .context("Could not get schema.")?;
+
+            write_json_schema(&out, &schema).context("Could not write JSON schema files.")?
+        }
+        Command::SchemaBase64 {
+            out,
+            module_path,
+            schema_path,
+            wasm_version,
+        } => {
+            let schema = get_schema(module_path, schema_path, wasm_version)
+                .context("Could not get schema.")?;
+
+            if out.as_path() == Path::new("-") {
+                write_schema_base64(None, &schema).context("Could not print base64 schema.")?;
+            } else {
+                // A valid path needs to be provided when using the `--out` flag.
+                if out.file_name().is_none() || out.is_dir() {
+                    anyhow::bail!(
+                        "The `--out` flag should point to an existing directory + filename \
+                         (expected input: `./my/path/base64_schema.b64`) or be `-`."
+                    );
+                }
+
+                write_schema_base64(Some(out), &schema)
+                    .context("Could not write base64 schema file.")?;
+            }
+        }
         Command::Build {
             schema_embed,
             schema_out,
+            schema_json_out,
+            schema_base64_out,
             out,
             version,
             cargo_args,
         } => {
             let build_schema = if schema_embed {
                 SchemaBuildOptions::BuildAndEmbed
-            } else if schema_out.is_some() {
+            } else if schema_out.is_some()
+                || schema_json_out.is_some()
+                || schema_base64_out.is_some()
+            {
                 SchemaBuildOptions::JustBuild
             } else {
                 SchemaBuildOptions::DoNotBuild
@@ -394,9 +558,34 @@ pub fn main() -> anyhow::Result<()> {
                         );
                     }
 
-                    eprintln!("   Writing schema to {}.", schema_out.display());
                     fs::write(schema_out, &module_schema_bytes)
                         .context("Could not write schema file.")?;
+                }
+                if let Some(schema_json_out) = schema_json_out {
+                    ensure!(
+                        schema_json_out.is_dir(),
+                        "The `--schema-json-out` flag should point to an existing directory \
+                         (expected input `./my/path/`)."
+                    );
+                    write_json_schema(&schema_json_out, module_schema)
+                        .context("Could not write JSON schema files.")?;
+                }
+                if let Some(schema_base64_out) = schema_base64_out {
+                    if schema_base64_out.as_path() == Path::new("-") {
+                        write_schema_base64(None, module_schema)
+                            .context("Could not print base64 schema.")?;
+                    } else {
+                        if schema_base64_out.file_name().is_none() || schema_base64_out.is_dir() {
+                            anyhow::bail!(
+                                "The `--schema-base64-out` flag should point to an existing \
+                                 directory + filename (expected input: \
+                                 `./my/path/base64_schema.b64`) or be `-`."
+                            );
+                        }
+
+                        write_schema_base64(Some(schema_base64_out), module_schema)
+                            .context("Could not write base64 schema file.")?;
+                    }
                 }
                 if schema_embed {
                     eprintln!("   Embedding schema into module.\n");
@@ -691,7 +880,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 runner.amount.micro_ccd,
                 init_ctx,
                 &name,
-                Parameter::from(&parameter[..]),
+                parameter.as_parameter(),
                 false, // Whether number of logs should be limited. Limit removed in PV5.
                 runner.energy,
             )
@@ -706,7 +895,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     print_result(state, logs)?;
                     eprintln!(
                         "Interpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v0::InitResult::Reject {
@@ -716,7 +905,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     eprintln!("Init call rejected with reason {}.", reason);
                     eprintln!(
                         "Interpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v0::InitResult::OutOfEnergy => {
@@ -773,12 +962,9 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     let state_json: serde_json::Value =
                         serde_json::from_slice(&file).context("Could not parse state JSON.")?;
                     let mut state_bytes = Vec::new();
-                    Type::write_bytes_from_json_schema_type(
-                        schema_state,
-                        &state_json,
-                        &mut state_bytes,
-                    )
-                    .context("Could not generate state bytes using schema and JSON.")?;
+                    schema_state
+                        .serial_value_into(&state_json, &mut state_bytes)
+                        .context("Could not generate state bytes using schema and JSON.")?;
                     state_bytes
                 }
             };
@@ -790,7 +976,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 v0::ReceiveInvocation {
                     amount:       runner.amount.micro_ccd,
                     receive_name: &name,
-                    parameter:    Parameter::from(&parameter[..]),
+                    parameter:    parameter.as_parameter(),
                     energy:       runner.energy,
                 },
                 &init_state,
@@ -811,15 +997,13 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     for (i, action) in actions.iter().enumerate() {
                         match action {
                             v0::Action::Send { data } => {
-                                let name_str = std::str::from_utf8(&data.name)
-                                    .context("Target name is not a valid UTF8 sequence.")?;
                                 eprintln!(
                                     "{}: send a message to contract at ({}, {}), calling method \
                                      {} with amount {} and parameter {:?}",
                                     i,
                                     data.to_addr.index,
                                     data.to_addr.subindex,
-                                    name_str,
+                                    data.name.as_receive_name().entrypoint_name(),
                                     data.amount,
                                     data.parameter
                                 )
@@ -845,7 +1029,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
 
                     eprintln!(
                         "Interpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v0::ReceiveResult::Reject {
@@ -855,7 +1039,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     eprintln!("Receive call rejected with reason {}", reason);
                     eprintln!(
                         "Interpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v0::ReceiveResult::OutOfEnergy => {
@@ -1104,7 +1288,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 v1::InvokeFromSourceCtx {
                     source:          module,
                     amount:          runner.amount,
-                    parameter:       &parameter,
+                    parameter:       parameter.as_ref(),
                     energy:          runner.energy,
                     support_upgrade: true, // Upgrades are supported in PV5 and onward.
                 },
@@ -1129,7 +1313,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     print_return_value(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v1::InitResult::Reject {
@@ -1142,7 +1326,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     print_error(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )
                 }
                 v1::InitResult::Trap {
@@ -1151,7 +1335,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 } => {
                     return Err(error.context(format!(
                         "Execution triggered a runtime error after spending {} interpreter energy.",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.subtract(remaining_energy.energy)
                     )));
                 }
                 v1::InitResult::OutOfEnergy => {
@@ -1244,7 +1428,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 v1::ReceiveInvocation {
                     amount:       runner.amount,
                     receive_name: name.as_receive_name(),
-                    parameter:    &parameter,
+                    parameter:    parameter.as_ref(),
                     energy:       runner.energy,
                 },
                 instance_state,
@@ -1372,9 +1556,11 @@ fn get_parameter(
     json_path: Option<&Path>,
     has_contract_schema: bool,
     parameter_schema: Option<&Type>,
-) -> anyhow::Result<Vec<u8>> {
+) -> anyhow::Result<OwnedParameter> {
     if let Some(param_file) = bin_path {
-        fs::read(&param_file).context("Could not read parameter-bin file.")
+        Ok(OwnedParameter::new_unchecked(
+            fs::read(&param_file).context("Could not read parameter-bin file.")?,
+        ))
     } else if let Some(param_file) = json_path {
         if !has_contract_schema {
             bail!(
@@ -1389,15 +1575,105 @@ fn get_parameter(
             let parameter_json: serde_json::Value = serde_json::from_slice(&file)
                 .context("Could not parse the JSON in parameter-json file.")?;
             let mut parameter_bytes = Vec::new();
-            Type::write_bytes_from_json_schema_type(
-                parameter_schema,
-                &parameter_json,
-                &mut parameter_bytes,
-            )
-            .context("Could not generate parameter bytes using schema and JSON.")?;
-            Ok(parameter_bytes)
+            parameter_schema
+                .serial_value_into(&parameter_json, &mut parameter_bytes)
+                .context("Could not generate parameter bytes using schema and JSON.")?;
+            Ok(OwnedParameter::new_unchecked(parameter_bytes))
         }
     } else {
-        Ok(Vec::new())
+        Ok(OwnedParameter::empty())
     }
+}
+
+/// Attempt to get a schema (either from a smart contract module file or a
+/// schema file) from the supplied paths, signalling failure if this is not
+/// possible.
+fn get_schema(
+    module_path: Option<PathBuf>,
+    schema_path: Option<PathBuf>,
+    wasm_version: Option<WasmVersion>,
+) -> anyhow::Result<VersionedModuleSchema> {
+    let schema = if let Some(module_path) = module_path {
+        let bytes = fs::read(module_path).context("Could not read module file.")?;
+
+        let mut cursor = std::io::Cursor::new(&bytes[..]);
+        let (wasm_version, module) = match wasm_version {
+            Some(v) => (v, &bytes[..]),
+            None => {
+                let wasm_version = utils::WasmVersion::read(&mut cursor).context(
+                    "Could not read module version from the supplied module file. Supply the \
+                     version using `--wasm-version`.",
+                )?;
+                (wasm_version, &cursor.into_inner()[8..])
+            }
+        };
+
+        match wasm_version {
+            utils::WasmVersion::V0 => utils::get_embedded_schema_v0(module).context(
+                "Failed to get schema embedded in the module.\nPlease provide a smart contract \
+                 module with an embedded schema.",
+            )?,
+            utils::WasmVersion::V1 => utils::get_embedded_schema_v1(module).context(
+                "Failed to get schema embedded in the module.\nPlease provide a smart contract \
+                 module with an embedded schema.",
+            )?,
+        }
+    } else if let Some(schema_path) = schema_path {
+        let bytes = fs::read(schema_path).context("Could not read schema file.")?;
+
+        if bytes.starts_with(VERSIONED_SCHEMA_MAGIC_HASH) {
+            from_bytes::<VersionedModuleSchema>(&bytes)?
+        } else if let Some(wv) = wasm_version {
+            match wv {
+                WasmVersion::V0 => from_bytes(&bytes).map(VersionedModuleSchema::V0)?,
+                WasmVersion::V1 => from_bytes(&bytes).map(VersionedModuleSchema::V1)?,
+            }
+        } else {
+            bail!(
+                "Legacy unversioned schema was supplied, but no version was provided. Use \
+                 `--wasm-version` to specify the version."
+            );
+        }
+    } else {
+        bail!("Exactly one of `--schema` or `--module` must be provided.");
+    };
+    Ok(schema)
+}
+
+/// Write the JSON representation of the schema into files in the `out`
+/// directory. The files are named after contract_names, except if a
+/// contract_name contains unsuitable characters. Then the counter is used to
+/// name the file.
+fn write_json_schema(out: &Path, schema: &VersionedModuleSchema) -> anyhow::Result<()> {
+    match schema {
+        VersionedModuleSchema::V0(module_schema) => {
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v0(out, contract_name, contract_counter, contract_schema)?
+            }
+        }
+        VersionedModuleSchema::V1(module_schema) => {
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v1(out, contract_name, contract_counter, contract_schema)?
+            }
+        }
+        VersionedModuleSchema::V2(module_schema) => {
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v2(out, contract_name, contract_counter, contract_schema)?
+            }
+        }
+        VersionedModuleSchema::V3(module_schema) => {
+            for (contract_counter, (contract_name, contract_schema)) in
+                module_schema.contracts.iter().enumerate()
+            {
+                write_json_schema_to_file_v3(out, contract_name, contract_counter, contract_schema)?
+            }
+        }
+    }
+    Ok(())
 }

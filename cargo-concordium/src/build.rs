@@ -1,14 +1,13 @@
 use ansi_term::{Color, Style};
 use anyhow::Context;
-use cargo_toml::Manifest;
-use concordium_contracts_common::*;
-use rand::{thread_rng, Rng};
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, BTreeSet},
-    env, fs,
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
+use base64::{engine::general_purpose, Engine as _};
+use cargo_metadata::MetadataCommand;
+use concordium_contracts_common::{
+    schema::{
+        ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
+        VersionedModuleSchema,
+    },
+    *,
 };
 use concordium_smart_contract_engine::{
     utils::{self, WasmVersion},
@@ -21,8 +20,21 @@ use concordium_wasm::{
     utils::strip,
     validate::validate_module,
 };
+use rand::{thread_rng, Rng};
+use serde_json::Value;
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+    env, fs,
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
 
-fn to_snake_case(string: String) -> String { string.to_lowercase().replace('-', "_") }
+/// Encode all base64 strings using the standard alphabet and no padding.
+/// Padding is not useful since strings are just put as JSON strings.
+const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD_NO_PAD;
+
+fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_") }
 
 #[derive(Debug, Clone, Copy)]
 pub enum SchemaBuildOptions {
@@ -48,7 +60,7 @@ impl SchemaBuildOptions {
 /// If build_schema is set then the return value will contain the schema of the
 /// version specified.
 pub fn build_contract(
-    version: utils::WasmVersion,
+    version: WasmVersion,
     build_schema: SchemaBuildOptions,
     out: Option<PathBuf>,
     cargo_args: &[String],
@@ -61,7 +73,7 @@ pub fn build_contract(
     // if none do not build. If Some(true) then embed, otherwise
     // just build and return
     let schema = match version {
-        utils::WasmVersion::V0 => {
+        WasmVersion::V0 => {
             if build_schema.build() {
                 let schema = build_contract_schema(cargo_args, utils::generate_contract_schema_v0)
                     .context("Could not build module schema.")?;
@@ -79,7 +91,7 @@ pub fn build_contract(
                 None
             }
         }
-        utils::WasmVersion::V1 => {
+        WasmVersion::V1 => {
             if build_schema.build() {
                 let schema = build_contract_schema(cargo_args, utils::generate_contract_schema_v3)
                     .context("Could not build module schema.")?;
@@ -99,16 +111,22 @@ pub fn build_contract(
         }
     };
 
-    let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-    let package = manifest
-        .package
-        .context("Manifest needs to specify [package]")?;
+    let metadata = MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .context("Could not access cargo metadata.")?;
+
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package")?;
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let result = Command::new("cargo")
         .arg("build")
         .args(&["--target", "wasm32-unknown-unknown"])
         .args(&["--release"])
-        .args(&["--target-dir", "target/concordium"])
+        .args(&["--target-dir", target_dir.as_str()])
         .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -120,8 +138,9 @@ pub fn build_contract(
     }
 
     let filename = format!(
-        "target/concordium/wasm32-unknown-unknown/release/{}.wasm",
-        to_snake_case(package.name)
+        "{}/wasm32-unknown-unknown/release/{}.wasm",
+        target_dir,
+        to_snake_case(package.name.as_str())
     );
 
     let wasm = fs::read(&filename).context("Could not read cargo build Wasm output.")?;
@@ -132,14 +151,14 @@ pub fn build_contract(
     // Remove all custom sections to reduce the size of the module
     strip(&mut skeleton);
     match version {
-        utils::WasmVersion::V0 => {
+        WasmVersion::V0 => {
             let module = validate_module(&v0::ConcordiumAllowedImports, &skeleton)
                 .context("Could not validate resulting smart contract module as a V0 contract.")?;
             check_exports(&module, WasmVersion::V0)
                 .context("Contract and entrypoint validation failed for a V0 contract.")?;
             module
         }
-        utils::WasmVersion::V1 => {
+        WasmVersion::V1 => {
             let module = validate_module(
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
@@ -158,8 +177,8 @@ pub fn build_contract(
     // the version number in big endian. The remaining 4 bytes are a placeholder for
     // length.
     let mut output_bytes = match version {
-        utils::WasmVersion::V0 => vec![0, 0, 0, 0, 0, 0, 0, 0],
-        utils::WasmVersion::V1 => vec![0, 0, 0, 1, 0, 0, 0, 0],
+        WasmVersion::V0 => vec![0, 0, 0, 0, 0, 0, 0, 0],
+        WasmVersion::V1 => vec![0, 0, 0, 1, 0, 0, 0, 0],
     };
     // Embed schema custom section
     skeleton.output(&mut output_bytes)?;
@@ -189,8 +208,8 @@ pub fn build_contract(
         }
         None => {
             let extension = match version {
-                utils::WasmVersion::V0 => "v0",
-                utils::WasmVersion::V1 => "v1",
+                WasmVersion::V0 => "v0",
+                WasmVersion::V1 => "v1",
             };
             PathBuf::from(format!("{}.{}", filename, extension))
         }
@@ -300,17 +319,23 @@ pub fn build_contract_schema<A>(
     cargo_args: &[String],
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-    let package = manifest
-        .package
-        .context("Manifest needs to specify [package]")?;
+    let metadata = MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .context("Could not access cargo metadata.")?;
+
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package")?;
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let result = Command::new("cargo")
         .arg("build")
         .args(&["--target", "wasm32-unknown-unknown"])
         .arg("--release")
         .args(&["--features", "concordium-std/build-schema"])
-        .args(&["--target-dir", "target/concordium"])
+        .args(&["--target-dir", target_dir.as_str()])
         .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -322,8 +347,9 @@ pub fn build_contract_schema<A>(
     }
 
     let filename = format!(
-        "target/concordium/wasm32-unknown-unknown/release/{}.wasm",
-        to_snake_case(package.name)
+        "{}/wasm32-unknown-unknown/release/{}.wasm",
+        target_dir,
+        to_snake_case(package.name.as_str())
     );
 
     let wasm =
@@ -375,6 +401,256 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Write the provided JSON value to the file inside the `root` directory.
+/// The file is named after contract_name, except if contract_name contains
+/// unsuitable characters. Then the counter is used to name the file.
+fn write_schema_json(
+    root: &Path,
+    contract_name: &str,
+    counter: usize,
+    mut schema_json: Value,
+) -> anyhow::Result<()> {
+    schema_json["contractName"] = contract_name.into();
+    // save the schema JSON representation into the file
+    let mut out_path = root.to_path_buf();
+
+    // make sure the path is valid on all platforms
+    let file_name = if contract_name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || "-_[]{}".contains(c))
+    {
+        contract_name.to_owned() + "_schema.json"
+    } else {
+        format!("contract-schema_{}.json", counter)
+    };
+
+    out_path.push(file_name);
+
+    println!(
+        "   Writing JSON schema for {} to {}.",
+        contract_name,
+        out_path.display()
+    );
+    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
+        .context("Unable to write schema output.")?;
+    Ok(())
+}
+
+/// Write the provided schema in its base64 representation to a file or print it
+/// to the console if `out` is None.
+pub fn write_schema_base64(
+    out: Option<PathBuf>,
+    schema: &VersionedModuleSchema,
+) -> anyhow::Result<()> {
+    let schema_base64 = ENCODER.encode(to_bytes(schema));
+
+    match out {
+        // writing base64 schema to file
+        Some(out) => {
+            println!("   Writing base64 schema to {}.", out.display());
+
+            // save the schema base64 representation to the file
+            std::fs::write(out, schema_base64).context("Unable to write schema output.")?;
+        }
+        // printing base64 schema to console
+        None => {
+            println!(
+                "   The base64 conversion of the schema is:\n{}",
+                schema_base64
+            )
+        }
+    }
+
+    Ok(())
+}
+
+/// Converts the ContractV0 schema of the given contract_name to JSON and writes
+/// it to a file named after the smart contract name at the specified location.
+pub fn write_json_schema_to_file_v0(
+    path_of_out: &Path,
+    contract_name: &str,
+    contract_counter: usize,
+    contract_schema: &ContractV0,
+) -> anyhow::Result<()> {
+    // create empty schema_json
+    let mut schema_json: Value = Value::Object(serde_json::Map::new());
+
+    // add init schema
+    if let Some(init_schema) = &contract_schema.init {
+        schema_json["init"] = type_to_json(init_schema);
+    }
+
+    // add state schema
+    if let Some(state_schema) = &contract_schema.state {
+        schema_json["state"] = type_to_json(state_schema);
+    }
+
+    // add receive entrypoints
+    if !contract_schema.receive.is_empty() {
+        // create empty entrypoints
+        let mut entrypoints: Value = Value::Object(serde_json::Map::new());
+
+        // iterate through the entrypoints and add their schemas
+        for (method_name, receive_schema) in contract_schema.receive.iter() {
+            // add `method_name` entrypoint
+            entrypoints[method_name] = type_to_json(receive_schema);
+        }
+
+        // add all receive entrypoints
+        schema_json["entrypoints"] = entrypoints;
+    }
+
+    write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
+}
+
+fn function_v1_schema(schema: &FunctionV1) -> Value {
+    // create empty function object
+    let mut function_object: Value = Value::Object(serde_json::Map::new());
+
+    // add parameter schema to function object
+    if let Some(parameter_schema) = &schema.parameter() {
+        function_object["parameter"] = type_to_json(*parameter_schema);
+    }
+
+    // add return_value schema to function object
+    if let Some(return_value_schema) = &schema.return_value() {
+        function_object["returnValue"] = type_to_json(*return_value_schema);
+    }
+    function_object
+}
+
+/// Converts the ContractV1 schema of the given contract_name to JSON and writes
+/// it to a file named after the smart contract name at the specified location.
+pub fn write_json_schema_to_file_v1(
+    path_of_out: &Path,
+    contract_name: &str,
+    contract_counter: usize,
+    contract_schema: &ContractV1,
+) -> anyhow::Result<()> {
+    // create empty schema_json
+    let mut schema_json: Value = Value::Object(serde_json::Map::new());
+
+    // add init schema
+    if let Some(init_schema) = &contract_schema.init {
+        schema_json["init"] = function_v1_schema(init_schema);
+    }
+
+    // add receive entrypoints
+    if !contract_schema.receive.is_empty() {
+        // create empty entrypoints
+        let mut entrypoints: Value = Value::Object(serde_json::Map::new());
+
+        // iterate through the entrypoints and add their schemas
+        for (method_name, receive_schema) in contract_schema.receive.iter() {
+            // add `method_name` entrypoint
+            entrypoints[method_name] = function_v1_schema(receive_schema);
+        }
+
+        // add all receive entrypoints
+        schema_json["entrypoints"] = entrypoints;
+    }
+
+    write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
+}
+
+/// Convert a [schema type](schema::Type) to a base64 string.
+fn type_to_json(ty: &schema::Type) -> Value { ENCODER.encode(to_bytes(ty)).into() }
+
+/// Convert a [`FunctionV2`] schema to a JSON representation.
+fn function_v2_schema(schema: &FunctionV2) -> Value {
+    // create empty object
+    let mut function_object: Value = Value::Object(serde_json::Map::new());
+
+    // add parameter schema
+    if let Some(parameter_schema) = &schema.parameter {
+        function_object["parameter"] = type_to_json(parameter_schema);
+    }
+
+    // add return_value schema
+    if let Some(return_value_schema) = &schema.return_value {
+        function_object["returnValue"] = type_to_json(return_value_schema);
+    }
+
+    // add error schema
+    if let Some(error_schema) = &schema.error {
+        function_object["error"] = type_to_json(error_schema);
+    }
+    function_object
+}
+
+/// Converts the ContractV2 schema of the given contract_name to JSON and writes
+/// it to a file named after the smart contract name at the specified location.
+pub fn write_json_schema_to_file_v2(
+    path_of_out: &Path,
+    contract_name: &str,
+    contract_counter: usize,
+    contract_schema: &ContractV2,
+) -> anyhow::Result<()> {
+    // create empty schema_json
+    let mut schema_json: Value = Value::Object(serde_json::Map::new());
+
+    // add init schema
+    if let Some(init_schema) = &contract_schema.init {
+        schema_json["init"] = function_v2_schema(init_schema);
+    }
+
+    // add receive entrypoints
+    if !contract_schema.receive.is_empty() {
+        // create empty entrypoints
+        let mut entrypoints: Value = Value::Object(serde_json::Map::new());
+
+        // iterate through the entrypoints and add their schemas
+        for (method_name, receive_schema) in contract_schema.receive.iter() {
+            // add `method_name` entrypoint
+            entrypoints[method_name] = function_v2_schema(receive_schema)
+        }
+
+        // add all receive entrypoints
+        schema_json["entrypoints"] = entrypoints;
+    }
+
+    write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
+}
+
+/// Converts the ContractV3 schema of the given contract_name to JSON and writes
+/// it to a file named after the smart contract name at the specified location.
+pub fn write_json_schema_to_file_v3(
+    path_of_out: &Path,
+    contract_name: &str,
+    contract_counter: usize,
+    contract_schema: &ContractV3,
+) -> anyhow::Result<()> {
+    // create empty schema_json
+    let mut schema_json: Value = Value::Object(serde_json::Map::new());
+
+    // add init schema
+    if let Some(init_schema) = &contract_schema.init {
+        schema_json["init"] = function_v2_schema(init_schema)
+    }
+
+    // add event schema
+    if let Some(event_schema) = &contract_schema.event {
+        schema_json["event"] = type_to_json(event_schema);
+    }
+
+    // add receive entrypoints
+    if !contract_schema.receive.is_empty() {
+        // create empty entrypoints
+        let mut entrypoints: Value = Value::Object(serde_json::Map::new());
+
+        // iterate through the entrypoints and add their schemas
+        for (method_name, receive_schema) in contract_schema.receive.iter() {
+            // add `method_name` entrypoint
+            entrypoints[method_name] = function_v2_schema(receive_schema)
+        }
+
+        // add all receive entrypoints
+        schema_json["entrypoints"] = entrypoints;
+    }
+
+    write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
+}
+
 /// Build tests and run them. If errors occur in building the tests, or there
 /// are runtime exceptions that are not expected then this function returns
 /// Err(...).
@@ -385,10 +661,16 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
 /// The `seed` argument allows for providing the seed to instantiate a random
 /// number generator. If `None` is given, a random seed will be sampled.
 pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
-    let manifest = Manifest::from_path("Cargo.toml").context("Could not read Cargo.toml.")?;
-    let package = manifest
-        .package
-        .context("Manifest needs to specify [package]")?;
+    let metadata = MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .context("Could not access cargo metadata.")?;
+
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package")?;
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let cargo_args = [
         "build",
@@ -398,7 +680,7 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
         "--features",
         "concordium-std/wasm-test",
         "--target-dir",
-        "target/concordium",
+        target_dir.as_str(),
     ];
 
     // Output what we are doing so that it is easier to debug if the user
@@ -431,8 +713,9 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
     // If we compiled successfully the artifact is in the place listed below.
     // So we load it, and try to run it.s
     let filename = format!(
-        "target/concordium/wasm32-unknown-unknown/release/{}.wasm",
-        to_snake_case(package.name)
+        "{}/wasm32-unknown-unknown/release/{}.wasm",
+        target_dir,
+        to_snake_case(package.name.as_str())
     );
 
     let wasm = std::fs::read(filename).context("Failed reading contract test output artifact.")?;

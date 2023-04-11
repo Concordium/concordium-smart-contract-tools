@@ -3,8 +3,8 @@ use concordium_contracts_common::{
     AccountAddress, Address, Amount, ContractAddress, EntrypointName, OwnedEntrypointName,
     OwnedPolicy, Serial, SlotTime,
 };
-use serde::Deserialize;
 use concordium_smart_contract_engine::{v0, v1, ExecResult};
+use serde::Deserialize;
 
 /// A chain metadata with an optional field.
 /// Used when simulating contracts to allow the user to only specify the
@@ -34,7 +34,7 @@ pub(crate) struct InitContextOpt {
     metadata:        ChainMetadataOpt,
     init_origin:     Option<AccountAddress>,
     #[serde(default, deserialize_with = "deserialize_policy_bytes_from_json")]
-    sender_policies: Option<v0::OwnedPolicyBytes>,
+    sender_policies: Option<Vec<u8>>,
 }
 
 impl v0::HasInitContext for InitContextOpt {
@@ -94,7 +94,7 @@ pub(crate) struct ReceiveContextOpt {
     sender:                  Option<Address>,
     owner:                   Option<AccountAddress>,
     #[serde(default, deserialize_with = "deserialize_policy_bytes_from_json")]
-    sender_policies:         Option<v0::OwnedPolicyBytes>,
+    sender_policies:         Option<Vec<u8>>,
 }
 
 impl v0::HasReceiveContext for ReceiveContextOpt {
@@ -195,7 +195,7 @@ impl v1::HasReceiveContext for ReceiveContextV1Opt {
 
 fn deserialize_policy_bytes_from_json<'de, D: serde::de::Deserializer<'de>>(
     des: D,
-) -> Result<Option<v0::OwnedPolicyBytes>, D::Error> {
+) -> Result<Option<Vec<u8>>, D::Error> {
     let policies = Option::<Vec<OwnedPolicy>>::deserialize(des)?;
     // It might be better to define a serialization instance in the future.
     // Its a bit finicky since this is not the usual serialization, it prepends

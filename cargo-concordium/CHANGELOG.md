@@ -1,6 +1,27 @@
 # Changelog
 
-## Unreleased changes
+- Support calling `cargo concordium build` and `cargo concordium test` from a project subdirectory.
+
+## 2.7.0
+
+- Add `schema-base64` command to convert a given schema to base64 format.
+- Add `--schema-base64-out` option to `cargo concordium build` to optionally
+  output the schema in base64 format.
+
+## 2.6.0
+
+- Add `schema-json` command to get schemas for individual entrypoints from the
+  binary schema file.
+- Add `--schema-json-out` option to `cargo concordium build` to optionally
+  output the schema in JSON format.
+
+## 2.5.0
+
+- Add support for sampling random numbers for randomized testing with `cargo concordium test`.
+- Add support for providing a seed to initialize a random generator to
+  `cargo-concordium`. The generator can be used for randomized testing.
+  Command format: `cargo concordium test --seed 1234567890`. The provided seed value
+  is a `u64` number. If the seed is not provided, a random one will be sampled.
 
 ## 2.4.0
 
@@ -8,11 +29,6 @@
 - Add support for V3 schemas that include support for event schemas. This enables
   `cargo-concordium` to build and interact with smart contracts using
   `concordium-std` version 4.1. `Cargo-concordium` now always generates V3 schemas.
-- Add support for sampling random numbers for randomized testing with `cargo concordium test`.
-- Add support for providing a seed to initialize a random generator to 
-  `cargo-concordium`. The generator can be used for randomized testing.
-  Command format: `cargo concordium test --seed 1234567890`. The provided seed value
-  is a `u64` number. If the seed is not provided, a random one will be sampled.
 
 ## 2.3.0
 

@@ -1,6 +1,6 @@
 [package]
 name = "cargo-concordium"
-version = "2.5.0"
+version = "2.7.0"
 authors = ["Concordium <developers@concordium.com>"]
 edition = "2018"
 license-file = "../LICENSE"
@@ -11,26 +11,23 @@ license-file = "../LICENSE"
 clap = "2.33"
 structopt = "0.3"
 hex = "0.4"
+base64= "0.21"
 serde = "1.0"
-serde_json="1.0.56"
-cargo_toml = "0.11.5"
-anyhow = "1.0.33"
+serde_json="1.0"
+anyhow = "1.0"
 ansi_term = "0.12"
 ptree = "0.4"
 strsim = "0.10"
-num-bigint = "0.4.3"
-num-traits = "0.2.15"
-which = "4.3.0"
+which = "4.3"
 rand = { version = "=0.7", features = ["small_rng"] }
+cargo_metadata = "0.15"
 
-[features]
-
-[dependencies.wasm-transform]
+[dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"
-version = "0"
+version = "1.0"
 
-[dependencies.wasm-chain-integration]
-version = "0.2"
+[dependencies.concordium-smart-contract-engine]
+version = "1.0"
 path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
 
@@ -38,6 +35,6 @@ features = ["display-state"]
 criterion = "0.3"
 
 [dependencies.concordium-contracts-common]
-version = "5.0"
+version = "5.3.1"
 path = "../concordium-base/concordium-contracts-common/concordium-contracts-common"
 features = ["derive-serde", "std"]

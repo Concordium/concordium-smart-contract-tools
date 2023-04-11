@@ -1,6 +1,10 @@
 # Changelog
 
+## 2.7.1
+
 - Support calling `cargo concordium build` and `cargo concordium test` from a project subdirectory.
+- Fix a bug in schema parsing in `cargo concordium run` commands. Schemas with
+  negative integers did not allow for supplying negative integers.
 
 ## 2.7.0
 

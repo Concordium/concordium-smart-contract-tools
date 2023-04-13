@@ -1,4 +1,4 @@
-name: Build and test
+name: "cargo-concordium: Build and test"
 
 # This job runs rustfmt and clippy linting,
 # cargo check on cargo-concordium,
@@ -10,6 +10,15 @@ on:
 
   pull_request:
     branches: main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - cargo-concordium/**/*
+      - rustfmt.toml
+      - concordium-base
 
   workflow_dispatch: # allows manual trigger
 
@@ -31,7 +40,7 @@ jobs:
           - 'cargo-concordium'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -55,7 +64,7 @@ jobs:
           - 'cargo-concordium'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Install Rust
@@ -80,7 +89,7 @@ jobs:
       - lint_fmt
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Install Rust
@@ -106,7 +115,7 @@ jobs:
           - 'cargo-concordium'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Install Rust
@@ -118,6 +127,4 @@ jobs:
       - name: Test
         working-directory: ${{ matrix.build-dir }}
         run: cargo test
-
-
 

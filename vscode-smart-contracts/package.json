@@ -1,0 +1,71 @@
+{
+  "name": "concordium-smart-contracts",
+  "publisher": "Concordium",
+  "displayName": "Concordium Smart Contracts",
+  "description": "Develop and build smart contracts on Concordium",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Concordium/concordium-smart-contract-tools.git",
+    "directory": "vscode-smart-contracts"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.76.2"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "concordium-smart-contracts.version",
+        "title": "Concordium Smart Contracts: cargo-concordium version"
+      }
+    ],
+    "configuration": {
+      "title": "Concordium Smart Contracts",
+      "properties": {
+        "concordium-smart-contracts.custom-executable": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "scope": "machine-overridable",
+          "default": null,
+          "markdownDescription": "Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "check-formatting": "prettier --check src/**/*",
+    "test": "node ./out/test/runTest.js"
+  },
+  "prettier": {},
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.76",
+    "@typescript-eslint/eslint-plugin": "^5.53.0",
+    "@typescript-eslint/parser": "^5.53.0",
+    "@vscode/test-electron": "^2.2.3",
+    "eslint": "^8.34.0",
+    "eslint-config-prettier": "^8.8.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.2.0",
+    "prettier": "^2.8.7",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "request-light": "^0.7.0"
+  }
+}

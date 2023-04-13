@@ -49,7 +49,7 @@ Ensure to read through the extensions guidelines and follow the best practices f
 - Ensure to have a recent version of VS Code installed.
 - Make sure to have [NodeJS](https://nodejs.org/en) installed.
 - Run `npm install` in the extension project directory.
-- Build `cargo-concordium` and move the resulting executable to `vscode-smart-contracts/executable/` (making the directory).
+- Build `cargo-concordium` and move the resulting executable to `vscode-smart-contracts/executables/` (making the directory).
 
 To compile the typescript run:
 ```

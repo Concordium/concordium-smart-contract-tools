@@ -8,6 +8,7 @@ import * as vscode from "vscode";
 
 // Create a version of execFile, which uses promises instead of callbacks.
 const execFile = util.promisify(childProcess.execFile);
+const exec = util.promisify(childProcess.exec);
 
 /** Get the path to the executable shipped with the extension */
 function getBundledExecutablePath(): string {
@@ -50,4 +51,32 @@ async function execute(...args: string[]) {
 export async function version(): Promise<string> {
   const { stdout } = await execute("--version");
   return stdout;
+}
+
+export interface ConcordiumTaskDefinition extends vscode.TaskDefinition {
+  type: "Concordium";
+  command: "build";
+  cwd: string;
+}
+
+/** Construct a task for running cargo-concordium build in a given directory */
+export async function build(
+  cwd: string,
+  scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace
+) {
+  const executable = await getResolvedExecutablePath();
+  const taskDefinition: ConcordiumTaskDefinition = {
+    type: "Concordium",
+    command: "build",
+    cwd,
+  };
+  return new vscode.Task(
+    taskDefinition,
+    scope,
+    `build - ${cwd}`,
+    "Concordium",
+    new vscode.ProcessExecution(executable, ["concordium", "build"], {
+      cwd,
+    })
+  );
 }

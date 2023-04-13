@@ -23,6 +23,37 @@
       {
         "command": "concordium-smart-contracts.version",
         "title": "Concordium Smart Contracts: cargo-concordium version"
+      },
+      {
+        "command": "concordium-smart-contracts.build",
+        "title": "Concordium Smart Contracts: Build"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "concordium-smart-contracts.build",
+          "when": "editorFocus"
+        }
+      ]
+    },
+    "taskDefinitions": [
+      {
+        "type": "Concordium",
+        "required": [
+          "command",
+          "cwd"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The cargo-command command to execute"
+          },
+          "cwd": {
+            "type": "string",
+            "description": "The directory to run the command from."
+          }
+        }
       }
     ],
     "configuration": {
@@ -66,6 +97,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
+    "glob": "^8.1.0",
     "request-light": "^0.7.0"
   }
 }

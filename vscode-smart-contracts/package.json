@@ -41,8 +41,7 @@
       {
         "type": "Concordium",
         "required": [
-          "command",
-          "cwd"
+          "command"
         ],
         "properties": {
           "command": {
@@ -51,7 +50,7 @@
           },
           "cwd": {
             "type": "string",
-            "description": "The directory to run the command from."
+            "description": "The directory to run the command from. If not provided, the root of the first open workspace will be used."
           }
         }
       }

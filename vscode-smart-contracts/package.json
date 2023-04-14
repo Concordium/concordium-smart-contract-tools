@@ -26,17 +26,9 @@
       },
       {
         "command": "concordium-smart-contracts.build",
-        "title": "Concordium Smart Contracts: Build"
+        "title": "Concordium Smart Contracts: Build contract"
       }
     ],
-    "menus": {
-      "commandPalette": [
-        {
-          "command": "concordium-smart-contracts.build",
-          "when": "editorFocus"
-        }
-      ]
-    },
     "taskDefinitions": [
       {
         "type": "Concordium",

@@ -27,6 +27,14 @@
       {
         "command": "concordium-smart-contracts.build",
         "title": "Concordium Smart Contracts: Build contract"
+      },
+      {
+        "command": "concordium-smart-contracts.build-skip-schema",
+        "title": "Concordium Smart Contracts: Build contract (no schema)"
+      },
+      {
+        "command": "concordium-smart-contracts.build-embed-schema",
+        "title": "Concordium Smart Contracts: Build contract (embed schema)"
       }
     ],
     "taskDefinitions": [

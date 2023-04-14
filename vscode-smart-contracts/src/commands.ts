@@ -29,8 +29,36 @@ export async function version() {
 
 /**
  * Run 'cargo-concordium build' using the directory of the currently focused editor.
+ * Printing the schema in base64 as part of stdout.
  */
-export async function build(editor: vscode.TextEditor) {
+export function build(editor: vscode.TextEditor) {
+  return buildWorker(editor, "stdout");
+}
+
+/**
+ * Run 'cargo-concordium build' using the directory of the currently focused editor.
+ * With no schema generation.
+ */
+export function buildSkipSchema(editor: vscode.TextEditor) {
+  return buildWorker(editor, "skip");
+}
+
+/**
+ * Run 'cargo-concordium build' using the directory of the currently focused editor.
+ * Embedding the schema into the resulting smart contract.
+ */
+export function buildEmbedSchema(editor: vscode.TextEditor) {
+  return buildWorker(editor, "embed");
+}
+
+/**
+ * Internal worker for running 'cargo-concordium build' using the directory of the currently focused editor.
+ * Takes the schema setting as an argument.
+ */
+async function buildWorker(
+  editor: vscode.TextEditor,
+  schemaSettings: cargoConcordium.SchemaSettings
+) {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
       "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
@@ -46,7 +74,12 @@ export async function build(editor: vscode.TextEditor) {
     await installWasmTarget();
   }
   const cwd = path.dirname(editor.document.uri.fsPath);
-  return vscode.tasks.executeTask(await cargoConcordium.build(cwd));
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(
+    editor.document.uri
+  );
+  return vscode.tasks.executeTask(
+    await cargoConcordium.build(cwd, workspaceFolder, schemaSettings)
+  );
 }
 
 /**

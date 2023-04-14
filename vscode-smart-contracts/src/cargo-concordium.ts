@@ -70,10 +70,16 @@ export interface ConcordiumTaskDefinition extends vscode.TaskDefinition {
   cwd?: string;
 }
 
+/**
+ * Type representing the different settings for schema generation during cargo-concordium build.
+ */
+export type SchemaSettings = "skip" | "embed" | "stdout";
+
 /** Construct a task for running cargo-concordium build in a given directory */
 export async function build(
   cwd: string,
-  scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace
+  scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
+  schemaSettings: SchemaSettings = "stdout"
 ) {
   const executable = await getResolvedExecutablePath();
   const taskDefinition: ConcordiumTaskDefinition = {
@@ -86,8 +92,20 @@ export async function build(
     scope,
     "Build smart contract",
     cwd,
-    new vscode.ProcessExecution(executable, ["concordium", "build"], {
-      cwd,
-    })
+    new vscode.ProcessExecution(
+      executable,
+      [
+        "concordium",
+        "build",
+        ...(schemaSettings === "skip"
+          ? []
+          : schemaSettings === "embed"
+          ? ["--schema-embed"]
+          : ["--schema-base64-out", "-"]),
+      ],
+      {
+        cwd,
+      }
+    )
   );
 }

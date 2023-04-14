@@ -1,6 +1,5 @@
 /*
  * This module contains all of the commands exposed by the extension.
- *
  */
 
 import * as vscode from "vscode";

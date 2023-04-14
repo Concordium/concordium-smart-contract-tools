@@ -8,7 +8,6 @@ import * as vscode from "vscode";
 
 // Create a version of execFile, which uses promises instead of callbacks.
 const execFile = util.promisify(childProcess.execFile);
-const exec = util.promisify(childProcess.exec);
 
 /** Get the path to the executable shipped with the extension */
 function getBundledExecutablePath(): string {
@@ -32,7 +31,8 @@ function getBundledExecutablePath(): string {
 /**
  * Get the cargo-concordium executable.
  *
- * Uses the custom-executable from settings otherwise fallbacks to the executables included in the extension */
+ * Uses the custom-executable from settings otherwise fallbacks to the executables included in the extension
+ */
 export async function getResolvedExecutablePath(): Promise<string> {
   const customExecutable = await config.getCustomExecutablePath();
   if (customExecutable !== null) {
@@ -53,10 +53,21 @@ export async function version(): Promise<string> {
   return stdout;
 }
 
+/**
+ * Task type. Used by VS Code to match a task provider with a task provided by the user.
+ * Should match the schema specified in the package.json (contributes.taskDefinitions)
+ */
+export const CONCORDIUM_TASK_TYPE = "Concordium";
+
+/**
+ * Task definition for tasks provided by this extension.
+ * Captures the information to construct a task and should match the schema
+ * specified in the package.json (contributes.taskDefinitions).
+ */
 export interface ConcordiumTaskDefinition extends vscode.TaskDefinition {
-  type: "Concordium";
+  type: typeof CONCORDIUM_TASK_TYPE;
   command: "build";
-  cwd: string;
+  cwd?: string;
 }
 
 /** Construct a task for running cargo-concordium build in a given directory */
@@ -66,15 +77,15 @@ export async function build(
 ) {
   const executable = await getResolvedExecutablePath();
   const taskDefinition: ConcordiumTaskDefinition = {
-    type: "Concordium",
+    type: CONCORDIUM_TASK_TYPE,
     command: "build",
     cwd,
   };
   return new vscode.Task(
     taskDefinition,
     scope,
-    `build - ${cwd}`,
-    "Concordium",
+    `build`,
+    cwd,
     new vscode.ProcessExecution(executable, ["concordium", "build"], {
       cwd,
     })

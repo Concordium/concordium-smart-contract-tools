@@ -1,7 +1,6 @@
 /*
  * This module is the entrypoint of the extension.
  * The exported functions have special meaning and are called by VS Code.
- *
  */
 
 import * as vscode from "vscode";
@@ -10,7 +9,10 @@ import * as util from "node:util";
 import * as globCallback from "glob";
 import * as cargoConcordium from "./cargo-concordium";
 import * as path from "node:path";
-import { ConcordiumTaskDefinition } from "./cargo-concordium";
+import {
+  CONCORDIUM_TASK_TYPE,
+  ConcordiumTaskDefinition,
+} from "./cargo-concordium";
 
 const glob = util.promisify(globCallback);
 
@@ -29,36 +31,57 @@ export function activate(context: vscode.ExtensionContext) {
       "concordium-smart-contracts.build",
       Commands.build
     ),
-    vscode.tasks.registerTaskProvider("Concordium", taskProvider)
+    vscode.tasks.registerTaskProvider(CONCORDIUM_TASK_TYPE, taskProvider)
   );
 }
 
+/**
+ * Task provider for Concordium tasks.
+ */
 const taskProvider: vscode.TaskProvider = {
+  /** Search the current workspace for possible tasks */
   async provideTasks() {
     const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
     const tasks = await Promise.all(
       workspaceFolders.map(async (workspaceFolder) => {
         const workspaceRoot = workspaceFolder.uri.fsPath;
-        const cargoFiles = await glob("**/Cargo.toml", {
-          cwd: workspaceRoot,
-        });
+        const cargoProjectDirs = await getCargoProjectDirs(workspaceRoot);
         return Promise.all(
-          cargoFiles
-            .map(path.dirname)
-            .map((cwd) => cargoConcordium.build(cwd, workspaceFolder))
+          cargoProjectDirs.map((cwd) =>
+            cargoConcordium.build(cwd, workspaceFolder)
+          )
         );
       })
     );
     return tasks.flat();
   },
+  /**
+   * Resolve a user provided task definition.
+   * Returning undefined fallback to search the output of `provideTasks`
+   * for a matching task, which is slow.
+   */
   async resolveTask(task) {
     if (task.definition.command === "build") {
       const definition = <ConcordiumTaskDefinition>task.definition;
-      const resolvedTask = await cargoConcordium.build(definition.cwd);
-      // resolveTask requires that the same definition object be used.
+      // Fallback to the first workspace folder.
+      const fallbackCwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+      const cwd = definition.cwd ?? fallbackCwd;
+      if (cwd === undefined) {
+        return undefined;
+      }
+      const resolvedTask = await cargoConcordium.build(cwd);
+      // resolveTask requires that the same definition object to be used.
       resolvedTask.definition = task.definition;
       return resolvedTask;
     }
     return undefined;
   },
 };
+
+/** Find directories containing a Cargo.toml file in a given directory */
+async function getCargoProjectDirs(rootDir: string) {
+  const cargoFiles = await glob("**/Cargo.toml", {
+    cwd: rootDir,
+  });
+  return cargoFiles.map(path.dirname);
+}

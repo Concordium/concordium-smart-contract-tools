@@ -84,7 +84,7 @@ export async function build(
   return new vscode.Task(
     taskDefinition,
     scope,
-    `build`,
+    "Build smart contract",
     cwd,
     new vscode.ProcessExecution(executable, ["concordium", "build"], {
       cwd,

@@ -2,17 +2,10 @@
 
 This extension provides the functionality needed for [developing smart contracts](https://developer.concordium.software/en/mainnet/smart-contracts/general/introduction.html) for the [Concordium Blockchain](https://concordium.com/).
 
-<!--
 ## Features
 
- Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
--->
+- Features provided by [`cargo-concordium`](https://github.com/Concordium/concordium-smart-contract-tools/tree/main/cargo-concordium) integrated into VS Code.
+- Provide tasks for building smart contract projects.
 
 ## Requirements
 
@@ -24,12 +17,6 @@ This extension contributes the following settings:
 
 * `concordium-smart-contracts.custom-executable`: `string | null` (default `null`) <br>
   Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`
-
-<!--
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
--->
 
 ## Release Notes
 

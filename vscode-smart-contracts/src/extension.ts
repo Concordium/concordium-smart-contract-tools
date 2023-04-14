@@ -27,7 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
       "concordium-smart-contracts.version",
       Commands.version
     ),
-    vscode.commands.registerCommand(
+    vscode.commands.registerTextEditorCommand(
       "concordium-smart-contracts.build",
       Commands.build
     ),

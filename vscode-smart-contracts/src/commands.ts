@@ -29,9 +29,8 @@ export async function version() {
 
 /**
  * Run 'cargo-concordium build' using the directory of the currently focused editor.
- * Shows an error if no editor is focused.
  */
-export async function build() {
+export async function build(editor: vscode.TextEditor) {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
       "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
@@ -46,25 +45,8 @@ export async function build() {
     }
     await installWasmTarget();
   }
-  const cwd = getActiveEditorDirectory();
-  if (cwd === undefined) {
-    // The command will only show up in the UI when focusing some editor,
-    // So this case can only happen when controlling the extension programmably.
-    vscode.window.showErrorMessage(
-      "Unexpected error: Unable to determine the current working directory for the build command"
-    );
-    return;
-  }
+  const cwd = path.dirname(editor.document.uri.fsPath);
   return vscode.tasks.executeTask(await cargoConcordium.build(cwd));
-}
-
-/** Get the path for the currently active editor.
- * Returns undefined if no editor is active. */
-function getActiveEditorDirectory() {
-  const editor = vscode.window.activeTextEditor;
-  if (editor !== undefined) {
-    return path.dirname(editor.document.uri.fsPath);
-  }
 }
 
 /**
@@ -89,7 +71,7 @@ function installWasmTarget() {
     { type: cargoConcordium.CONCORDIUM_TASK_TYPE, command: "install wasm" },
     vscode.TaskScope.Workspace,
     `Install WASM target`,
-    "build contract",
+    "Build smart contract",
     execution
   );
   return executeAndAwaitTask(task);

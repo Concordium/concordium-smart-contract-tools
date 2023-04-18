@@ -2,10 +2,22 @@
 
 This extension provides the functionality needed for [developing smart contracts](https://developer.concordium.software/en/mainnet/smart-contracts/general/introduction.html) for the [Concordium Blockchain](https://concordium.com/).
 
+Features provided by [`cargo-concordium`](https://github.com/Concordium/concordium-smart-contract-tools/tree/main/cargo-concordium) integrated into VS Code.
+
 ## Features
 
-- Features provided by [`cargo-concordium`](https://github.com/Concordium/concordium-smart-contract-tools/tree/main/cargo-concordium) integrated into VS Code.
-- Provide tasks for building smart contract projects.
+### Command for building smart contract
+
+Run a smart contract build using a command.
+
+![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/build-contract.gif)
+
+### Provide tasks for smart contract projects
+
+Searches the workspace for common smart contract tasks.
+
+![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/run-task-build.gif)
+
 
 ## Requirements
 

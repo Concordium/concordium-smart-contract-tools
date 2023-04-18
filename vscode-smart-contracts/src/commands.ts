@@ -5,7 +5,7 @@
 import * as vscode from "vscode";
 import * as util from "node:util";
 import * as cargoConcordium from "./cargo-concordium";
-import { ConfigError } from "./configuration";
+import * as config from "./configuration";
 import * as path from "node:path";
 import * as childProcess from "node:child_process";
 
@@ -19,7 +19,7 @@ export async function version() {
     const version = await cargoConcordium.version();
     vscode.window.showInformationMessage(version);
   } catch (error) {
-    if (error instanceof ConfigError) {
+    if (error instanceof config.ConfigError) {
       vscode.window.showErrorMessage(error.message);
     } else {
       vscode.window.showErrorMessage("Unexpected error: " + error);
@@ -52,12 +52,17 @@ export function buildEmbedSchema(editor: vscode.TextEditor) {
 }
 
 /**
+ * Type representing the different settings for schema generation during cargo-concordium build.
+ */
+type SchemaSettings = "skip" | "embed" | "stdout";
+
+/**
  * Internal worker for running 'cargo-concordium build' using the directory of the currently focused editor.
  * Takes the schema setting as an argument.
  */
 async function buildWorker(
   editor: vscode.TextEditor,
-  schemaSettings: cargoConcordium.SchemaSettings
+  schemaSettings: SchemaSettings
 ) {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
@@ -77,8 +82,16 @@ async function buildWorker(
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(
     editor.document.uri
   );
+  const schemaArgs =
+    schemaSettings === "skip"
+      ? []
+      : schemaSettings === "embed"
+      ? ["--schema-embed"]
+      : ["--schema-base64-out", "-"];
+  const additionalArgs = config.getAdditionalBuildArgs();
+  const args = schemaArgs.concat(additionalArgs);
   return vscode.tasks.executeTask(
-    await cargoConcordium.build(cwd, workspaceFolder, schemaSettings)
+    await cargoConcordium.build(cwd, workspaceFolder, args)
   );
 }
 

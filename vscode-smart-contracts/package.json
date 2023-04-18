@@ -39,7 +39,7 @@
     ],
     "taskDefinitions": [
       {
-        "type": "Concordium",
+        "type": "concordium",
         "required": [
           "command"
         ],
@@ -51,6 +51,16 @@
           "cwd": {
             "type": "string",
             "description": "The directory to run the command from. If not provided, the root of the first open workspace will be used."
+          },
+          "args": {
+            "type": "array",
+            "description": "Arguments appended to the command",
+            "items": {
+              "title": "argument",
+              "description": "Additional argument appended to the command",
+              "type": "string"
+            },
+            "default": []
           }
         }
       }
@@ -66,6 +76,17 @@
           "scope": "machine-overridable",
           "default": null,
           "markdownDescription": "Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`"
+        },
+        "concordium-smart-contracts.additional-build-args": {
+          "type": "array",
+          "items": {
+            "title": "argument",
+            "description": "Additional argument appended to the build command",
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Provide additional arguments for `cargo-concordium` when running the build smart contract command."
         }
       }
     }

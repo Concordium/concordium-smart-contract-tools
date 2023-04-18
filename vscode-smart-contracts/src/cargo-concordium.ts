@@ -57,7 +57,7 @@ export async function version(): Promise<string> {
  * Task type. Used by VS Code to match a task provider with a task provided by the user.
  * Should match the schema specified in the package.json (contributes.taskDefinitions)
  */
-export const CONCORDIUM_TASK_TYPE = "Concordium";
+export const CONCORDIUM_TASK_TYPE = "concordium";
 
 /**
  * Task definition for tasks provided by this extension.
@@ -68,24 +68,21 @@ export interface ConcordiumTaskDefinition extends vscode.TaskDefinition {
   type: typeof CONCORDIUM_TASK_TYPE;
   command: "build";
   cwd?: string;
+  args?: string[];
 }
-
-/**
- * Type representing the different settings for schema generation during cargo-concordium build.
- */
-export type SchemaSettings = "skip" | "embed" | "stdout";
 
 /** Construct a task for running cargo-concordium build in a given directory */
 export async function build(
   cwd: string,
   scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
-  schemaSettings: SchemaSettings = "stdout"
+  args?: string[]
 ) {
   const executable = await getResolvedExecutablePath();
   const taskDefinition: ConcordiumTaskDefinition = {
     type: CONCORDIUM_TASK_TYPE,
     command: "build",
     cwd,
+    args,
   };
   return new vscode.Task(
     taskDefinition,
@@ -94,15 +91,7 @@ export async function build(
     cwd,
     new vscode.ProcessExecution(
       executable,
-      [
-        "concordium",
-        "build",
-        ...(schemaSettings === "skip"
-          ? []
-          : schemaSettings === "embed"
-          ? ["--schema-embed"]
-          : ["--schema-base64-out", "-"]),
-      ],
+      ["concordium", "build", ...(args ?? [])],
       {
         cwd,
       }

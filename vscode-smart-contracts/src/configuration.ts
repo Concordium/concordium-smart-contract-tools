@@ -18,6 +18,14 @@ export class ConfigError extends Error {
 export const SECTION = "concordium-smart-contracts";
 /** Name for the setting to provide a path to a custom cargo-concordium executable. */
 export const CUSTOM_EXECUTABLE = "custom-executable";
+/** Name for the setting to provide additional arguments for when running cargo-concordium build. */
+export const ADDITIONAL_BUILD_ARGUMENTS = "additional-build-args";
+
+/** Type for the custom executable setting, must match the corresponding type schema in package.json */
+type CustomExecutableConfig = string | null;
+
+/** Type for the additional build args setting, must match the corresponding type schema in package.json */
+type AdditionalBuildArgsConfig = string[];
 
 /** Get and validate the custom executable path set by the user.
  * Return null if not set by the user.
@@ -26,7 +34,7 @@ export const CUSTOM_EXECUTABLE = "custom-executable";
 export async function getCustomExecutablePath(): Promise<string | null> {
   const customPath = vscode.workspace
     .getConfiguration(SECTION)
-    .get<string | null>(CUSTOM_EXECUTABLE);
+    .get<CustomExecutableConfig>(CUSTOM_EXECUTABLE);
   if (customPath === undefined || customPath === null) {
     return null;
   }
@@ -66,4 +74,12 @@ export async function getCustomExecutablePath(): Promise<string | null> {
   }
 
   return resolvedPath;
+}
+
+/** Get additional build arguments from configurations */
+export function getAdditionalBuildArgs(): string[] {
+  const argsOption = vscode.workspace
+    .getConfiguration(SECTION)
+    .get<AdditionalBuildArgsConfig>(ADDITIONAL_BUILD_ARGUMENTS);
+  return argsOption ?? [];
 }

@@ -29,6 +29,9 @@ This extension contributes the following settings:
 
 * `concordium-smart-contracts.custom-executable`: `string | null` (default `null`) <br>
   Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`
+* `concordium-smart-contracts.additional-build-args`: `string[]` (default `[]`) <br>
+  Provide additional arguments for `cargo-concordium` when running the build smart contract command.
+
 
 ## Release Notes
 

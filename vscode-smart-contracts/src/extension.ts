@@ -72,12 +72,23 @@ const taskProvider: vscode.TaskProvider = {
     if (task.definition.command === "build") {
       const definition = <ConcordiumTaskDefinition>task.definition;
       // Fallback to the first workspace folder.
-      const fallbackCwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+      const fallbackWorkspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const fallbackCwd = fallbackWorkspaceFolder?.uri.fsPath;
       const cwd = definition.cwd ?? fallbackCwd;
       if (cwd === undefined) {
         return undefined;
       }
-      const resolvedTask = await cargoConcordium.build(cwd);
+
+      const workspaceFolder = vscode.workspace.getWorkspaceFolder(
+        vscode.Uri.file(cwd)
+      );
+      const additionalArgs = definition.args ?? [];
+      const args = ["--schema-base64-out", "-"].concat(additionalArgs);
+      const resolvedTask = await cargoConcordium.build(
+        cwd,
+        workspaceFolder,
+        args
+      );
       // resolveTask requires that the same definition object to be used.
       resolvedTask.definition = task.definition;
       return resolvedTask;

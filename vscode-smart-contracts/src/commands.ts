@@ -142,3 +142,32 @@ function executeAndAwaitTask(task: vscode.Task) {
     }
   });
 }
+
+/**
+ * Run 'cargo-concordium test' using the directory of the currently focused editor.
+ */
+export async function test(editor: vscode.TextEditor) {
+  if (!(await haveWasmTargetInstalled())) {
+    const response = await vscode.window.showInformationMessage(
+      "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
+      "Install",
+      "Abort"
+    );
+    if (response === "Abort") {
+      vscode.window.showErrorMessage(
+        "Unable to run tests because of missing wasm32-unknown-unknown target."
+      );
+      return;
+    }
+    await installWasmTarget();
+  }
+  const cwd = path.dirname(editor.document.uri.fsPath);
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(
+    editor.document.uri
+  );
+
+  const args = config.getAdditionalTestArgs();
+  return vscode.tasks.executeTask(
+    await cargoConcordium.test(cwd, workspaceFolder, args)
+  );
+}

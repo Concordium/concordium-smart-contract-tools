@@ -12,6 +12,13 @@ Run a smart contract build using a command.
 
 ![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/build-contract.gif)
 
+### Command for testing smart contract
+
+Run a smart contract tests using a command.
+
+![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/test-contract.gif)
+
+
 ### Provide tasks for smart contract projects
 
 Searches the workspace for common smart contract tasks.
@@ -31,6 +38,8 @@ This extension contributes the following settings:
   Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`
 * `concordium-smart-contracts.additional-build-args`: `string[]` (default `[]`) <br>
   Provide additional arguments for `cargo-concordium` when running the build smart contract command.
+* `concordium-smart-contracts.additional-test-args`: `string[]` (default `[]`) <br>
+  Provide additional arguments for `cargo-concordium` when running the test smart contract command.
 
 
 ## Release Notes

@@ -66,7 +66,7 @@ export const CONCORDIUM_TASK_TYPE = "concordium";
  */
 export interface ConcordiumTaskDefinition extends vscode.TaskDefinition {
   type: typeof CONCORDIUM_TASK_TYPE;
-  command: "build";
+  command: "build" | "test";
   cwd?: string;
   args?: string[];
 }
@@ -92,6 +92,34 @@ export async function build(
     new vscode.ProcessExecution(
       executable,
       ["concordium", "build", ...(args ?? [])],
+      {
+        cwd,
+      }
+    )
+  );
+}
+
+/** Construct a task for running cargo-concordium test in a given directory */
+export async function test(
+  cwd: string,
+  scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
+  args?: string[]
+) {
+  const executable = await getResolvedExecutablePath();
+  const taskDefinition: ConcordiumTaskDefinition = {
+    type: CONCORDIUM_TASK_TYPE,
+    command: "test",
+    cwd,
+    args,
+  };
+  return new vscode.Task(
+    taskDefinition,
+    scope,
+    "Test smart contract",
+    cwd,
+    new vscode.ProcessExecution(
+      executable,
+      ["concordium", "test", ...(args ?? [])],
       {
         cwd,
       }

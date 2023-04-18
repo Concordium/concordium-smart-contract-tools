@@ -39,6 +39,10 @@ export function activate(context: vscode.ExtensionContext) {
       "concordium-smart-contracts.build-embed-schema",
       Commands.buildEmbedSchema
     ),
+    vscode.commands.registerTextEditorCommand(
+      "concordium-smart-contracts.test",
+      Commands.test
+    ),
     vscode.tasks.registerTaskProvider(CONCORDIUM_TASK_TYPE, taskProvider)
   );
 }
@@ -55,9 +59,10 @@ const taskProvider: vscode.TaskProvider = {
         const workspaceRoot = workspaceFolder.uri.fsPath;
         const cargoProjectDirs = await getCargoProjectDirs(workspaceRoot);
         return Promise.all(
-          cargoProjectDirs.map((cwd) =>
-            cargoConcordium.build(cwd, workspaceFolder)
-          )
+          cargoProjectDirs.flatMap((cwd) => [
+            cargoConcordium.build(cwd, workspaceFolder),
+            cargoConcordium.test(cwd, workspaceFolder),
+          ])
         );
       })
     );
@@ -88,6 +93,27 @@ const taskProvider: vscode.TaskProvider = {
         cwd,
         workspaceFolder,
         args
+      );
+      // resolveTask requires that the same definition object to be used.
+      resolvedTask.definition = task.definition;
+      return resolvedTask;
+    } else if (task.definition.command === "test") {
+      const definition = <ConcordiumTaskDefinition>task.definition;
+      // Fallback to the first workspace folder.
+      const fallbackWorkspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const fallbackCwd = fallbackWorkspaceFolder?.uri.fsPath;
+      const cwd = definition.cwd ?? fallbackCwd;
+      if (cwd === undefined) {
+        return undefined;
+      }
+
+      const workspaceFolder = vscode.workspace.getWorkspaceFolder(
+        vscode.Uri.file(cwd)
+      );
+      const resolvedTask = await cargoConcordium.build(
+        cwd,
+        workspaceFolder,
+        definition.args ?? []
       );
       // resolveTask requires that the same definition object to be used.
       resolvedTask.definition = task.definition;

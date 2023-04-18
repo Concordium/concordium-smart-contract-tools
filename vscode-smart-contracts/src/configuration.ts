@@ -20,12 +20,14 @@ export const SECTION = "concordium-smart-contracts";
 export const CUSTOM_EXECUTABLE = "custom-executable";
 /** Name for the setting to provide additional arguments for when running cargo-concordium build. */
 export const ADDITIONAL_BUILD_ARGUMENTS = "additional-build-args";
+/** Name for the setting to provide additional arguments for when running cargo-concordium test. */
+export const ADDITIONAL_TEST_ARGUMENTS = "additional-test-args";
 
 /** Type for the custom executable setting, must match the corresponding type schema in package.json */
 type CustomExecutableConfig = string | null;
 
-/** Type for the additional build args setting, must match the corresponding type schema in package.json */
-type AdditionalBuildArgsConfig = string[];
+/** Type for the additional build/test args setting, must match the corresponding type schema in package.json */
+type AdditionalArgsConfig = string[];
 
 /** Get and validate the custom executable path set by the user.
  * Return null if not set by the user.
@@ -80,6 +82,14 @@ export async function getCustomExecutablePath(): Promise<string | null> {
 export function getAdditionalBuildArgs(): string[] {
   const argsOption = vscode.workspace
     .getConfiguration(SECTION)
-    .get<AdditionalBuildArgsConfig>(ADDITIONAL_BUILD_ARGUMENTS);
+    .get<AdditionalArgsConfig>(ADDITIONAL_BUILD_ARGUMENTS);
+  return argsOption ?? [];
+}
+
+/** Get additional test arguments from configurations */
+export function getAdditionalTestArgs(): string[] {
+  const argsOption = vscode.workspace
+    .getConfiguration(SECTION)
+    .get<AdditionalArgsConfig>(ADDITIONAL_TEST_ARGUMENTS);
   return argsOption ?? [];
 }

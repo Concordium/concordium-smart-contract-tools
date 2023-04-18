@@ -35,6 +35,10 @@
       {
         "command": "concordium-smart-contracts.build-embed-schema",
         "title": "Concordium Smart Contracts: Build contract (embed schema)"
+      },
+      {
+        "command": "concordium-smart-contracts.test",
+        "title": "Concordium Smart Contracts: Test contract"
       }
     ],
     "taskDefinitions": [
@@ -87,6 +91,17 @@
           "default": [],
           "scope": "resource",
           "markdownDescription": "Provide additional arguments for `cargo-concordium` when running the build smart contract command."
+        },
+        "concordium-smart-contracts.additional-test-args": {
+          "type": "array",
+          "items": {
+            "title": "argument",
+            "description": "Additional argument appended to the test command",
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Provide additional arguments for `cargo-concordium` when running the test smart contract command."
         }
       }
     }

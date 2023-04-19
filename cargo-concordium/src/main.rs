@@ -558,6 +558,10 @@ pub fn main() -> anyhow::Result<()> {
                         );
                     }
 
+                    if let Some(out_dir) = schema_out.parent() {
+                        fs::create_dir_all(out_dir)
+                            .context("Unable to create directory for the resulting schema")?;
+                    }
                     fs::write(schema_out, &module_schema_bytes)
                         .context("Could not write schema file.")?;
                 }

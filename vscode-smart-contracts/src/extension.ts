@@ -94,7 +94,8 @@ const taskProvider: vscode.TaskProvider = {
         workspaceFolder,
         args
       );
-      // resolveTask requires that the same definition object to be used.
+      // resolveTask requires that the same task definition object (that is the
+      // "definition" property on the task being resolved) should be used.
       resolvedTask.definition = task.definition;
       return resolvedTask;
     } else if (task.definition.command === "test") {
@@ -115,7 +116,8 @@ const taskProvider: vscode.TaskProvider = {
         workspaceFolder,
         definition.args ?? []
       );
-      // resolveTask requires that the same definition object to be used.
+      // resolveTask requires that the same task definition object (that is the
+      // "definition" property on the task being resolved) should be used.
       resolvedTask.definition = task.definition;
       return resolvedTask;
     }

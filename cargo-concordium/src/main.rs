@@ -841,6 +841,11 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         };
 
         if let Some(file_path) = &runner.out_bin {
+            if let Some(out_dir) = file_path.parent() {
+                fs::create_dir_all(out_dir)
+                    .context("Unable to create directory for the binary state output")?;
+            }
+
             fs::write(file_path, &state).context("Could not write state to file")?;
         }
         if let Some(file_path) = &runner.out_json {
@@ -855,6 +860,10 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             let json_string = schema_state
                 .to_json_string_pretty(state)
                 .map_err(|_| anyhow::anyhow!("Could not output contract state in JSON."))?;
+            if let Some(out_dir) = file_path.parent() {
+                fs::create_dir_all(out_dir)
+                    .context("Unable to create directory for the JSON state output")?;
+            }
             fs::write(file_path, json_string).context("Could not write out the state.")?;
         }
         Ok(())

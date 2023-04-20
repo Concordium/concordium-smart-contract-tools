@@ -93,7 +93,13 @@ async function buildWorker(
     schemaSettings === "skip"
       ? []
       : schemaSettings === "embed-and-outDir"
-      ? ["--schema-embed", "--schema-json-out", outDir]
+      ? [
+          "--schema-embed",
+          "--schema-json-out",
+          outDir,
+          "--schema-base64-out",
+          path.join(outDir, "module-schema.bs64"),
+        ]
       : ["--schema-json-out", outDir];
   const additionalArgs = config.getAdditionalBuildArgs();
   const moduleOut = path.join(outDir, "module.wasm.v1");

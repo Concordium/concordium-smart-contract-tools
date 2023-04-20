@@ -66,6 +66,8 @@ const taskProvider: vscode.TaskProvider = {
               path.join(defaultOutDir, "module.wasm.v1"),
               "--schema-json-out",
               defaultOutDir,
+              "--schema-base64-out",
+              path.join(defaultOutDir, "module-schema.bs64"),
             ];
             return [
               cargoConcordium.build(cwd, workspaceFolder, defaultArgs),

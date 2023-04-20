@@ -79,8 +79,9 @@ const taskProvider: vscode.TaskProvider = {
   },
   /**
    * Resolve a user provided task definition.
-   * Returning undefined fallback to search the output of `provideTasks`
-   * for a matching task, which is slow.
+   *
+   * Returning undefined from this function will result in VS Code triggering and
+   * searching the output of `provideTasks` for a task with a matching task definition.
    */
   async resolveTask(task) {
     if (task.definition.command === "build") {

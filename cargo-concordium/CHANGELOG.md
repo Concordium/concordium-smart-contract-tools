@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Non-existing directories in paths provided to the following arguments for when running `cargo concordium build` will now be created instead of causing an error: `--out`, `--schema-out`, `--schema-json-out`, `--schema-base64-out`.
+  Likewise for the `--out-bin` and `--out-json` arguments provided to `cargo concordium run init` and `cargo concordium run update`.
+
 ## 2.7.1
 
 - Support calling `cargo concordium build` and `cargo concordium test` from a project subdirectory.

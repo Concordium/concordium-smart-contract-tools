@@ -558,15 +558,14 @@ pub fn main() -> anyhow::Result<()> {
                         );
                     }
 
+                    if let Some(out_dir) = schema_out.parent() {
+                        fs::create_dir_all(out_dir)
+                            .context("Unable to create directory for the resulting schema.")?;
+                    }
                     fs::write(schema_out, &module_schema_bytes)
                         .context("Could not write schema file.")?;
                 }
                 if let Some(schema_json_out) = schema_json_out {
-                    ensure!(
-                        schema_json_out.is_dir(),
-                        "The `--schema-json-out` flag should point to an existing directory \
-                         (expected input `./my/path/`)."
-                    );
                     write_json_schema(&schema_json_out, module_schema)
                         .context("Could not write JSON schema files.")?;
                 }
@@ -837,7 +836,12 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         };
 
         if let Some(file_path) = &runner.out_bin {
-            fs::write(file_path, &state).context("Could not write state to file")?;
+            if let Some(out_dir) = file_path.parent() {
+                fs::create_dir_all(out_dir)
+                    .context("Unable to create directory for the binary state output.")?;
+            }
+
+            fs::write(file_path, &state).context("Could not write state to file.")?;
         }
         if let Some(file_path) = &runner.out_json {
             contract_schema_opt.context(
@@ -851,6 +855,10 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             let json_string = schema_state
                 .to_json_string_pretty(state)
                 .map_err(|_| anyhow::anyhow!("Could not output contract state in JSON."))?;
+            if let Some(out_dir) = file_path.parent() {
+                fs::create_dir_all(out_dir)
+                    .context("Unable to create directory for the JSON state output.")?;
+            }
             fs::write(file_path, json_string).context("Could not write out the state.")?;
         }
         Ok(())

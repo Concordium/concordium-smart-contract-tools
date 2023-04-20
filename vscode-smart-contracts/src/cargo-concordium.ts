@@ -75,7 +75,7 @@ export interface ConcordiumTaskDefinition extends vscode.TaskDefinition {
 export async function build(
   cwd: string,
   scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
-  args?: string[]
+  args: string[] = []
 ) {
   const executable = await getResolvedExecutablePath();
   const taskDefinition: ConcordiumTaskDefinition = {
@@ -84,18 +84,15 @@ export async function build(
     cwd,
     args,
   };
+
   return new vscode.Task(
     taskDefinition,
     scope,
     "Build smart contract",
     cwd,
-    new vscode.ProcessExecution(
-      executable,
-      ["concordium", "build", ...(args ?? [])],
-      {
-        cwd,
-      }
-    )
+    new vscode.ProcessExecution(executable, ["concordium", "build", ...args], {
+      cwd,
+    })
   );
 }
 
@@ -103,7 +100,7 @@ export async function build(
 export async function test(
   cwd: string,
   scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
-  args?: string[]
+  args: string[] = []
 ) {
   const executable = await getResolvedExecutablePath();
   const taskDefinition: ConcordiumTaskDefinition = {
@@ -117,12 +114,8 @@ export async function test(
     scope,
     "Test smart contract",
     cwd,
-    new vscode.ProcessExecution(
-      executable,
-      ["concordium", "test", ...(args ?? [])],
-      {
-        cwd,
-      }
-    )
+    new vscode.ProcessExecution(executable, ["concordium", "test", ...args], {
+      cwd,
+    })
   );
 }

@@ -59,10 +59,19 @@ const taskProvider: vscode.TaskProvider = {
         const workspaceRoot = workspaceFolder.uri.fsPath;
         const cargoProjectDirs = await getCargoProjectDirs(workspaceRoot);
         return Promise.all(
-          cargoProjectDirs.flatMap((cwd) => [
-            cargoConcordium.build(cwd, workspaceFolder),
-            cargoConcordium.test(cwd, workspaceFolder),
-          ])
+          cargoProjectDirs.flatMap((cwd) => {
+            const defaultOutDir = path.join(cwd, "out");
+            const defaultArgs = [
+              "--out",
+              path.join(defaultOutDir, "module.wasm.v1"),
+              "--schema-json-out",
+              defaultOutDir,
+            ];
+            return [
+              cargoConcordium.build(cwd, workspaceFolder, defaultArgs),
+              cargoConcordium.test(cwd, workspaceFolder),
+            ];
+          })
         );
       })
     );
@@ -87,12 +96,10 @@ const taskProvider: vscode.TaskProvider = {
       const workspaceFolder = vscode.workspace.getWorkspaceFolder(
         vscode.Uri.file(cwd)
       );
-      const additionalArgs = definition.args ?? [];
-      const args = ["--schema-base64-out", "-"].concat(additionalArgs);
       const resolvedTask = await cargoConcordium.build(
         cwd,
         workspaceFolder,
-        args
+        definition.args
       );
       // resolveTask requires that the same task definition object (that is the
       // "definition" property on the task being resolved) should be used.

@@ -32,7 +32,7 @@ export async function version() {
  * Printing the schema in base64 as part of stdout.
  */
 export function build(editor: vscode.TextEditor) {
-  return buildWorker(editor, "stdout");
+  return buildWorker(editor, "outDir");
 }
 
 /**
@@ -48,13 +48,13 @@ export function buildSkipSchema(editor: vscode.TextEditor) {
  * Embedding the schema into the resulting smart contract.
  */
 export function buildEmbedSchema(editor: vscode.TextEditor) {
-  return buildWorker(editor, "embed");
+  return buildWorker(editor, "embed-and-outDir");
 }
 
 /**
  * Type representing the different settings for schema generation during cargo-concordium build.
  */
-type SchemaSettings = "skip" | "embed" | "stdout";
+type SchemaSettings = "skip" | "embed-and-outDir" | "outDir";
 
 /**
  * Internal worker for running 'cargo-concordium build' using the directory of the currently focused editor.
@@ -82,17 +82,35 @@ async function buildWorker(
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(
     editor.document.uri
   );
+
+  const projectDir = await locateCargoProjectDir(cwd);
+  const outDir = path.join(projectDir, "out");
+
   const schemaArgs =
     schemaSettings === "skip"
       ? []
-      : schemaSettings === "embed"
-      ? ["--schema-embed"]
-      : ["--schema-base64-out", "-"];
+      : schemaSettings === "embed-and-outDir"
+      ? ["--schema-embed", "--schema-json-out", outDir]
+      : ["--schema-json-out", outDir];
   const additionalArgs = config.getAdditionalBuildArgs();
-  const args = schemaArgs.concat(additionalArgs);
+  const moduleOut = path.join(outDir, "module.wasm.v1");
+  const args = ["--out", moduleOut].concat(schemaArgs, additionalArgs);
   return vscode.tasks.executeTask(
     await cargoConcordium.build(cwd, workspaceFolder, args)
   );
+}
+
+/**
+ * Get the location of the current Cargo project.
+ * @param cwd Current location in a project.
+ */
+async function locateCargoProjectDir(cwd: string) {
+  const { stdout } = await exec("cargo locate-project", { cwd });
+  const out = JSON.parse(stdout);
+  if (!("root" in out)) {
+    throw new Error("Failed to find project root: Invalid format");
+  }
+  return path.dirname(out.root);
 }
 
 /**

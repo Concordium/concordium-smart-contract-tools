@@ -60,7 +60,7 @@ const taskProvider: vscode.TaskProvider = {
         const cargoProjectDirs = await getCargoProjectDirs(workspaceRoot);
         return Promise.all(
           cargoProjectDirs.flatMap((cwd) => {
-            const defaultOutDir = path.join(cwd, "out");
+            const defaultOutDir = path.join(cwd, Commands.DEFAULT_OUT_DIR_NAME);
             const defaultArgs = [
               "--out",
               path.join(defaultOutDir, "module.wasm.v1"),

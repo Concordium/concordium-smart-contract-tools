@@ -11,6 +11,9 @@ import * as childProcess from "node:child_process";
 
 const exec = util.promisify(childProcess.exec);
 
+/** The default name used for the output directory using the build command. */
+export const DEFAULT_OUT_DIR_NAME = "concordium-out";
+
 /**
  * Display the version of the cargo-concordium executable.
  */
@@ -84,7 +87,7 @@ async function buildWorker(
   );
 
   const projectDir = await locateCargoProjectDir(cwd);
-  const outDir = path.join(projectDir, "out");
+  const outDir = path.join(projectDir, DEFAULT_OUT_DIR_NAME);
 
   const schemaArgs =
     schemaSettings === "skip"

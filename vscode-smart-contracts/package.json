@@ -16,6 +16,10 @@
   "categories": [
     "Other"
   ],
+  "engines": {
+    "vscode": "^1.76.2",
+    "node": ">=16.x"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {

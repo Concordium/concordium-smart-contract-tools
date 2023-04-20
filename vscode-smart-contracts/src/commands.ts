@@ -45,7 +45,7 @@ export function buildSkipSchema(editor: vscode.TextEditor) {
 
 /**
  * Run 'cargo-concordium build' using the directory of the currently focused editor.
- * Embedding the schema into the resulting smart contract.
+ * Embedding the schema into the resulting smart contract module.
  */
 export function buildEmbedSchema(editor: vscode.TextEditor) {
   return buildWorker(editor, "embed-and-outDir");
@@ -123,7 +123,7 @@ async function haveWasmTargetInstalled() {
 
 /**
  * Install the wasm32-unknown-unknown target using rustup.
- * The returned promise resolves when the install task have ended.
+ * The returned promise resolves when the install task has ended.
  */
 function installWasmTarget() {
   const execution = new vscode.ProcessExecution("rustup", [
@@ -144,7 +144,7 @@ function installWasmTarget() {
 /**
  * Execute and await a task to end.
  * @param task The task to execute.
- * @returns Promise which resolves when the task have ended.
+ * @returns Promise which resolves when the task has ended.
  */
 function executeAndAwaitTask(task: vscode.Task) {
   return new Promise<void>((resolve, reject) => {

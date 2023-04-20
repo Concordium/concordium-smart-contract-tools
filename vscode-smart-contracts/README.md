@@ -6,25 +6,23 @@ Features provided by [`cargo-concordium`](https://github.com/Concordium/concordi
 
 ## Features
 
-### Command for building smart contract
+### Command for building a smart contract
 
-Run a smart contract build using a command.
+Running the smart contract build command.
 
 ![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/build-contract.gif)
 
 ### Command for testing smart contract
 
-Run a smart contract tests using a command.
+Running the smart contract tests command.
 
 ![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/test-contract.gif)
-
 
 ### Provide tasks for smart contract projects
 
 Searches the workspace for common smart contract tasks.
 
 ![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/run-task-build.gif)
-
 
 ## Requirements
 
@@ -57,10 +55,18 @@ Ensure to read through the extensions guidelines and follow the best practices f
 
 ### Development
 
-- Ensure to have a recent version of VS Code installed.
-- Make sure to have [NodeJS](https://nodejs.org/en) installed.
+- Ensure to have a recent version of VS Code installed (See package.json for minimal version).
+- Make sure to have [NodeJS](https://nodejs.org/en) installed (See package.json for minimal version).
 - Run `npm install` in the extension project directory.
-- Build `cargo-concordium` and move the resulting executable to `vscode-smart-contracts/executables/` (making the directory).
+- Build or download `cargo-concordium` and move the resulting executable to `vscode-smart-contracts/executables/` (making the directory).
+
+  On MacOS and Linux this can be done with the following commands (from the `vscode-smart-contracts` directory):
+
+  ```
+  mkdir executables
+  cargo build --manifest-path ../cargo-concordium/Cargo.toml
+  cp ../cargo-concordium/target/debug/cargo-concordium ./executables
+  ```
 
 To compile the typescript run:
 ```

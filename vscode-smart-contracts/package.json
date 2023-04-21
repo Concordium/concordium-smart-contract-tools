@@ -10,10 +10,9 @@
     "directory": "vscode-smart-contracts"
   },
   "license": "Apache-2.0",
-  "engines": {
-    "vscode": "^1.76.2"
-  },
   "categories": [
+    "Snippets",
+    "Testing",
     "Other"
   ],
   "engines": {
@@ -108,7 +107,13 @@
           "markdownDescription": "Provide additional arguments for `cargo-concordium` when running the test smart contract command."
         }
       }
-    }
+    },
+    "snippets": [
+      {
+        "language": "rust",
+        "path": "./snippets.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

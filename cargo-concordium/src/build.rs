@@ -112,7 +112,6 @@ pub fn build_contract(
     };
 
     let metadata = MetadataCommand::new()
-        .no_deps()
         .exec()
         .context("Could not access cargo metadata.")?;
 
@@ -324,7 +323,6 @@ pub fn build_contract_schema<A>(
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
     let metadata = MetadataCommand::new()
-        .no_deps()
         .exec()
         .context("Could not access cargo metadata.")?;
 
@@ -673,7 +671,6 @@ pub fn write_json_schema_to_file_v3(
 /// number generator. If `None` is given, a random seed will be sampled.
 pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
     let metadata = MetadataCommand::new()
-        .no_deps()
         .exec()
         .context("Could not access cargo metadata.")?;
 

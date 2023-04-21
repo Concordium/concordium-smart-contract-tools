@@ -43,6 +43,10 @@ export function activate(context: vscode.ExtensionContext) {
       "concordium-smart-contracts.test",
       Commands.test
     ),
+    vscode.commands.registerCommand(
+      "concordium-smart-contracts.setup-project",
+      Commands.setupProject
+    ),
     vscode.tasks.registerTaskProvider(CONCORDIUM_TASK_TYPE, taskProvider)
   );
 }

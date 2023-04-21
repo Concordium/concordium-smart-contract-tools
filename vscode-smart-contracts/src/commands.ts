@@ -198,3 +198,27 @@ export async function test(editor: vscode.TextEditor) {
     await cargoConcordium.test(cwd, workspaceFolder, args)
   );
 }
+
+/** Run 'cargo-concordium init' in a directory selected by the user */
+export async function setupProject() {
+  const defaultCwd = vscode.workspace.workspaceFolders?.[0].uri;
+  const directories = await vscode.window.showOpenDialog({
+    title: "Select directory to add the smart contract project directory",
+    openLabel: "Select",
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    defaultUri: defaultCwd,
+  });
+  if (directories === undefined) {
+    return;
+  }
+  const [cwd] = directories;
+  const executable = await cargoConcordium.getResolvedExecutablePath();
+  const terminal = vscode.window.createTerminal({
+    name: "Setup smart contract project",
+    cwd,
+  });
+  terminal.show();
+  terminal.sendText(executable + " concordium init");
+}

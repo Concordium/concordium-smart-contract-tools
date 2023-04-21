@@ -16,6 +16,10 @@
   "categories": [
     "Other"
   ],
+  "engines": {
+    "vscode": "^1.76.2",
+    "node": ">=16.x"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
@@ -23,6 +27,50 @@
       {
         "command": "concordium-smart-contracts.version",
         "title": "Concordium Smart Contracts: cargo-concordium version"
+      },
+      {
+        "command": "concordium-smart-contracts.build-embed-schema",
+        "title": "Concordium Smart Contracts: Build contract"
+      },
+      {
+        "command": "concordium-smart-contracts.build-skip-schema",
+        "title": "Concordium Smart Contracts: Build contract (no schema)"
+      },
+      {
+        "command": "concordium-smart-contracts.build",
+        "title": "Concordium Smart Contracts: Build contract (without embedding schema)"
+      },
+      {
+        "command": "concordium-smart-contracts.test",
+        "title": "Concordium Smart Contracts: Test contract"
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "concordium",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The cargo-command command to execute"
+          },
+          "cwd": {
+            "type": "string",
+            "description": "The directory to run the command from. If not provided, the root of the first open workspace will be used."
+          },
+          "args": {
+            "type": "array",
+            "description": "Arguments appended to the command",
+            "items": {
+              "title": "argument",
+              "description": "Additional argument appended to the command",
+              "type": "string"
+            },
+            "default": []
+          }
+        }
       }
     ],
     "configuration": {
@@ -36,6 +84,28 @@
           "scope": "machine-overridable",
           "default": null,
           "markdownDescription": "Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`"
+        },
+        "concordium-smart-contracts.additional-build-args": {
+          "type": "array",
+          "items": {
+            "title": "argument",
+            "description": "Additional argument appended to the build command",
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Provide additional arguments for `cargo-concordium` when running the build smart contract command."
+        },
+        "concordium-smart-contracts.additional-test-args": {
+          "type": "array",
+          "items": {
+            "title": "argument",
+            "description": "Additional argument appended to the test command",
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Provide additional arguments for `cargo-concordium` when running the test smart contract command."
         }
       }
     }
@@ -66,6 +136,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
+    "glob": "^8.1.0",
     "request-light": "^0.7.0"
   }
 }

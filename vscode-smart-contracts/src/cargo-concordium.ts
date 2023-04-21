@@ -31,7 +31,8 @@ function getBundledExecutablePath(): string {
 /**
  * Get the cargo-concordium executable.
  *
- * Uses the custom-executable from settings otherwise fallbacks to the executables included in the extension */
+ * Uses the custom-executable from settings otherwise fallbacks to the executables included in the extension
+ */
 export async function getResolvedExecutablePath(): Promise<string> {
   const customExecutable = await config.getCustomExecutablePath();
   if (customExecutable !== null) {
@@ -50,4 +51,71 @@ async function execute(...args: string[]) {
 export async function version(): Promise<string> {
   const { stdout } = await execute("--version");
   return stdout;
+}
+
+/**
+ * Task type. Used by VS Code to match a task provider with a task provided by the user.
+ * Should match the schema specified in the package.json (contributes.taskDefinitions)
+ */
+export const CONCORDIUM_TASK_TYPE = "concordium";
+
+/**
+ * Task definition for tasks provided by this extension.
+ * Captures the information to construct a task and should match the schema
+ * specified in the package.json (contributes.taskDefinitions).
+ */
+export interface ConcordiumTaskDefinition extends vscode.TaskDefinition {
+  type: typeof CONCORDIUM_TASK_TYPE;
+  command: "build" | "test";
+  cwd?: string;
+  args?: string[];
+}
+
+/** Construct a task for running cargo-concordium build in a given directory */
+export async function build(
+  cwd: string,
+  scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
+  args: string[] = []
+) {
+  const executable = await getResolvedExecutablePath();
+  const taskDefinition: ConcordiumTaskDefinition = {
+    type: CONCORDIUM_TASK_TYPE,
+    command: "build",
+    cwd,
+    args,
+  };
+
+  return new vscode.Task(
+    taskDefinition,
+    scope,
+    "Build smart contract",
+    cwd,
+    new vscode.ProcessExecution(executable, ["concordium", "build", ...args], {
+      cwd,
+    })
+  );
+}
+
+/** Construct a task for running cargo-concordium test in a given directory */
+export async function test(
+  cwd: string,
+  scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
+  args: string[] = []
+) {
+  const executable = await getResolvedExecutablePath();
+  const taskDefinition: ConcordiumTaskDefinition = {
+    type: CONCORDIUM_TASK_TYPE,
+    command: "test",
+    cwd,
+    args,
+  };
+  return new vscode.Task(
+    taskDefinition,
+    scope,
+    "Test smart contract",
+    cwd,
+    new vscode.ProcessExecution(executable, ["concordium", "test", ...args], {
+      cwd,
+    })
+  );
 }

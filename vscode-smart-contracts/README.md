@@ -2,17 +2,27 @@
 
 This extension provides the functionality needed for [developing smart contracts](https://developer.concordium.software/en/mainnet/smart-contracts/general/introduction.html) for the [Concordium Blockchain](https://concordium.com/).
 
-<!--
+Features provided by [`cargo-concordium`](https://github.com/Concordium/concordium-smart-contract-tools/tree/main/cargo-concordium) integrated into VS Code.
+
 ## Features
 
- Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### Command for building a smart contract
 
-For example if there is an image subfolder under your extension project workspace:
+Running the smart contract build command.
 
-\!\[feature X\]\(images/feature-x.png\)
+![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/build-contract.gif)
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
--->
+### Command for testing smart contract
+
+Running the smart contract tests command.
+
+![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/test-contract.gif)
+
+### Provide tasks for smart contract projects
+
+Searches the workspace for common smart contract tasks.
+
+![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/run-task-build.gif)
 
 ## Requirements
 
@@ -24,12 +34,11 @@ This extension contributes the following settings:
 
 * `concordium-smart-contracts.custom-executable`: `string | null` (default `null`) <br>
   Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`
+* `concordium-smart-contracts.additional-build-args`: `string[]` (default `[]`) <br>
+  Provide additional arguments for `cargo-concordium` when running the build smart contract command.
+* `concordium-smart-contracts.additional-test-args`: `string[]` (default `[]`) <br>
+  Provide additional arguments for `cargo-concordium` when running the test smart contract command.
 
-<!--
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
--->
 
 ## Release Notes
 
@@ -46,10 +55,18 @@ Ensure to read through the extensions guidelines and follow the best practices f
 
 ### Development
 
-- Ensure to have a recent version of VS Code installed.
-- Make sure to have [NodeJS](https://nodejs.org/en) installed.
+- Ensure to have a recent version of VS Code installed (See package.json for minimal version).
+- Make sure to have [NodeJS](https://nodejs.org/en) installed (See package.json for minimal version).
 - Run `npm install` in the extension project directory.
-- Build `cargo-concordium` and move the resulting executable to `vscode-smart-contracts/executables/` (making the directory).
+- Build or download `cargo-concordium` and move the resulting executable to `vscode-smart-contracts/executables/` (making the directory).
+
+  On MacOS and Linux this can be done with the following commands (from the `vscode-smart-contracts` directory):
+
+  ```
+  mkdir executables
+  cargo build --manifest-path ../cargo-concordium/Cargo.toml
+  cp ../cargo-concordium/target/debug/cargo-concordium ./executables
+  ```
 
 To compile the typescript run:
 ```

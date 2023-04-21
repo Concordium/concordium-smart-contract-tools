@@ -24,6 +24,11 @@ Searches the workspace for common smart contract tasks.
 
 ![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/run-task-build.gif)
 
+### Provide snippets for smart contract development
+
+A number of snippets are provided, all prefixed with `sc` (for smart contract).
+Just type `sc` in your smart contract source file and let IntelliSense show you the list of snippets.
+
 ## Requirements
 
 The extension relies on [`rustup`](https://rustup.rs/) and `cargo` being installed and available in PATH.

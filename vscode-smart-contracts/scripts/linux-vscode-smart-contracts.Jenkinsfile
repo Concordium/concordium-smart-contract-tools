@@ -1,0 +1,72 @@
+pipeline {
+    agent { label 'jenkins-worker' }
+    environment {
+        VERSION = sh(
+            returnStdout: true,
+            script: '''\
+                # Extract version number if not set as parameter
+                [ -z "$VERSION" ] && VERSION=$(node -p "require('vscode-smart-contracts/package.json').version")
+                echo -n "$VERSION"
+            '''.stripIndent()
+        )
+        CARGO_CONCORDIUM_VERSION = "${VERSION}"
+        OUTFILE = "s3://distribution.concordium.software/tools/linux/vscode-smart-contracts_${VERSION}"
+    }
+    stages {
+        stage('precheck') {
+            steps {
+                sh '''\
+                    # Fail if file already exists
+                    totalFoundObjects=$(aws s3 ls "$OUTFILE" --summarize | grep "Total Objects: " | sed "s/[^0-9]*//g")
+                    if [ "$totalFoundObjects" -ne "0" ]; then
+                        echo "$OUTFILE already exists"
+                        false
+                    fi
+                '''.stripIndent()
+            }
+        }
+        stage('build') {
+            agent {
+                docker {
+                    reuseNode true
+                    image 'concordium/base:latest'
+                    args '-u root'
+                }
+            }
+            steps {
+                sh '''\
+                    cd vscode-smart-contracts
+
+                    # Download cargo-concordium executable from S3.
+                    aws s3 cp s3://distribution.concordium.software/tools/linux/cargo-concordium_${CARGO_CONCORDIUM_VERSION} ./executables/cargo-concordium
+
+                    # Prepare output directory.
+                    mkdir ../out
+
+                    # Build the extension
+                    npx vsce package --target linux-x86 --out ../out/extension.vsix
+                '''.stripIndent()
+                stash includes: 'out/extension.vsix', name: 'release'
+            }
+            post {
+                cleanup {
+                    sh '''\
+                        # Docker image has to run as root, otherwise user dosen't have access to node
+                        # this means all generated files a owned by root, in workdir mounted from host
+                        # meaning jenkins can't clean the files, so set owner of all files to jenkins
+                        chown -R 1000:1000 .
+                    '''.stripIndent()
+                }
+            }
+        }
+        stage('Publish') {
+            steps {
+                unstash 'release'
+                sh '''\
+                    # Push to s3
+                    aws s3 cp "out/extension.vsix" "${OUTFILE}" --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
+                '''.stripIndent()
+            }
+        }
+    }
+}

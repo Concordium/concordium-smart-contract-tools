@@ -2,6 +2,7 @@
   "name": "concordium-smart-contracts",
   "publisher": "Concordium",
   "displayName": "Concordium Smart Contracts",
+  "icon": "assets/concordium-logo.png",
   "description": "Develop and build smart contracts on Concordium",
   "version": "1.0.0",
   "repository": {
@@ -121,6 +122,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "package": "vsce package",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
@@ -137,6 +139,7 @@
     "@typescript-eslint/eslint-plugin": "^5.53.0",
     "@typescript-eslint/parser": "^5.53.0",
     "@vscode/test-electron": "^2.2.3",
+    "@vscode/vsce": "^2.19.0",
     "eslint": "^8.34.0",
     "eslint-config-prettier": "^8.8.0",
     "glob": "^8.1.0",

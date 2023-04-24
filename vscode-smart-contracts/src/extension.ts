@@ -44,8 +44,8 @@ export function activate(context: vscode.ExtensionContext) {
       Commands.test
     ),
     vscode.commands.registerCommand(
-      "concordium-smart-contracts.setup-project",
-      Commands.setupProject
+      "concordium-smart-contracts.init-project",
+      Commands.initProject
     ),
     vscode.tasks.registerTaskProvider(CONCORDIUM_TASK_TYPE, taskProvider)
   );

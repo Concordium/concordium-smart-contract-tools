@@ -42,6 +42,10 @@
       {
         "command": "concordium-smart-contracts.test",
         "title": "Concordium Smart Contracts: Test contract"
+      },
+      {
+        "command": "concordium-smart-contracts.init-project",
+        "title": "Concordium Smart Contracts: Initialize a smart contract project"
       }
     ],
     "taskDefinitions": [

@@ -6,6 +6,12 @@ Features provided by [`cargo-concordium`](https://github.com/Concordium/concordi
 
 ## Features
 
+### Command for initializing a smart contract project
+
+Initialize a smart contract project from a template.
+
+![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/init-contract.gif)
+
 ### Command for building a smart contract
 
 Running the smart contract build command.

@@ -1,11 +1,13 @@
 pipeline {
-    agent { label 'jenkins-worker' }
+    agent {
+        label 'jenkins-worker'
+    }
     environment {
         VERSION = sh(
             returnStdout: true,
             script: '''\
                 # Extract version number if not set as parameter
-                [ -z "$VERSION" ] && VERSION=$(node -p "require('vscode-smart-contracts/package.json').version")
+                [ -z "$VERSION" ] && VERSION=$(awk -F'"' '/"version": ".+"/{ print $4; exit; }' vscode-smart-contracts/package.json)
                 echo -n "$VERSION"
             '''.stripIndent()
         )
@@ -33,38 +35,37 @@ pipeline {
                 '''.stripIndent()
             }
         }
+        stage('prebuild') {
+            steps {
+                sh '''\
+                    # Download cargo-concordium executable from S3.
+                    aws s3 cp "${CARGO_CONCORDIUM_EXECUTABLE}" vscode-smart-contracts/executables/cargo-concordium.exe
+                '''.stripIndent()
+                stash includes: 'vscode-smart-contracts/executables/*', name: 'executables'
+            }
+        }
         stage('build') {
             agent {
                 docker {
                     reuseNode true
-                    image 'node:16-alpine'
-                    args '-u root'
+                    image 'node:16'
                 }
             }
             steps {
+                unstash 'executables'
                 sh '''\
                     cd vscode-smart-contracts
 
-                    # Download cargo-concordium executable from S3.
-                    aws s3 cp "${CARGO_CONCORDIUM_EXECUTABLE}" ./executables/cargo-concordium.exe
-
                     # Prepare output directory.
                     mkdir ../out
+
+                    # Install dependencies
+                    npm ci
 
                     # Build the extension
                     npx vsce package --target win32-x64 --out ../out/extension.vsix
                 '''.stripIndent()
                 stash includes: 'out/extension.vsix', name: 'release'
-            }
-            post {
-                cleanup {
-                    sh '''\
-                        # Docker image has to run as root, otherwise user dosen't have access to node
-                        # this means all generated files a owned by root, in workdir mounted from host
-                        # meaning jenkins can't clean the files, so set owner of all files to jenkins
-                        chown -R 1000:1000 .
-                    '''.stripIndent()
-                }
             }
         }
         stage('Publish') {

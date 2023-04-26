@@ -40,6 +40,9 @@ pipeline {
                 sh '''\
                     # Download cargo-concordium executable from S3.
                     aws s3 cp "${CARGO_CONCORDIUM_EXECUTABLE}" vscode-smart-contracts/executables/cargo-concordium
+
+                    # Make binary executable.
+                    chmod +x vscode-smart-contracts/executables/cargo-concordium
                 '''.stripIndent()
                 stash includes: 'vscode-smart-contracts/executables/*', name: 'executables'
             }

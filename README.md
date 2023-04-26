@@ -6,7 +6,7 @@ This repository contains tools to support smart contracts on and off-chain.
 
 - [cargo-concordium](./cargo-concordium) which is a small tool for developing smart contracts. It uses the API exposed in `wasm-chain-integration` to execute smart contracts directly and can initialize and update smart contracts, in a desired state. See the `--help` option of the tool for details on how to invoke it.
    It can also be used to build contracts embedded with schemas (see section about [contract schemas](#contract-schema)).
-- [vscode-cargo-concordium](./vscode-cargo-concordium/) A [VS Code](https://code.visualstudio.com/) extension providing the functionality of `cargo-concordium` as commands inside the editor.
+- [vscode-smart-contracts](./vscode-smart-contracts/) A [VS Code](https://code.visualstudio.com/) extension providing snippets and the functionality of `cargo-concordium` as commands inside the editor.
 
 # Contributing
 

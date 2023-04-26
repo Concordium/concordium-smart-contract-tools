@@ -17,7 +17,7 @@ pipeline {
                 echo -n "$VERSION"
             '''.stripIndent()
         )
-        CARGO_CONCORDIUM_EXECUTABLE = "s3://distribution.concordium.software/tools/windows/cargo-concordium_${CARGO_CONCORDIUM_VERSION}.exe"
+        CARGO_CONCORDIUM_EXECUTABLE = "s3://distribution.concordium.software/tools/windows/signed/cargo-concordium_${CARGO_CONCORDIUM_VERSION}.exe"
         OUTFILE = "s3://distribution.concordium.software/tools/windows/vscode-smart-contracts_${VERSION}.vsix"
     }
     stages {

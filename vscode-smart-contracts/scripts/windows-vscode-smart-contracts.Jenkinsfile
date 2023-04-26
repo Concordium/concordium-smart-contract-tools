@@ -37,7 +37,7 @@ pipeline {
             agent {
                 docker {
                     reuseNode true
-                    image 'concordium/base:latest'
+                    image 'node:16-alpine'
                     args '-u root'
                 }
             }

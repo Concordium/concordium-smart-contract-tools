@@ -52,7 +52,7 @@ pipeline {
                     mkdir ../out
 
                     # Build the extension
-                    npx vsce package --target linux-x86 --out ../out/extension.vsix
+                    npx vsce package --target linux-x64 --out ../out/extension.vsix
                 '''.stripIndent()
                 stash includes: 'out/extension.vsix', name: 'release'
             }

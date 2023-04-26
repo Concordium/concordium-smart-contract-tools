@@ -20,6 +20,9 @@
     "vscode": "^1.76.2",
     "node": ">=16.x"
   },
+  "activationEvents": [
+    "onTaskType:concordium"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -147,7 +150,6 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "glob": "^8.1.0",
-    "request-light": "^0.7.0"
+    "glob": "^8.1.0"
   }
 }

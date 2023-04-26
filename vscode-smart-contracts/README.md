@@ -32,8 +32,8 @@ Searches the workspace for common smart contract tasks.
 
 ### Provide snippets for smart contract development
 
-A number of snippets are provided, all prefixed with `sc` (for smart contract).
-Just type `sc` in your smart contract source file and let IntelliSense show you the list of snippets.
+A number of snippets are provided, all prefixed with `ccd` (for smart contract).
+Just type `ccd` in your smart contract source file and let IntelliSense show you the list of snippets.
 
 ## Requirements
 

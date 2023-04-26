@@ -15,8 +15,8 @@ pipeline {
             returnStdout: true,
             script: '''\
                 # Extract version number if not set as parameter
-                [ -z "$VERSION" ] && VERSION=$(awk '/version = / { print substr($3, 2, length($3)-2); exit }' cargo-concordium/Cargo.toml)
-                echo -n "$VERSION"
+                [ -z "$CARGO_CONCORDIUM_VERSION" ] && CARGO_CONCORDIUM_VERSION=$(awk '/version = / { print substr($3, 2, length($3)-2); exit }' cargo-concordium/Cargo.toml)
+                echo -n "$CARGO_CONCORDIUM_VERSION"
             '''.stripIndent()
         )
         CARGO_CONCORDIUM_EXECUTABLE = "s3://distribution.concordium.software/tools/windows/signed/cargo-concordium_${CARGO_CONCORDIUM_VERSION}.exe"

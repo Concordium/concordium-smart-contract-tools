@@ -9,8 +9,16 @@ pipeline {
                 echo -n "$VERSION"
             '''.stripIndent()
         )
-        CARGO_CONCORDIUM_VERSION = "${VERSION}"
-        OUTFILE = "s3://distribution.concordium.software/tools/linux/vscode-smart-contracts_${VERSION}"
+        CARGO_CONCORDIUM_VERSION = sh(
+            returnStdout: true,
+            script: '''\
+                # Extract version number if not set as parameter
+                [ -z "$VERSION" ] && VERSION=$(awk '/version = / { print substr($3, 2, length($3)-2); exit }' cargo-concordium/Cargo.toml)
+                echo -n "$VERSION"
+            '''.stripIndent()
+        )
+        CARGO_CONCORDIUM_EXECUTABLE = "s3://distribution.concordium.software/tools/linux/cargo-concordium_${CARGO_CONCORDIUM_VERSION}"
+        OUTFILE = "s3://distribution.concordium.software/tools/linux/vscode-smart-contracts_${VERSION}.vsix"
     }
     stages {
         stage('precheck') {
@@ -38,7 +46,7 @@ pipeline {
                     cd vscode-smart-contracts
 
                     # Download cargo-concordium executable from S3.
-                    aws s3 cp s3://distribution.concordium.software/tools/linux/cargo-concordium_${CARGO_CONCORDIUM_VERSION} ./executables/cargo-concordium
+                    aws s3 cp "${CARGO_CONCORDIUM_EXECUTABLE}" ./executables/cargo-concordium
 
                     # Prepare output directory.
                     mkdir ../out

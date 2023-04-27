@@ -10,25 +10,25 @@ Features provided by [`cargo-concordium`](https://github.com/Concordium/concordi
 
 Initialize a smart contract project from a template.
 
-![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/init-contract.gif)
+![](https://github.com/Concordium/concordium-smart-contract-tools/raw/main/vscode-smart-contracts/assets/init-contract.gif)
 
 ### Command for building a smart contract
 
 Running the smart contract build command.
 
-![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/build-contract.gif)
+![](https://github.com/Concordium/concordium-smart-contract-tools/raw/main/vscode-smart-contracts/assets/build-contract.gif)
 
 ### Command for testing smart contract
 
 Running the smart contract tests command.
 
-![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/test-contract.gif)
+![](https://github.com/Concordium/concordium-smart-contract-tools/raw/main/vscode-smart-contracts/assets/test-contract.gif)
 
 ### Provide tasks for smart contract projects
 
 Searches the workspace for common smart contract tasks.
 
-![](https://github.com/Concordium/concordium-smart-contract-tools/blob/main/vscode-smart-contracts/assets/run-task-build.gif)
+![](https://github.com/Concordium/concordium-smart-contract-tools/raw/main/vscode-smart-contracts/assets/run-task-build.gif)
 
 ### Provide snippets for smart contract development
 

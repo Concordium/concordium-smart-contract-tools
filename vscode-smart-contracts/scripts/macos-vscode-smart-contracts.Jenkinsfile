@@ -19,7 +19,7 @@ pipeline {
                 echo -n "$CARGO_CONCORDIUM_VERSION"
             '''.stripIndent()
         )
-        CARGO_CONCORDIUM_EXECUTABLE = "s3://distribution.concordium.software/tools/macos/signed/cargo-concordium_${CARGO_CONCORDIUM_VERSION}"
+        CARGO_CONCORDIUM_EXECUTABLE = "s3://distribution.concordium.software/tools/macos/signed/cargo-concordium_${CARGO_CONCORDIUM_VERSION}.zip"
         OUTFILE = "s3://distribution.concordium.software/tools/macos/vscode-smart-contracts_${VERSION}.vsix"
     }
     stages {
@@ -38,8 +38,14 @@ pipeline {
         stage('prebuild') {
             steps {
                 sh '''\
-                    # Download cargo-concordium executable from S3.
-                    aws s3 cp "${CARGO_CONCORDIUM_EXECUTABLE}" vscode-smart-contracts/executables/cargo-concordium
+                    # Download zipped cargo-concordium executable from S3.
+                    aws s3 cp "${CARGO_CONCORDIUM_EXECUTABLE}" tmp/cargo-concordium.zip
+
+                    unzip tmp/cargo-concordium.zip -d tmp
+
+                    # Move binary to right location
+                    mkdir vscode-smart-contracts/executables
+                    mv tmp/cargo-concordium_${CARGO_CONCORDIUM_VERSION} vscode-smart-contracts/executables/cargo-concordium
 
                     # Make binary executable.
                     chmod +x vscode-smart-contracts/executables/cargo-concordium

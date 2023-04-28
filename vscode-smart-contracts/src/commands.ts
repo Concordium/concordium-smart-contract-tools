@@ -10,24 +10,35 @@ import * as path from "node:path";
 import * as childProcess from "node:child_process";
 
 const exec = util.promisify(childProcess.exec);
+const execFile = util.promisify(childProcess.execFile);
 
 /** The default name used for the output directory using the build command. */
 export const DEFAULT_OUT_DIR_NAME = "concordium-out";
+
+/** Wrap a function with try-catch displaying the error to the user, then throws the errors */
+export function displayErrorWrapper<A extends unknown[], B>(
+  fn: (...a: A) => B
+): (...a: A) => Promise<B> {
+  return async (...args: A) => {
+    try {
+      return await fn(...args);
+    } catch (error) {
+      if (error instanceof config.ConfigError) {
+        vscode.window.showErrorMessage(error.message);
+      } else {
+        vscode.window.showErrorMessage("Unexpected error: " + error);
+      }
+      throw error;
+    }
+  };
+}
 
 /**
  * Display the version of the cargo-concordium executable.
  */
 export async function version() {
-  try {
-    const version = await cargoConcordium.version();
-    vscode.window.showInformationMessage(version);
-  } catch (error) {
-    if (error instanceof config.ConfigError) {
-      vscode.window.showErrorMessage(error.message);
-    } else {
-      vscode.window.showErrorMessage("Unexpected error: " + error);
-    }
-  }
+  const version = await cargoConcordium.version();
+  vscode.window.showInformationMessage(version);
 }
 
 /**
@@ -73,7 +84,7 @@ async function buildWorker(
       "Install",
       "Abort"
     );
-    if (response === "Abort") {
+    if (response !== "Install") {
       vscode.window.showErrorMessage(
         "Unable to build because of missing wasm32-unknown-unknown target."
       );
@@ -134,7 +145,7 @@ async function haveWasmTargetInstalled() {
  * Install the wasm32-unknown-unknown target using rustup.
  * The returned promise resolves when the install task has ended.
  */
-function installWasmTarget() {
+async function installWasmTarget() {
   const execution = new vscode.ProcessExecution("rustup", [
     "target",
     "install",
@@ -147,19 +158,24 @@ function installWasmTarget() {
     "Build smart contract",
     execution
   );
-  return executeAndAwaitTask(task);
+  const exitCode = await executeAndAwaitTask(task);
+  if (exitCode !== 0) {
+    throw new Error("Failed installing wasm32-unknown-unknown");
+  }
 }
 
 /**
  * Execute and await a task to end.
+ * Only works for tasks using `ProcessExecution`.
+ *
  * @param task The task to execute.
- * @returns Promise which resolves when the task has ended.
+ * @returns Promise which resolves when the task has ended with the exit code.
  */
 function executeAndAwaitTask(task: vscode.Task) {
-  return new Promise<void>((resolve, reject) => {
-    vscode.tasks.onDidEndTask((event) => {
+  return new Promise<number | undefined>((resolve, reject) => {
+    vscode.tasks.onDidEndTaskProcess((event) => {
       if (event.execution.task === task) {
-        resolve();
+        resolve(event.exitCode);
       }
     });
     try {
@@ -180,7 +196,7 @@ export async function test(editor: vscode.TextEditor) {
       "Install",
       "Abort"
     );
-    if (response === "Abort") {
+    if (response !== "Install") {
       vscode.window.showErrorMessage(
         "Unable to run tests because of missing wasm32-unknown-unknown target."
       );
@@ -201,6 +217,21 @@ export async function test(editor: vscode.TextEditor) {
 
 /** Run 'cargo-concordium init' in a directory selected by the user */
 export async function initProject() {
+  if (!(await haveCargoGenerateInstalled())) {
+    const response = await vscode.window.showInformationMessage(
+      "The needed cargo-generate seems to be missing. Should it be installed?",
+      "Install",
+      "Abort"
+    );
+    if (response !== "Install") {
+      vscode.window.showErrorMessage(
+        "Unable to run intialize new project because of missing cargo-generate."
+      );
+      return;
+    }
+    await installCargoGenerate();
+  }
+
   const defaultCwd = vscode.workspace.workspaceFolders?.[0].uri;
   const directories = await vscode.window.showOpenDialog({
     title: "Select directory to add the smart contract project directory",
@@ -221,4 +252,39 @@ export async function initProject() {
   });
   terminal.show();
   terminal.sendText(executable + " concordium init");
+}
+
+/** Regular expression for checking the output of `cargo --list` for the `generate` command. */
+const lineStartingWithGenerate = /^\s+generate[\s\n]/m;
+/**
+ * Check whether cargo-generate is available in PATH.
+ */
+async function haveCargoGenerateInstalled() {
+  const { stdout } = await execFile("cargo", ["--list"]);
+  return lineStartingWithGenerate.test(stdout); // Check if the output have a line where the first word is `generate`.
+}
+
+/**
+ * Install the cargo-generate using cargo.
+ * The returned promise resolves when the install task has ended.
+ */
+async function installCargoGenerate() {
+  const execution = new vscode.ProcessExecution("cargo", [
+    "install",
+    "cargo-generate",
+  ]);
+  const task = new vscode.Task(
+    {
+      type: cargoConcordium.CONCORDIUM_TASK_TYPE,
+      command: "install cargo-generate",
+    },
+    vscode.TaskScope.Workspace,
+    `Install cargo-generate`,
+    "Initialize smart contract",
+    execution
+  );
+  const exitCode = await executeAndAwaitTask(task);
+  if (exitCode !== 0) {
+    throw new Error("Failed installing cargo-generate");
+  }
 }

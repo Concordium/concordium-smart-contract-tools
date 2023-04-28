@@ -10,6 +10,7 @@ import * as path from "node:path";
 import * as childProcess from "node:child_process";
 
 const exec = util.promisify(childProcess.exec);
+const execFile = util.promisify(childProcess.execFile);
 
 /** The default name used for the output directory using the build command. */
 export const DEFAULT_OUT_DIR_NAME = "concordium-out";
@@ -73,7 +74,7 @@ async function buildWorker(
       "Install",
       "Abort"
     );
-    if (response === "Abort") {
+    if (response !== "Install") {
       vscode.window.showErrorMessage(
         "Unable to build because of missing wasm32-unknown-unknown target."
       );
@@ -180,7 +181,7 @@ export async function test(editor: vscode.TextEditor) {
       "Install",
       "Abort"
     );
-    if (response === "Abort") {
+    if (response !== "Install") {
       vscode.window.showErrorMessage(
         "Unable to run tests because of missing wasm32-unknown-unknown target."
       );
@@ -201,6 +202,21 @@ export async function test(editor: vscode.TextEditor) {
 
 /** Run 'cargo-concordium init' in a directory selected by the user */
 export async function initProject() {
+  if (!(await haveCargoGenerateInstalled())) {
+    const response = await vscode.window.showInformationMessage(
+      "The needed cargo-generate seems to be missing. Should it be installed?",
+      "Install",
+      "Abort"
+    );
+    if (response !== "Install") {
+      vscode.window.showErrorMessage(
+        "Unable to run intialize new project because of missing cargo-generate."
+      );
+      return;
+    }
+    await installCargoGenerate();
+  }
+
   const defaultCwd = vscode.workspace.workspaceFolders?.[0].uri;
   const directories = await vscode.window.showOpenDialog({
     title: "Select directory to add the smart contract project directory",
@@ -221,4 +237,37 @@ export async function initProject() {
   });
   terminal.show();
   terminal.sendText(executable + " concordium init");
+}
+
+/** Regular expression for checking the output of `cargo --list` for the `generate` command. */
+const lineStartingWithGenerate = /^\s+generate[\s\n]/m;
+/**
+ * Check whether cargo-generate is available in PATH.
+ */
+async function haveCargoGenerateInstalled() {
+  const { stdout } = await execFile("cargo", ["--list"]);
+  console.log(stdout, lineStartingWithGenerate.test(stdout));
+  return lineStartingWithGenerate.test(stdout); // Check if the output have a line where the first word is `generate`.
+}
+
+/**
+ * Install the cargo-generate using cargo.
+ * The returned promise resolves when the install task has ended.
+ */
+function installCargoGenerate() {
+  const execution = new vscode.ProcessExecution("cargo", [
+    "install",
+    "cargo-generate",
+  ]);
+  const task = new vscode.Task(
+    {
+      type: cargoConcordium.CONCORDIUM_TASK_TYPE,
+      command: "install cargo-generate",
+    },
+    vscode.TaskScope.Workspace,
+    `Install cargo-generate`,
+    "Initialize smart contract",
+    execution
+  );
+  return executeAndAwaitTask(task);
 }

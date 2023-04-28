@@ -11,7 +11,7 @@
       ")]",
       "fn ${1/[\\.-]/_/g}_${2/[\\.-]/_/g}<S: HasStateApi>(",
       "\tctx: &impl HasReceiveContext,",
-      "\thost: &mut impl HasHost<State<S>, StateApiType = S>",
+      "\thost: &impl HasHost<State<S>, StateApiType = S>",
       ") -> Result<$4, $5> {",
       "\tlet parameter: $3 = ctx.parameter_cursor().get()?;",
       "\t$0",

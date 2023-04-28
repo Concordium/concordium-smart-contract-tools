@@ -89,7 +89,7 @@ export async function build(
     taskDefinition,
     scope,
     "Build smart contract",
-    cwd,
+    cwd === "." ? "concordium" : cwd,
     new vscode.ProcessExecution(executable, ["concordium", "build", ...args], {
       cwd,
     })
@@ -113,7 +113,7 @@ export async function test(
     taskDefinition,
     scope,
     "Test smart contract",
-    cwd,
+    cwd === "." ? "concordium" : cwd,
     new vscode.ProcessExecution(executable, ["concordium", "test", ...args], {
       cwd,
     })

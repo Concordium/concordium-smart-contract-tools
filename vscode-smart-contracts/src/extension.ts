@@ -72,6 +72,7 @@ const taskProvider: vscode.TaskProvider = {
               defaultOutDir,
               "--schema-base64-out",
               path.join(defaultOutDir, "module-schema.bs64"),
+              "--schema-embed",
             ];
             return [
               cargoConcordium.build(cwd, workspaceFolder, defaultArgs),
@@ -125,7 +126,7 @@ const taskProvider: vscode.TaskProvider = {
       const workspaceFolder = vscode.workspace.getWorkspaceFolder(
         vscode.Uri.file(cwd)
       );
-      const resolvedTask = await cargoConcordium.build(
+      const resolvedTask = await cargoConcordium.test(
         cwd,
         workspaceFolder,
         definition.args ?? []

@@ -32,12 +32,12 @@ Searches the workspace for common smart contract tasks.
 
 ### Provide snippets for smart contract development
 
-A number of snippets are provided, all prefixed with `ccd` (for smart contract).
+A number of snippets are provided, all prefixed with `ccd` (for Concordium).
 Just type `ccd` in your smart contract source file and let IntelliSense show you the list of snippets.
 
 ## Requirements
 
-The extension relies on [`rustup`](https://rustup.rs/) and `cargo` being installed and available in PATH.
+The extension relies on [`rustup`](https://rustup.rs/) and [`cargo`](https://doc.rust-lang.org/cargo/) being installed and available in PATH.
 
 ## Extension Settings
 

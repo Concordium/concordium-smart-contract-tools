@@ -5,4 +5,4 @@
 ## 1.0.1
 
 - Initial release
-- `cargo-concordium` version 2.8.0
+- Contains `cargo-concordium` version 2.8.0

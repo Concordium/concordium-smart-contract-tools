@@ -20,16 +20,22 @@ pipeline {
             '''.stripIndent()
         )
         CARGO_CONCORDIUM_EXECUTABLE = "s3://distribution.concordium.software/tools/macos/signed/cargo-concordium_${CARGO_CONCORDIUM_VERSION}.zip"
-        OUTFILE = "s3://distribution.concordium.software/tools/macos/vscode-smart-contracts_${VERSION}.vsix"
+        OUTFILE_ARM64 = "s3://distribution.concordium.software/tools/macos/vscode-smart-contracts_${VERSION}-darwin-arm64.vsix"
+        OUTFILE_X64 = "s3://distribution.concordium.software/tools/macos/vscode-smart-contracts_${VERSION}-darwin-x64.vsix"
     }
     stages {
         stage('precheck') {
             steps {
                 sh '''\
-                    # Fail if file already exists
-                    totalFoundObjects=$(aws s3 ls "$OUTFILE" --summarize | grep "Total Objects: " | sed "s/[^0-9]*//g")
-                    if [ "$totalFoundObjects" -ne "0" ]; then
-                        echo "$OUTFILE already exists"
+                    # Fail if files already exists
+                    totalFoundObjectsArm=$(aws s3 ls "$OUTFILE_ARM64" --summarize | grep "Total Objects: " | sed "s/[^0-9]*//g")
+                    if [ "$totalFoundObjectsArm" -ne "0" ]; then
+                        echo "$OUTFILE_ARM64 already exists"
+                        false
+                    fi
+                    totalFoundObjectsX64=$(aws s3 ls "$OUTFILE_X64" --summarize | grep "Total Objects: " | sed "s/[^0-9]*//g")
+                    if [ "$totalFoundObjectsX64" -ne "0" ]; then
+                        echo "$OUTFILE_X64 already exists"
                         false
                     fi
                 '''.stripIndent()
@@ -72,9 +78,10 @@ pipeline {
                     npm ci
 
                     # Build the extension
-                    npx vsce package --target darwin-x64 --out ../out/extension.vsix
+                    npx vsce package --target darwin-x64 --out ../out/extension-x64.vsix
+                    npx vsce package --target darwin-arm64 --out ../out/extension-arm64.vsix
                 '''.stripIndent()
-                stash includes: 'out/extension.vsix', name: 'release'
+                stash includes: 'out/*', name: 'release'
             }
         }
         stage('Publish') {
@@ -82,7 +89,8 @@ pipeline {
                 unstash 'release'
                 sh '''\
                     # Push to s3
-                    aws s3 cp "out/extension.vsix" "${OUTFILE}" --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
+                    aws s3 cp "out/extension-x64.vsix" "${OUTFILE_X64}" --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
+                    aws s3 cp "out/extension-arm64.vsix" "${OUTFILE_ARM64}" --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
                 '''.stripIndent()
             }
         }

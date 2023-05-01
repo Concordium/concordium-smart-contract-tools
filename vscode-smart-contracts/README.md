@@ -53,9 +53,9 @@ This extension contributes the following settings:
 
 ## Release Notes
 
-### 1.0.0 (unreleased)
+### 1.0.1
 
-Initial release of this extension
+Initial release of the extension with `cargo-concordium` version 2.8.0.
 
 
 ## Contributing

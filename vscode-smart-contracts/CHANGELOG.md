@@ -1,5 +1,8 @@
-# Change Log
+# Changelog
 
-## [Unreleased]
+## Unreleased
+
+## 1.0.1
 
 - Initial release
+- `cargo-concordium` version 2.8.0

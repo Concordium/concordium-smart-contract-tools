@@ -112,13 +112,12 @@ pub fn build_contract(
     };
 
     let metadata = MetadataCommand::new()
-        .no_deps()
         .exec()
         .context("Could not access cargo metadata.")?;
 
     let package = metadata
         .root_package()
-        .context("Unable to determine package")?;
+        .context("Unable to determine package.")?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
 
@@ -216,6 +215,10 @@ pub fn build_contract(
     };
 
     let total_module_len = output_bytes.len();
+    if let Some(out_dir) = out_filename.parent() {
+        fs::create_dir_all(out_dir)
+            .context("Unable to create directory for the resulting smart contract module.")?;
+    }
     fs::write(out_filename, output_bytes)?;
     Ok((total_module_len, return_schema))
 }
@@ -320,13 +323,12 @@ pub fn build_contract_schema<A>(
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
     let metadata = MetadataCommand::new()
-        .no_deps()
         .exec()
         .context("Could not access cargo metadata.")?;
 
     let package = metadata
         .root_package()
-        .context("Unable to determine package")?;
+        .context("Unable to determine package.")?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
 
@@ -431,6 +433,10 @@ fn write_schema_json(
         contract_name,
         out_path.display()
     );
+    if let Some(out_dir) = out_path.parent() {
+        fs::create_dir_all(out_dir)
+            .context("Unable to create directory for the resulting JSON schemas.")?;
+    }
     std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
         .context("Unable to write schema output.")?;
     Ok(())
@@ -448,7 +454,10 @@ pub fn write_schema_base64(
         // writing base64 schema to file
         Some(out) => {
             println!("   Writing base64 schema to {}.", out.display());
-
+            if let Some(out_dir) = out.parent() {
+                fs::create_dir_all(out_dir)
+                    .context("Unable to create directory for the resulting base64 schema.")?;
+            }
             // save the schema base64 representation to the file
             std::fs::write(out, schema_base64).context("Unable to write schema output.")?;
         }
@@ -662,13 +671,12 @@ pub fn write_json_schema_to_file_v3(
 /// number generator. If `None` is given, a random seed will be sampled.
 pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
     let metadata = MetadataCommand::new()
-        .no_deps()
         .exec()
         .context("Could not access cargo metadata.")?;
 
     let package = metadata
         .root_package()
-        .context("Unable to determine package")?;
+        .context("Unable to determine package.")?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
 

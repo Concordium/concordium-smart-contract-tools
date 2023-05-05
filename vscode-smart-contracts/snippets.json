@@ -1,0 +1,88 @@
+{
+  "Smart contract receive-function": {
+    "prefix": ["ccdrec"],
+    "body": [
+      "#[receive(",
+      "\tcontract = \"${1:my-contract}\",",
+      "\tname = \"${2:my-receive}\",",
+      "\tparameter = \"${3:MyParams}\",",
+      "\treturn_value = \"${4:MyReturnValue}\",",
+      "\terror = \"${5:MyContractError}\"",
+      ")]",
+      "fn ${1/[\\.-]/_/g}_${2/[\\.-]/_/g}<S: HasStateApi>(",
+      "\tctx: &impl HasReceiveContext,",
+      "\thost: &impl HasHost<State<S>, StateApiType = S>",
+      ") -> Result<$4, $5> {",
+      "\tlet parameter: $3 = ctx.parameter_cursor().get()?;",
+      "\t$0",
+      "}"
+    ],
+    "description": "Receive function for a Concordium smart contract"
+  },
+  "Smart contract init-function": {
+    "prefix": ["ccdinit"],
+    "body": [
+      "#[init(",
+      "\tcontract = \"${1:my-contract}\",",
+      "\tparameter = \"${2:MyParams}\",",
+      "\terror = \"${3:MyContractError}\",",
+      "\tevent = \"${4:MyContractEvent}\"",
+      ")]",
+      "fn ${1/[\\.-]/_/g}_init<S: HasStateApi>(",
+      "\tctx: &impl HasInitContext,",
+      "\tstate_builder: &mut StateBuilder<S>,",
+      ") -> Result<${5:MyContractState}<S>, $3> {",
+      "\tlet parameter: $2 = ctx.parameter_cursor().get()?;",
+      "\t$0",
+      "}"
+    ],
+    "description": "Init function for a Concordium smart contract"
+  },
+  "Smart contract state struct": {
+    "prefix": ["ccdstate"],
+    "body": [
+      "#[derive(Serial, DeserialWithState, StateClone)]",
+      "#[concordium(state_parameter = \"S\")]",
+      "struct ${1:MyContractState}<S> {",
+      "\t$0",
+      "}"
+    ],
+    "description": "State struct for a Concordium smart contract"
+  },
+  "Smart contract error enum": {
+    "prefix": ["ccderror"],
+    "body": [
+      "#[derive(Serialize, SchemaType, Reject)]",
+      "pub enum ${1:MyContractError} {",
+      "\t#[from(ParseError)]",
+      "\tParseParams,",
+      "\tLogFull,",
+      "\tLogMalformed,",
+      "\t$0",
+      "}",
+      "",
+      "impl From<LogError> for $1 {",
+      "\tfn from(log_error: LogError) -> Self {",
+      "\t\tmatch log_error {",
+      "\t\t\tLogError::Full => Self::LogFull,",
+      "\t\t\tLogError::Malformed => Self::LogMalformed,",
+      "\t\t}",
+      "\t}",
+      "}"
+    ],
+    "description": "Error type for a Concordium smart contract"
+  },
+  "Smart contract test receive function": {
+    "prefix": ["ccdtestrec"],
+    "body": [
+      "#[concordium_test]",
+      "fn test_$1() {",
+      "\tlet ctx = TestReceiveContext::empty();",
+      "\tlet state = $2;",
+      "\tlet host = TestHost::new(state, TestStateBuilder::new());",
+      "\t$0",
+      "}"
+    ],
+    "description": "Unit test for a Concordium smart contract receive function"
+  }
+}

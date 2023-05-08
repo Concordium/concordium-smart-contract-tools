@@ -27,19 +27,19 @@ export function activate(context: vscode.ExtensionContext) {
       "concordium-smart-contracts.version",
       Commands.displayErrorWrapper(Commands.version)
     ),
-    vscode.commands.registerTextEditorCommand(
+    vscode.commands.registerCommand(
       "concordium-smart-contracts.build",
       Commands.displayErrorWrapper(Commands.build)
     ),
-    vscode.commands.registerTextEditorCommand(
+    vscode.commands.registerCommand(
       "concordium-smart-contracts.build-skip-schema",
       Commands.displayErrorWrapper(Commands.buildSkipSchema)
     ),
-    vscode.commands.registerTextEditorCommand(
+    vscode.commands.registerCommand(
       "concordium-smart-contracts.build-embed-schema",
       Commands.displayErrorWrapper(Commands.buildEmbedSchema)
     ),
-    vscode.commands.registerTextEditorCommand(
+    vscode.commands.registerCommand(
       "concordium-smart-contracts.test",
       Commands.displayErrorWrapper(Commands.test)
     ),

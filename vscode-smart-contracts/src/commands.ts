@@ -45,24 +45,24 @@ export async function version() {
  * Run 'cargo-concordium build' using the directory of the currently focused editor.
  * Printing the schema in base64 as part of stdout.
  */
-export function build(editor: vscode.TextEditor) {
-  return buildWorker(editor, "outDir");
+export function build() {
+  return buildWorker("outDir");
 }
 
 /**
  * Run 'cargo-concordium build' using the directory of the currently focused editor.
  * With no schema generation.
  */
-export function buildSkipSchema(editor: vscode.TextEditor) {
-  return buildWorker(editor, "skip");
+export function buildSkipSchema() {
+  return buildWorker("skip");
 }
 
 /**
  * Run 'cargo-concordium build' using the directory of the currently focused editor.
  * Embedding the schema into the resulting smart contract module.
  */
-export function buildEmbedSchema(editor: vscode.TextEditor) {
-  return buildWorker(editor, "embed-and-outDir");
+export function buildEmbedSchema() {
+  return buildWorker("embed-and-outDir");
 }
 
 /**
@@ -74,10 +74,7 @@ type SchemaSettings = "skip" | "embed-and-outDir" | "outDir";
  * Internal worker for running 'cargo-concordium build' using the directory of the currently focused editor.
  * Takes the schema setting as an argument.
  */
-async function buildWorker(
-  editor: vscode.TextEditor,
-  schemaSettings: SchemaSettings
-) {
+async function buildWorker(schemaSettings: SchemaSettings) {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
       "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
@@ -92,6 +89,15 @@ async function buildWorker(
     }
     await installWasmTarget();
   }
+
+  const editor = vscode.window.activeTextEditor;
+  if (editor === undefined) {
+    vscode.window.showErrorMessage(
+      "Unable to determine smart contract project. Open a file in the smart contract project that you want to build"
+    );
+    return;
+  }
+
   const cwd = path.dirname(editor.document.uri.fsPath);
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(
     editor.document.uri
@@ -189,7 +195,7 @@ function executeAndAwaitTask(task: vscode.Task) {
 /**
  * Run 'cargo-concordium test' using the directory of the currently focused editor.
  */
-export async function test(editor: vscode.TextEditor) {
+export async function test() {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
       "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
@@ -204,6 +210,15 @@ export async function test(editor: vscode.TextEditor) {
     }
     await installWasmTarget();
   }
+
+  const editor = vscode.window.activeTextEditor;
+  if (editor === undefined) {
+    vscode.window.showErrorMessage(
+      "Unable to determine smart contract project. Open a file in the smart contract project that you want to test"
+    );
+    return;
+  }
+
   const cwd = path.dirname(editor.document.uri.fsPath);
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(
     editor.document.uri

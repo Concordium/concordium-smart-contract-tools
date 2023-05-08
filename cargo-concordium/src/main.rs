@@ -841,7 +841,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     .context("Unable to create directory for the binary state output.")?;
             }
 
-            fs::write(file_path, &state).context("Could not write state to file.")?;
+            fs::write(file_path, state).context("Could not write state to file.")?;
         }
         if let Some(file_path) = &runner.out_json {
             contract_schema_opt.context(
@@ -955,7 +955,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     bail!("Only one state is allowed, choose either --state-bin or --state-json.")
                 }
                 (Some(file_path), None) => {
-                    let mut file = File::open(&file_path).context("Could not read state file.")?;
+                    let mut file = File::open(file_path).context("Could not read state file.")?;
                     let metadata = file.metadata().context("Could not read file metadata.")?;
                     let mut init_state = Vec::with_capacity(metadata.len() as usize);
                     file.read_to_end(&mut init_state)
@@ -966,7 +966,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     let schema_state = contract_schema_state_opt
                         .as_ref()
                         .context("A schema for the state must be present to use JSON.")?;
-                    let file = fs::read(&file_path).context("Could not read state file.")?;
+                    let file = fs::read(file_path).context("Could not read state file.")?;
                     let state_json: serde_json::Value =
                         serde_json::from_slice(&file).context("Could not parse state JSON.")?;
                     let mut state_bytes = Vec::new();
@@ -1382,7 +1382,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                      instance. Use --state-bin."
                 ),
                 Some(file_path) => {
-                    let file = File::open(&file_path).context("Could not read state file.")?;
+                    let file = File::open(file_path).context("Could not read state file.")?;
                     let mut reader = std::io::BufReader::new(file);
                     let init_state = v1::trie::PersistentState::deserialize(&mut reader)
                         .context("Could not deserialize the provided state.")?;
@@ -1567,7 +1567,7 @@ fn get_parameter(
 ) -> anyhow::Result<OwnedParameter> {
     if let Some(param_file) = bin_path {
         Ok(OwnedParameter::new_unchecked(
-            fs::read(&param_file).context("Could not read parameter-bin file.")?,
+            fs::read(param_file).context("Could not read parameter-bin file.")?,
         ))
     } else if let Some(param_file) = json_path {
         if !has_contract_schema {
@@ -1579,7 +1579,7 @@ fn get_parameter(
             let parameter_schema = parameter_schema
                 .context("Contract schema did not contain a schema for this parameter.")?;
 
-            let file = fs::read(&param_file).context("Could not read parameter file.")?;
+            let file = fs::read(param_file).context("Could not read parameter file.")?;
             let parameter_json: serde_json::Value = serde_json::from_slice(&file)
                 .context("Could not parse the JSON in parameter-json file.")?;
             let mut parameter_bytes = Vec::new();

@@ -123,9 +123,9 @@ pub fn build_contract(
 
     let result = Command::new("cargo")
         .arg("build")
-        .args(&["--target", "wasm32-unknown-unknown"])
-        .args(&["--release"])
-        .args(&["--target-dir", target_dir.as_str()])
+        .args(["--target", "wasm32-unknown-unknown"])
+        .args(["--release"])
+        .args(["--target-dir", target_dir.as_str()])
         .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -192,7 +192,7 @@ pub fn build_contract(
     // write the size of the actual module to conform to serialization expected on
     // the chain
     let data_size = (output_bytes.len() - 8) as u32;
-    (&mut output_bytes[4..8]).copy_from_slice(&data_size.to_be_bytes());
+    (output_bytes[4..8]).copy_from_slice(&data_size.to_be_bytes());
 
     let out_filename = match out {
         Some(out) => {
@@ -334,10 +334,10 @@ pub fn build_contract_schema<A>(
 
     let result = Command::new("cargo")
         .arg("build")
-        .args(&["--target", "wasm32-unknown-unknown"])
+        .args(["--target", "wasm32-unknown-unknown"])
         .arg("--release")
-        .args(&["--features", "concordium-std/build-schema"])
-        .args(&["--target-dir", target_dir.as_str()])
+        .args(["--features", "concordium-std/build-schema"])
+        .args(["--target-dir", target_dir.as_str()])
         .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -382,12 +382,12 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
 
     let result = Command::new("cargo")
         .arg("generate")
-        .args(&[
+        .args([
             "--git",
             "https://github.com/Concordium/concordium-rust-smart-contracts",
             "templates",
         ])
-        .args(&["--destination", absolute_path.to_str().unwrap()])
+        .args(["--destination", absolute_path.to_str().unwrap()])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .stdin(Stdio::inherit())
@@ -518,12 +518,12 @@ fn function_v1_schema(schema: &FunctionV1) -> Value {
 
     // add parameter schema to function object
     if let Some(parameter_schema) = &schema.parameter() {
-        function_object["parameter"] = type_to_json(*parameter_schema);
+        function_object["parameter"] = type_to_json(parameter_schema);
     }
 
     // add return_value schema to function object
     if let Some(return_value_schema) = &schema.return_value() {
-        function_object["returnValue"] = type_to_json(*return_value_schema);
+        function_object["returnValue"] = type_to_json(return_value_schema);
     }
     function_object
 }

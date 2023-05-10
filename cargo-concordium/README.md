@@ -1,11 +1,12 @@
 # Cargo Concordium
 
-`cargo-concordium` is a tool for building and testing smart contracts on the
-Concordium blockchain.
+`cargo-concordium` is a tool for building and testing smart contracts on the Concordium blockchain.
 
-See [developer
-documentation](https://developer.concordium.software/en/mainnet/smart-contracts/guides/contract-dev-guides.html)
+See [developer documentation](https://developer.concordium.software/en/mainnet/smart-contracts/guides/contract-dev-guides.html)
 for guides on how to use the tool in detail.
+
+This crate is a binary, and its versioning applies to the command-line API.
+There are no guarantees about internal crate API.
 
 ## Creating a new Concordium smart contract project
 

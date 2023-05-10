@@ -2,8 +2,14 @@
 name = "cargo-concordium"
 version = "2.8.0"
 authors = ["Concordium <developers@concordium.com>"]
-edition = "2018"
+edition = "2021"
 license-file = "../LICENSE"
+rust-version = "1.65"
+readme = "README.md"
+description = "A tool to build and test smart contracts on the Concordium blockchain."
+homepage = "https://github.com/Concordium/concordium-smart-contract-tools"
+reposity = "https://github.com/Concordium/concordium-smart-contract-tools"
+include = ["Cargo.toml", "Cargo.lock", "src/*"] # Only include the actual sources.
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -24,15 +30,12 @@ cargo_metadata = "0.15"
 
 [dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"
-version = "1.0"
+version = "1.1"
 
 [dependencies.concordium-smart-contract-engine]
-version = "1.0"
+version = "1.2"
 path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
-
-[dev-dependencies]
-criterion = "0.3"
 
 [dependencies.concordium-contracts-common]
 version = "6.0"

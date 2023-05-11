@@ -648,7 +648,7 @@ fn print_contract_schema_v0(
     contract_name: &str,
     contract_schema: &concordium_contracts_common::schema::ContractV0,
 ) {
-    let receive_iter = contract_schema.receive.iter().map(|(n, _)| n.as_str());
+    let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
 
     print_schema_info(contract_name, to_bytes(contract_schema).len());
@@ -678,7 +678,7 @@ fn print_contract_schema_v1(
     contract_name: &str,
     contract_schema: &concordium_contracts_common::schema::ContractV1,
 ) {
-    let receive_iter = contract_schema.receive.iter().map(|(n, _)| n.as_str());
+    let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
 
     print_schema_info(contract_name, to_bytes(contract_schema).len());
@@ -705,7 +705,7 @@ fn print_contract_schema_v2(
     contract_name: &str,
     contract_schema: &concordium_contracts_common::schema::ContractV2,
 ) {
-    let receive_iter = contract_schema.receive.iter().map(|(n, _)| n.as_str());
+    let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
 
     print_schema_info(contract_name, to_bytes(contract_schema).len());
@@ -732,7 +732,7 @@ fn print_contract_schema_v3(
     contract_name: &str,
     contract_schema: &concordium_contracts_common::schema::ContractV3,
 ) {
-    let receive_iter = contract_schema.receive.iter().map(|(n, _)| n.as_str());
+    let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
 
     print_schema_info(contract_name, to_bytes(contract_schema).len());

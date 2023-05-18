@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.8.1
+
+- Add padding to base64 output to work around parsers that require it.
+
 ## 2.8.0
 
 - Non-existing directories in paths provided to the following arguments for when running `cargo concordium build` will now be created instead of causing an error: `--out`, `--schema-out`, `--schema-json-out`, `--schema-base64-out`.

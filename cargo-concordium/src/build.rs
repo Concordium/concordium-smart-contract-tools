@@ -30,8 +30,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-/// Encode all base64 strings using the standard alphabet and no padding.
-/// Padding is not useful since strings are just put as JSON strings.
+/// Encode all base64 strings using the standard alphabet and padding.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
 
 fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_") }

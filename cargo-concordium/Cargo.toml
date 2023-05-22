@@ -13,6 +13,14 @@ include = ["Cargo.toml", "Cargo.lock", "src/*"] # Only include the actual source
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "cargo_concordium_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cargo-concordium"
+path = "src/main.rs"
+
 [dependencies]
 clap = "2.33"
 structopt = "0.3"

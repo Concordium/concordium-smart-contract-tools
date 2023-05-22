@@ -4,6 +4,7 @@ use crate::{
     types::*,
 };
 use anyhow::anyhow;
+use cargo_concordium_lib::build;
 use concordium_base::{
     base::{Energy, InsufficientEnergy},
     constants::{MAX_ALLOWED_INVOKE_ENERGY, MAX_WASM_MODULE_SIZE},
@@ -21,7 +22,11 @@ use concordium_smart_contract_engine::{
 };
 use num_bigint::BigUint;
 use num_integer::Integer;
-use std::{collections::BTreeMap, path::Path, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    path::Path,
+    sync::{Arc, Once},
+};
 
 impl Default for Chain {
     fn default() -> Self { Self::new() }
@@ -1179,6 +1184,36 @@ pub fn module_load_v1(module_path: impl AsRef<Path>) -> Result<WasmModule, Modul
         });
     }
     Ok(module)
+}
+
+/// A synchronization primitived used to ensure that `module_build_v1` only
+/// builds the module once.
+static MODULE_BUILD_BUILD: Once = Once::new();
+
+/// Compile the current module to a deployable smart contract Wasm module.
+///
+/// The module is placed in `./concordium-test-out/module.wasm.v1`.
+///
+/// This method blocks the calling thread if another call of the method is
+/// currently active. This ensures that the module is only built once,
+/// even if multiple test cases try to call this method. It also ensures that
+/// the module is available for all the test cases that need it, as they are
+/// blocked until the module is compiled.
+pub fn module_build_v1() -> Result<(), ModuleBuildError> {
+    let mut return_value = Ok(());
+    MODULE_BUILD_BUILD.call_once(|| {
+        let res = build::build_contract(
+            concordium_smart_contract_engine::utils::WasmVersion::V1,
+            build::SchemaBuildOptions::DoNotBuild,
+            Some("concordium-test-out/module.wasm.v1".into()),
+            &[],
+        );
+        match res {
+            Ok(_) => (),
+            Err(e) => return_value = Err(e.into()),
+        }
+    });
+    return_value
 }
 
 impl Signer {

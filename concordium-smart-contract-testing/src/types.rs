@@ -99,6 +99,12 @@ pub struct Transfer {
     pub to:     AccountAddress,
 }
 
+/// An error that occurred while building a module with
+/// [`crate::module_build_v1`].
+#[derive(Debug, Error)]
+#[error("Building the module failed due to: {0:?}")]
+pub struct ModuleBuildError(#[from] pub(crate) anyhow::Error);
+
 /// Represents a successful deployment of a [`ContractModule`].
 #[derive(Debug, PartialEq, Eq)]
 pub struct ModuleDeploySuccess {

@@ -89,7 +89,7 @@ mod constants;
 mod impls;
 mod invocation;
 mod types;
-pub use impls::{module_load_v1, module_load_v1_raw};
+pub use impls::{module_build_v1, module_load_v1, module_load_v1_raw};
 pub use types::*;
 
 // Re-export types.

@@ -14,6 +14,7 @@
   - On the `ContractInvokeError` type:
     - Include the field `trace_elements` of type `Vec<DebugTraceElements>` with the trace elements that were hitherto discarded. (breaking change)
     - To migrate, include the new field or use `..` when pattern matching on the type.
+- Add the method `module_build_v1`, which automatically (re)compiles the current module to a deployable and testable Wasm module.
 
 ## 1.0.0
 

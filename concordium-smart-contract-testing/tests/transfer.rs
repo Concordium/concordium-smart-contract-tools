@@ -96,7 +96,7 @@ fn test_transfer() {
         Amount::from_micro_ccd(1000 - 17),
         chain.get_contract(contract_address).unwrap().self_balance
     );
-    assert_eq!(res_update.trace_elements[..], [
+    assert_eq!(res_update.effective_trace_elements_cloned()[..], [
         ContractTraceElement::Interrupted {
             address: contract_address,
             events:  Vec::new(),

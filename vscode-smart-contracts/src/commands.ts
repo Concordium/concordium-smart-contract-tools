@@ -287,6 +287,7 @@ async function installCargoGenerate() {
   const execution = new vscode.ProcessExecution("cargo", [
     "install",
     "cargo-generate",
+    "--locked",
   ]);
   const task = new vscode.Task(
     {

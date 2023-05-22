@@ -19,7 +19,7 @@ pipeline {
                 echo -n "$CARGO_CONCORDIUM_VERSION"
             '''.stripIndent()
         )
-        CARGO_CONCORDIUM_EXECUTABLE = "s3://distribution.concordium.software/tools/macos/signed/cargo-concordium_${CARGO_CONCORDIUM_VERSION}.zip"
+        CARGO_CONCORDIUM_EXECUTABLE = "s3://distribution.concordium.software/tools/macos/cargo-concordium_${CARGO_CONCORDIUM_VERSION}"
         OUTFILE_ARM64 = "s3://distribution.concordium.software/tools/macos/vscode-smart-contracts_${VERSION}-darwin-arm64.vsix"
         OUTFILE_X64 = "s3://distribution.concordium.software/tools/macos/vscode-smart-contracts_${VERSION}-darwin-x64.vsix"
     }
@@ -45,13 +45,7 @@ pipeline {
             steps {
                 sh '''\
                     # Download zipped cargo-concordium executable from S3.
-                    aws s3 cp "${CARGO_CONCORDIUM_EXECUTABLE}" tmp/cargo-concordium.zip
-
-                    unzip tmp/cargo-concordium.zip -d tmp
-
-                    # Move binary to right location
-                    mkdir vscode-smart-contracts/executables
-                    mv tmp/cargo-concordium_${CARGO_CONCORDIUM_VERSION} vscode-smart-contracts/executables/cargo-concordium
+                    aws s3 cp "${CARGO_CONCORDIUM_EXECUTABLE}" vscode-smart-contracts/executables/cargo-concordium
 
                     # Make binary executable.
                     chmod +x vscode-smart-contracts/executables/cargo-concordium

@@ -53,6 +53,10 @@ This extension contributes the following settings:
 
 ## Release Notes
 
+### 1.0.3
+
+- Add `--locked` argument when installing `cargo-generate` for the user.
+
 ### 1.0.2
 
 - Update icon of the extension to better support dark themes.

@@ -2,6 +2,7 @@ use crate::{
     build::*,
     context::{InitContextOpt, ReceiveContextOpt, ReceiveContextV1Opt},
 };
+use ansi_term::Color;
 use anyhow::{bail, ensure, Context};
 use clap::AppSettings;
 use concordium_contracts_common::{
@@ -443,9 +444,14 @@ pub fn main() -> anyhow::Result<()> {
             }
         }
         Command::Test { args, seed } => {
-            let success =
+            let success_unit =
                 build_and_run_wasm_test(&args, seed).context("Could not build and run tests.")?;
-            ensure!(success, "Test failed");
+            let success_integration = build_and_run_integration_tests().is_ok();
+            if success_unit && success_integration {
+                eprintln!("{}", Color::Green.bold().paint("All tests passed"));
+            } else {
+                eprintln!("\n{}", Color::Red.bold().paint("One or more tests failed"));
+            };
         }
         Command::Init { path } => {
             init_concordium_project(path)

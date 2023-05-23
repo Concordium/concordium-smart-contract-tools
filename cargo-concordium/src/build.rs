@@ -33,6 +33,7 @@ use std::{
 /// Encode all base64 strings using the standard alphabet and padding.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
 
+/// Convert a string to snake case by replacing `-` with `_`.
 fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_") }
 
 #[derive(Debug, Clone, Copy)]
@@ -659,6 +660,71 @@ pub fn write_json_schema_to_file_v3(
     write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
 }
 
+/// Build the smart contract module and run all integration tests.
+///
+/// The module is built with [`build_contract`] and is placed at
+/// `./concordium-test-out/module.wasm.v1`.
+///
+/// The method discovers all test targets and run them.
+pub fn build_and_run_integration_tests() -> anyhow::Result<()> {
+    eprintln!(
+        "\n{}",
+        Color::Green.bold().paint("Running integration tests ...")
+    );
+
+    let metadata = MetadataCommand::new()
+        .exec()
+        .context("Could not access cargo metadata.")?;
+
+    let mut cargo_args = vec!["test"];
+    let test_args = metadata
+        .root_package()
+        .context("Could not determine package.")?
+        .targets
+        .iter()
+        .filter_map(|t| {
+            if t.kind == ["test"] {
+                Some(["--test", &t.name])
+            } else {
+                None
+            }
+        })
+        .flatten();
+    cargo_args.extend(test_args);
+
+    // TODO: Add option for user to embed schema (and also generate the json
+    // schema)?
+    build_contract(
+        WasmVersion::V1,
+        SchemaBuildOptions::DoNotBuild,
+        Some("concordium-test-out/module.wasm.v1".into()),
+        &[],
+    )?;
+
+    // Output what we are doing so that it is easier to debug if the user
+    // has their own features or options.
+    eprintln!(
+        "{} cargo {}",
+        Color::Green.bold().paint("Running"),
+        cargo_args.join(" "),
+    );
+
+    let result = Command::new("cargo")
+        .args(cargo_args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .context("Failed running integration tests.")?;
+
+    anyhow::ensure!(
+        result.status.success(),
+        Color::Red
+            .bold()
+            .paint("One or more integration tests failed.")
+    );
+    Ok(())
+}
+
 /// Build tests and run them. If errors occur in building the tests, or there
 /// are runtime exceptions that are not expected then this function returns
 /// Err(...).
@@ -727,7 +793,7 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
 
     let wasm = std::fs::read(filename).context("Failed reading contract test output artifact.")?;
 
-    eprintln!("\n{}", Color::Green.bold().paint("Running tests ..."));
+    eprintln!("\n{}", Color::Green.bold().paint("Running unit tests ..."));
 
     let seed_u64 = match seed {
         Some(s) => s,
@@ -771,10 +837,10 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
     }
 
     if num_failed == 0 {
-        eprintln!("Test result: {}", Color::Green.bold().paint("ok"));
+        eprintln!("Unit test result: {}", Color::Green.bold().paint("ok"));
         Ok(true)
     } else {
-        eprintln!("Test result: {}", Color::Red.bold().paint("FAILED"));
+        eprintln!("Unit test result: {}", Color::Red.bold().paint("FAILED"));
         Ok(false)
     }
 }

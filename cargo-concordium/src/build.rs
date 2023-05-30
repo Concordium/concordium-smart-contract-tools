@@ -1,3 +1,4 @@
+use crate::BuildOptions;
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
@@ -662,11 +663,8 @@ pub fn write_json_schema_to_file_v3(
 
 /// Build the smart contract module and run all integration tests.
 ///
-/// The module is built with [`build_contract`] and is placed at
-/// `./concordium-test-out/module.wasm.v1`.
-///
 /// The method discovers all test targets and run them.
-pub fn build_and_run_integration_tests() -> anyhow::Result<()> {
+pub(crate) fn build_and_run_integration_tests(build_options: BuildOptions) -> anyhow::Result<()> {
     eprintln!(
         "\n{}",
         Color::Green.bold().paint("Running integration tests ...")
@@ -692,14 +690,7 @@ pub fn build_and_run_integration_tests() -> anyhow::Result<()> {
         .flatten();
     cargo_args.extend(test_args);
 
-    // TODO: Add option for user to embed schema (and also generate the json
-    // schema)?
-    build_contract(
-        WasmVersion::V1,
-        SchemaBuildOptions::DoNotBuild,
-        Some("concordium-test-out/module.wasm.v1".into()),
-        &[],
-    )?;
+    crate::handle_build(build_options, false)?;
 
     // Output what we are doing so that it is easier to debug if the user
     // has their own features or options.

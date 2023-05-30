@@ -201,7 +201,13 @@ A schema has to be provided either as part of a smart contract module or with th
     },
 }
 
-// TODO: A doc comment here replaces the `about` string in Test and Build.
+// The build options used in the build and test command.
+//
+// This is *not* a doc comment on purpose, as that has the effect of overriding
+// the `about` message in the help menu for the command.
+// The issue is known (https://github.com/TeXitoi/structopt/issues/391) but won't
+// be fixed in `structopt` as it is in maintenance mode and is now integrated
+// in `clap` v3+. Once we migrate to `clap` v3+, this can become a doc comment.
 #[derive(Debug, StructOpt)]
 struct BuildOptions {
     #[structopt(
@@ -476,7 +482,6 @@ pub fn main() -> anyhow::Result<()> {
             build_options,
             only_unit_tests,
         } => {
-            // TODO: Fail early if wasm version == 0?
             let success_unit = build_and_run_wasm_test(&build_options.cargo_args, seed)
                 .context("Could not build and run tests.")?;
             let success_integration = if only_unit_tests {

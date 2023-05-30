@@ -681,7 +681,7 @@ pub(crate) fn build_and_run_integration_tests(
         .exec()
         .context("Could not access cargo metadata.")?;
 
-    let mut cargo_test_args = vec!["test".into()];
+    let mut cargo_test_args = vec!["test"];
 
     let test_targets: Vec<String> = if test_targets.is_empty() {
         // Find all the integration test targets and include them in the test.
@@ -707,10 +707,7 @@ pub(crate) fn build_and_run_integration_tests(
     // This is done to avoid running the unit tests again, which `cargo test` does
     // by default. The unit tests are run in wasm explicitly by another
     // function.
-    let test_targets_with_flags = test_targets
-        .iter()
-        .map(|target| ["--test", &target])
-        .flatten();
+    let test_targets_with_flags = test_targets.iter().flat_map(|target| ["--test", target]);
     cargo_test_args.extend(test_targets_with_flags);
 
     eprintln!(

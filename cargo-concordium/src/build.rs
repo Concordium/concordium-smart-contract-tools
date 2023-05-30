@@ -35,6 +35,9 @@ use std::{
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
 
 /// Convert a string to snake case by replacing `-` with `_`.
+///
+/// Used for converting crate names, which often contain `-`, to module names,
+/// which cannot have `-`.
 fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_") }
 
 #[derive(Debug, Clone, Copy)]
@@ -663,7 +666,7 @@ pub fn write_json_schema_to_file_v3(
 
 /// Build the smart contract module and run all integration tests.
 ///
-/// The method discovers all test targets and run them.
+/// The method discovers all test targets and runs them.
 pub(crate) fn build_and_run_integration_tests(build_options: BuildOptions) -> anyhow::Result<()> {
     eprintln!(
         "\n{}",

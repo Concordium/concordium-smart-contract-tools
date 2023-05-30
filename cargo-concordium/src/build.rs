@@ -668,16 +668,17 @@ pub fn write_json_schema_to_file_v3(
 ///
 /// The method discovers all test targets and runs them.
 pub(crate) fn build_and_run_integration_tests(build_options: BuildOptions) -> anyhow::Result<()> {
-    eprintln!(
-        "\n{}",
-        Color::Green.bold().paint("Running integration tests ...")
-    );
-
+    // Construct the test command first as it only needs a reference to the build
+    // options, whereas `handle_build` takes overship of it.
     let metadata = MetadataCommand::new()
         .exec()
         .context("Could not access cargo metadata.")?;
 
-    let mut cargo_args = vec!["test"];
+    let mut cargo_args = vec!["test".into()];
+    // Find all the integration test targets and include them in the test.
+    // This is done to avoid running the unit tests again, which `cargo test` does
+    // by default. The unit tests are run in wasm explicitly by another
+    // function.
     let test_args = metadata
         .root_package()
         .context("Could not determine package.")?
@@ -685,7 +686,7 @@ pub(crate) fn build_and_run_integration_tests(build_options: BuildOptions) -> an
         .iter()
         .filter_map(|t| {
             if t.kind == ["test"] {
-                Some(["--test", &t.name])
+                Some(["--test".into(), t.name.clone()])
             } else {
                 None
             }
@@ -693,7 +694,17 @@ pub(crate) fn build_and_run_integration_tests(build_options: BuildOptions) -> an
         .flatten();
     cargo_args.extend(test_args);
 
+    // Add the arguments from the build options.
+    cargo_args.extend_from_slice(build_options.cargo_args.as_slice());
+
+    // Build the module in the same way as `cargo concordium build`, except that
+    // schema information shouldn't be printed.
     crate::handle_build(build_options, false)?;
+
+    eprintln!(
+        "\n{}",
+        Color::Green.bold().paint("Running integration tests ...")
+    );
 
     // Output what we are doing so that it is easier to debug if the user
     // has their own features or options.

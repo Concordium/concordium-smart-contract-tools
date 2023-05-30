@@ -63,7 +63,8 @@ enum Command {
         name = "test",
         about = "Build and run tests using a Wasm interpreter.
 This command also builds a deployable Wasm module for integration testing, and it therefore also \
-                 has arguments for building."
+                 has arguments for building. By default, all integration test targets are tested. \
+                 To limit the targets tested, use `--test` one or more times."
     )]
     Test {
         #[structopt(name = "seed", long = "seed", help = "Seed for randomized testing")]
@@ -76,6 +77,13 @@ This command also builds a deployable Wasm module for integration testing, and i
             help = "Whether only the unit tests should be run."
         )]
         only_unit_tests: bool,
+        #[structopt(
+            name = "test",
+            long = "test",
+            short = "t",
+            help = "Test only the specified test target (can be provided multiple times)"
+        )]
+        test_targets:    Vec<String>,
     },
     #[structopt(
         name = "init",
@@ -481,13 +489,14 @@ pub fn main() -> anyhow::Result<()> {
             seed,
             build_options,
             only_unit_tests,
+            test_targets,
         } => {
             let success_unit = build_and_run_wasm_test(&build_options.cargo_args, seed)
                 .context("Could not build and run tests.")?;
             let success_integration = if only_unit_tests {
                 true
             } else {
-                build_and_run_integration_tests(build_options).is_ok()
+                build_and_run_integration_tests(build_options, test_targets).is_ok()
             };
 
             if success_unit && success_integration {

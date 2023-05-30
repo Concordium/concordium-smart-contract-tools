@@ -664,42 +664,54 @@ pub fn write_json_schema_to_file_v3(
     write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
 }
 
-/// Build the smart contract module and run all integration tests.
+/// Build the smart contract module and run integration tests.
 ///
-/// The method discovers all test targets and runs them.
-pub(crate) fn build_and_run_integration_tests(build_options: BuildOptions) -> anyhow::Result<()> {
-    // Construct the test command first as it only needs a reference to the build
-    // options, whereas `handle_build` takes overship of it.
+/// All test targets are tested if `test_targets` is empty.
+/// Otherwise, it is only the listed targets that are tested.
+pub(crate) fn build_and_run_integration_tests(
+    build_options: BuildOptions,
+    test_targets: Vec<String>,
+) -> anyhow::Result<()> {
+    // Build the module in the same way as `cargo concordium build`, except that
+    // schema information shouldn't be printed.
+    crate::handle_build(build_options, false)?;
+
+    // Construct the test command.
     let metadata = MetadataCommand::new()
         .exec()
         .context("Could not access cargo metadata.")?;
 
-    let mut cargo_args = vec!["test".into()];
-    // Find all the integration test targets and include them in the test.
+    let mut cargo_test_args = vec!["test".into()];
+
+    let test_targets: Vec<String> = if test_targets.is_empty() {
+        // Find all the integration test targets and include them in the test.
+        metadata
+            .root_package()
+            .context("Could not determine package.")?
+            .targets
+            .iter()
+            .filter_map(|t| {
+                if t.kind == ["test"] {
+                    Some(t.name.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    } else {
+        // Use only the specified test targets.
+        test_targets
+    };
+
+    // Add the test targets explicitly.
     // This is done to avoid running the unit tests again, which `cargo test` does
     // by default. The unit tests are run in wasm explicitly by another
     // function.
-    let test_args = metadata
-        .root_package()
-        .context("Could not determine package.")?
-        .targets
+    let test_targets_with_flags = test_targets
         .iter()
-        .filter_map(|t| {
-            if t.kind == ["test"] {
-                Some(["--test".into(), t.name.clone()])
-            } else {
-                None
-            }
-        })
+        .map(|target| ["--test", &target])
         .flatten();
-    cargo_args.extend(test_args);
-
-    // Add the arguments from the build options.
-    cargo_args.extend_from_slice(build_options.cargo_args.as_slice());
-
-    // Build the module in the same way as `cargo concordium build`, except that
-    // schema information shouldn't be printed.
-    crate::handle_build(build_options, false)?;
+    cargo_test_args.extend(test_targets_with_flags);
 
     eprintln!(
         "\n{}",
@@ -711,11 +723,11 @@ pub(crate) fn build_and_run_integration_tests(build_options: BuildOptions) -> an
     eprintln!(
         "{} cargo {}",
         Color::Green.bold().paint("Running"),
-        cargo_args.join(" "),
+        cargo_test_args.join(" "),
     );
 
     let result = Command::new("cargo")
-        .args(cargo_args)
+        .args(cargo_test_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()

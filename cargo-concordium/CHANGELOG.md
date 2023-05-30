@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased changes
+
+- Make `cargo concordium test` compile your smart contract module and run integration on it, if available.
+  - This makes it easier to use the `concordium-smart-contract-testing` library for integration tests, without the risk of running the tests against a stale Wasm module.
+  - The `test` command is now essentially the same as `cargo concordium build` followed by the previous `cargo concordium test` and `cargo test --test '*'`.
+    This behaviour ensures that unit tests run in Wasm and the integration tests run with the native target, but using the compiled Wasm module.
+  - All the build options from `cargo concordium build` now also exist for `cargo concordium test`.
+    - This allows you to run tests against the exact module you will also deploy on the chain.
+
 ## 2.8.1
 
 - Add padding to base64 output to work around parsers that require it.

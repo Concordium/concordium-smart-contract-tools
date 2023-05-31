@@ -2,6 +2,7 @@ use crate::{
     build::*,
     context::{InitContextOpt, ReceiveContextOpt, ReceiveContextV1Opt},
 };
+use ansi_term::Color;
 use anyhow::{bail, ensure, Context};
 use clap::AppSettings;
 use concordium_contracts_common::{
@@ -58,15 +59,31 @@ enum Command {
         )]
         state_bin_path: PathBuf,
     },
-    #[structopt(name = "test", about = "Build and run tests using a Wasm interpreter.")]
+    #[structopt(
+        name = "test",
+        about = "Build and run tests using a Wasm interpreter.
+This command also builds a deployable Wasm module for integration testing, and it therefore also \
+                 has arguments for building. By default, all integration test targets are tested. \
+                 To limit the targets tested, use `--test` one or more times."
+    )]
     Test {
         #[structopt(name = "seed", long = "seed", help = "Seed for randomized testing")]
-        seed: Option<u64>,
+        seed:            Option<u64>,
+        #[structopt(flatten)]
+        build_options:   BuildOptions,
         #[structopt(
-            raw = true,
-            help = "Extra arguments passed to `cargo build` when building the test Wasm module."
+            name = "only-unit-tests",
+            long = "only-unit-tests",
+            help = "Whether only the unit tests should be run."
         )]
-        args: Vec<String>,
+        only_unit_tests: bool,
+        #[structopt(
+            name = "test",
+            long = "test",
+            short = "t",
+            help = "Test only the specified test target (can be provided multiple times)"
+        )]
+        test_targets:    Vec<String>,
     },
     #[structopt(
         name = "init",
@@ -87,9 +104,9 @@ enum Command {
     #[structopt(
         name = "schema-json",
         about = "Convert a schema into its JSON representation and output it to a file.
-        A schema has to be provided either as part of a smart contract module or with the schema \
-                 flag. You need to use exactly one of the two flags(`--schema` or `--module`) \
-                 with this command."
+A schema has to be provided either as part of a smart contract module or with the schema flag. You \
+                 need to use exactly one of the two flags(`--schema` or `--module`) with this \
+                 command."
     )]
     SchemaJSON {
         #[structopt(
@@ -136,9 +153,9 @@ enum Command {
         name = "schema-base64",
         about = "Convert a schema into its base64 representation and output it to a file or print \
                  it to the console.
-        A schema has to be provided either as part of a smart contract module or with the schema \
-                 flag. You need to use exactly one of the two flags(`--schema` or `--module`) \
-                 with this command."
+A schema has to be provided either as part of a smart contract module or with the schema flag. You \
+                 need to use exactly one of the two flags(`--schema` or `--module`) with this \
+                 command."
     )]
     SchemaBase64 {
         #[structopt(
@@ -187,59 +204,88 @@ enum Command {
         about = "Build a deployment ready smart-contract module."
     )]
     Build {
-        #[structopt(
-            name = "schema-embed",
-            long = "schema-embed",
-            short = "e",
-            help = "Builds the contract schema and embeds it into the wasm module."
-        )]
-        schema_embed:      bool,
-        #[structopt(
-            name = "schema-out",
-            long = "schema-out",
-            short = "s",
-            help = "Builds the contract schema and writes it to file at specified location."
-        )]
-        schema_out:        Option<PathBuf>,
-        #[structopt(
-            name = "schema-json-out",
-            long = "schema-json-out",
-            short = "j",
-            help = "Builds the contract schema and writes it in JSON format to the specified \
-                    directory."
-        )]
-        schema_json_out:   Option<PathBuf>,
-        #[structopt(
-            name = "schema-base64-out",
-            long = "schema-base64-out",
-            short = "b",
-            help = "Builds the contract schema and writes it in base64 format to file at \
-                    specified location or prints the base64 schema to the console if the value \
-                    `-` is used. The path has to exist while the file will be created. (expected \
-                    input: `./my/path/base64_schema.b64` or `-`)."
-        )]
-        schema_base64_out: Option<PathBuf>,
-        #[structopt(
-            name = "out",
-            long = "out",
-            short = "o",
-            help = "Writes the resulting module to file at specified location."
-        )]
-        out:               Option<PathBuf>,
-        #[structopt(
-            name = "contract-version",
-            long = "contract-version",
-            short = "v",
-            help = "Build a module of the given version.",
-            default_value = "V1"
-        )]
-        version:           utils::WasmVersion,
-        #[structopt(
-            raw = true,
-            help = "Extra arguments passed to `cargo build` when building Wasm module."
-        )]
-        cargo_args:        Vec<String>,
+        #[structopt(flatten)]
+        build_options: BuildOptions,
     },
+}
+
+// The build options used in the build and test command.
+//
+// This is *not* a doc comment on purpose, as that has the effect of overriding
+// the `about` message in the help menu for the command.
+// The issue is known (https://github.com/TeXitoi/structopt/issues/391) but won't
+// be fixed in `structopt` as it is in maintenance mode and is now integrated
+// in `clap` v3+. Once we migrate to `clap` v3+, this can become a doc comment.
+#[derive(Debug, StructOpt)]
+struct BuildOptions {
+    #[structopt(
+        name = "schema-embed",
+        long = "schema-embed",
+        short = "e",
+        help = "Builds the contract schema and embeds it into the wasm module."
+    )]
+    schema_embed:      bool,
+    #[structopt(
+        name = "schema-out",
+        long = "schema-out",
+        short = "s",
+        help = "Builds the contract schema and writes it to file at specified location."
+    )]
+    schema_out:        Option<PathBuf>,
+    #[structopt(
+        name = "schema-json-out",
+        long = "schema-json-out",
+        short = "j",
+        help = "Builds the contract schema and writes it in JSON format to the specified \
+                directory."
+    )]
+    schema_json_out:   Option<PathBuf>,
+    #[structopt(
+        name = "schema-base64-out",
+        long = "schema-base64-out",
+        short = "b",
+        help = "Builds the contract schema and writes it in base64 format to file at specified \
+                location or prints the base64 schema to the console if the value `-` is used. The \
+                path has to exist while the file will be created. (expected input: \
+                `./my/path/base64_schema.b64` or `-`)."
+    )]
+    schema_base64_out: Option<PathBuf>,
+    #[structopt(
+        name = "out",
+        long = "out",
+        short = "o",
+        help = "Writes the resulting module to file at specified location."
+    )]
+    out:               Option<PathBuf>,
+    #[structopt(
+        name = "contract-version",
+        long = "contract-version",
+        short = "v",
+        help = "Build a module of the given version.",
+        default_value = "V1"
+    )]
+    version:           utils::WasmVersion,
+    #[structopt(
+        raw = true,
+        help = "Extra arguments passed to `cargo build` when building Wasm module."
+    )]
+    cargo_args:        Vec<String>,
+}
+
+impl BuildOptions {
+    /// Determine the [`SchemaBuildOptions`] based on the input from the user.
+    fn schema_build_options(&self) -> SchemaBuildOptions {
+        if self.schema_embed {
+            SchemaBuildOptions::BuildAndEmbed
+        } else if self.schema_out.is_some()
+            || self.schema_json_out.is_some()
+            || self.schema_base64_out.is_some()
+        {
+            SchemaBuildOptions::JustBuild
+        } else {
+            SchemaBuildOptions::DoNotBuild
+        }
+    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -399,9 +445,6 @@ pub fn main() -> anyhow::Result<()> {
     {
         ansi_term::enable_ansi_support();
     }
-    let success_style = ansi_term::Color::Green.bold();
-    let bold_style = ansi_term::Style::new().bold();
-
     let cmd = {
         let app = CargoCommand::clap()
             .setting(AppSettings::ArgRequiredElseHelp)
@@ -442,10 +485,25 @@ pub fn main() -> anyhow::Result<()> {
                 utils::WasmVersion::V1 => handle_run_v1(*run_cmd, module)?,
             }
         }
-        Command::Test { args, seed } => {
-            let success =
-                build_and_run_wasm_test(&args, seed).context("Could not build and run tests.")?;
-            ensure!(success, "Test failed");
+        Command::Test {
+            seed,
+            build_options,
+            only_unit_tests,
+            test_targets,
+        } => {
+            let success_unit = build_and_run_wasm_test(&build_options.cargo_args, seed)
+                .context("Could not build and run tests.")?;
+            let success_integration = if only_unit_tests {
+                true
+            } else {
+                build_and_run_integration_tests(build_options, test_targets).is_ok()
+            };
+
+            if success_unit && success_integration {
+                eprintln!("{}", Color::Green.bold().paint("All tests passed"));
+            } else {
+                eprintln!("\n{}", Color::Red.bold().paint("One or more tests failed"));
+            };
         }
         Command::Init { path } => {
             init_concordium_project(path)
@@ -493,112 +551,113 @@ pub fn main() -> anyhow::Result<()> {
                     .context("Could not write base64 schema file.")?;
             }
         }
-        Command::Build {
-            schema_embed,
-            schema_out,
-            schema_json_out,
-            schema_base64_out,
-            out,
-            version,
-            cargo_args,
-        } => {
-            let build_schema = if schema_embed {
-                SchemaBuildOptions::BuildAndEmbed
-            } else if schema_out.is_some()
-                || schema_json_out.is_some()
-                || schema_base64_out.is_some()
-            {
-                SchemaBuildOptions::JustBuild
-            } else {
-                SchemaBuildOptions::DoNotBuild
-            };
-            let (byte_len, schema) = build_contract(version, build_schema, out, &cargo_args)
-                .context("Could not build smart contract.")?;
-            if let Some(module_schema) = &schema {
-                match module_schema {
-                    VersionedModuleSchema::V0(module_schema) => {
-                        eprintln!("\n   Module schema includes:");
-                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            print_contract_schema_v0(contract_name, contract_schema);
-                        }
-                    }
-                    VersionedModuleSchema::V1(module_schema) => {
-                        eprintln!("\n   Module schema includes:");
-                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            print_contract_schema_v1(contract_name, contract_schema);
-                        }
-                    }
-                    VersionedModuleSchema::V2(module_schema) => {
-                        eprintln!("\n   Module schema includes:");
-                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            print_contract_schema_v2(contract_name, contract_schema);
-                        }
-                    }
-                    VersionedModuleSchema::V3(module_schema) => {
-                        eprintln!("\n   Module schema includes:");
-                        for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                            print_contract_schema_v3(contract_name, contract_schema);
-                        }
-                    }
-                };
-                let module_schema_bytes = to_bytes(module_schema);
-                eprintln!(
-                    "\n   Total size of the module schema is {} {}",
-                    bold_style.paint(module_schema_bytes.len().to_string()),
-                    bold_style.paint("B")
-                );
-
-                if let Some(schema_out) = schema_out {
-                    // A path and a filename need to be provided when using the `--schema-out`
-                    // flag.
-                    if schema_out.file_name().is_none() || schema_out.is_dir() {
-                        anyhow::bail!(
-                            "The `--schema-out` flag requires a path and a filename (expected \
-                             input: `./my/path/schema.bin`)"
-                        );
-                    }
-
-                    if let Some(out_dir) = schema_out.parent() {
-                        fs::create_dir_all(out_dir)
-                            .context("Unable to create directory for the resulting schema.")?;
-                    }
-                    fs::write(schema_out, &module_schema_bytes)
-                        .context("Could not write schema file.")?;
-                }
-                if let Some(schema_json_out) = schema_json_out {
-                    write_json_schema(&schema_json_out, module_schema)
-                        .context("Could not write JSON schema files.")?;
-                }
-                if let Some(schema_base64_out) = schema_base64_out {
-                    if schema_base64_out.as_path() == Path::new("-") {
-                        write_schema_base64(None, module_schema)
-                            .context("Could not print base64 schema.")?;
-                    } else {
-                        if schema_base64_out.file_name().is_none() || schema_base64_out.is_dir() {
-                            anyhow::bail!(
-                                "The `--schema-base64-out` flag should point to an existing \
-                                 directory + filename (expected input: \
-                                 `./my/path/base64_schema.b64`) or be `-`."
-                            );
-                        }
-
-                        write_schema_base64(Some(schema_base64_out), module_schema)
-                            .context("Could not write base64 schema file.")?;
-                    }
-                }
-                if schema_embed {
-                    eprintln!("   Embedding schema into module.\n");
-                }
-            }
-            let size = format!("{}.{:03} kB", byte_len / 1000, byte_len % 1000);
-            eprintln!(
-                "    {} smart contract module {}",
-                success_style.paint("Finished"),
-                bold_style.paint(size)
-            )
-        }
+        Command::Build { build_options } => handle_build(build_options, true)?,
         Command::DisplayState { state_bin_path } => display_state_from_file(state_bin_path)?,
     };
+    Ok(())
+}
+
+/// Build the smart contract module using the provided options.
+///
+/// This method is used by both the build and test command.
+/// When building, i.e. when running `cargo concordium build`, the schema
+/// information is outputted, but that is not the case when testing.
+/// This behaviour is configurable via the parameter `print_schema_info`.
+fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Result<()> {
+    let success_style = ansi_term::Color::Green.bold();
+    let bold_style = ansi_term::Style::new().bold();
+    let build_schema = options.schema_build_options();
+    let (byte_len, schema) = build_contract(
+        options.version,
+        build_schema,
+        options.out,
+        &options.cargo_args,
+    )
+    .context("Could not build smart contract.")?;
+    if let Some(module_schema) = &schema {
+        let module_schema_bytes = to_bytes(module_schema);
+        if print_schema_info {
+            match module_schema {
+                VersionedModuleSchema::V0(module_schema) => {
+                    eprintln!("\n   Module schema includes:");
+                    for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                        print_contract_schema_v0(contract_name, contract_schema);
+                    }
+                }
+                VersionedModuleSchema::V1(module_schema) => {
+                    eprintln!("\n   Module schema includes:");
+                    for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                        print_contract_schema_v1(contract_name, contract_schema);
+                    }
+                }
+                VersionedModuleSchema::V2(module_schema) => {
+                    eprintln!("\n   Module schema includes:");
+                    for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                        print_contract_schema_v2(contract_name, contract_schema);
+                    }
+                }
+                VersionedModuleSchema::V3(module_schema) => {
+                    eprintln!("\n   Module schema includes:");
+                    for (contract_name, contract_schema) in module_schema.contracts.iter() {
+                        print_contract_schema_v3(contract_name, contract_schema);
+                    }
+                }
+            };
+            eprintln!(
+                "\n   Total size of the module schema is {} {}",
+                bold_style.paint(module_schema_bytes.len().to_string()),
+                bold_style.paint("B")
+            );
+        }
+
+        if let Some(schema_out) = options.schema_out {
+            // A path and a filename need to be provided when using the `--schema-out`
+            // flag.
+            if schema_out.file_name().is_none() || schema_out.is_dir() {
+                anyhow::bail!(
+                    "The `--schema-out` flag requires a path and a filename (expected input: \
+                     `./my/path/schema.bin`)"
+                );
+            }
+
+            if let Some(out_dir) = schema_out.parent() {
+                fs::create_dir_all(out_dir)
+                    .context("Unable to create directory for the resulting schema.")?;
+            }
+            fs::write(schema_out, &module_schema_bytes).context("Could not write schema file.")?;
+        }
+        if let Some(schema_json_out) = options.schema_json_out {
+            write_json_schema(&schema_json_out, module_schema)
+                .context("Could not write JSON schema files.")?;
+        }
+        if let Some(schema_base64_out) = options.schema_base64_out {
+            if schema_base64_out.as_path() == Path::new("-") {
+                write_schema_base64(None, module_schema)
+                    .context("Could not print base64 schema.")?;
+            } else {
+                if schema_base64_out.file_name().is_none() || schema_base64_out.is_dir() {
+                    anyhow::bail!(
+                        "The `--schema-base64-out` flag should point to an existing directory + \
+                         filename (expected input: `./my/path/base64_schema.b64`) or be `-`."
+                    );
+                }
+
+                write_schema_base64(Some(schema_base64_out), module_schema)
+                    .context("Could not write base64 schema file.")?;
+            }
+        }
+        if options.schema_embed && print_schema_info {
+            eprintln!("   Embedding schema into module.\n");
+        }
+    }
+    if print_schema_info {
+        let size = format!("{}.{:03} kB", byte_len / 1000, byte_len % 1000);
+        eprintln!(
+            "    {} smart contract module {}",
+            success_style.paint("Finished"),
+            bold_style.paint(size)
+        )
+    }
     Ok(())
 }
 

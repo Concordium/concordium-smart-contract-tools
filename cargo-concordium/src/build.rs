@@ -1,3 +1,4 @@
+use crate::BuildOptions;
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
@@ -33,6 +34,10 @@ use std::{
 /// Encode all base64 strings using the standard alphabet and padding.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
 
+/// Convert a string to snake case by replacing `-` with `_`.
+///
+/// Used for converting crate names, which often contain `-`, to module names,
+/// which cannot have `-`.
 fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_") }
 
 #[derive(Debug, Clone, Copy)]
@@ -659,6 +664,81 @@ pub fn write_json_schema_to_file_v3(
     write_schema_json(path_of_out, contract_name, contract_counter, schema_json)
 }
 
+/// Build the smart contract module and run integration tests.
+///
+/// All test targets are tested if `test_targets` is empty.
+/// Otherwise, it is only the listed targets that are tested.
+pub(crate) fn build_and_run_integration_tests(
+    build_options: BuildOptions,
+    test_targets: Vec<String>,
+) -> anyhow::Result<()> {
+    // Build the module in the same way as `cargo concordium build`, except that
+    // schema information shouldn't be printed.
+    crate::handle_build(build_options, false)?;
+
+    // Construct the test command.
+    let metadata = MetadataCommand::new()
+        .exec()
+        .context("Could not access cargo metadata.")?;
+
+    let mut cargo_test_args = vec!["test"];
+
+    let test_targets: Vec<String> = if test_targets.is_empty() {
+        // Find all the integration test targets and include them in the test.
+        metadata
+            .root_package()
+            .context("Could not determine package.")?
+            .targets
+            .iter()
+            .filter_map(|t| {
+                if t.kind == ["test"] {
+                    Some(t.name.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    } else {
+        // Use only the specified test targets.
+        test_targets
+    };
+
+    // Add the test targets explicitly.
+    // This is done to avoid running the unit tests again, which `cargo test` does
+    // by default. The unit tests are run in wasm explicitly by another
+    // function.
+    let test_targets_with_flags = test_targets.iter().flat_map(|target| ["--test", target]);
+    cargo_test_args.extend(test_targets_with_flags);
+
+    eprintln!(
+        "\n{}",
+        Color::Green.bold().paint("Running integration tests ...")
+    );
+
+    // Output what we are doing so that it is easier to debug if the user
+    // has their own features or options.
+    eprintln!(
+        "{} cargo {}",
+        Color::Green.bold().paint("Running"),
+        cargo_test_args.join(" "),
+    );
+
+    let result = Command::new("cargo")
+        .args(cargo_test_args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .context("Failed running integration tests.")?;
+
+    anyhow::ensure!(
+        result.status.success(),
+        Color::Red
+            .bold()
+            .paint("One or more integration tests failed.")
+    );
+    Ok(())
+}
+
 /// Build tests and run them. If errors occur in building the tests, or there
 /// are runtime exceptions that are not expected then this function returns
 /// Err(...).
@@ -727,7 +807,7 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
 
     let wasm = std::fs::read(filename).context("Failed reading contract test output artifact.")?;
 
-    eprintln!("\n{}", Color::Green.bold().paint("Running tests ..."));
+    eprintln!("\n{}", Color::Green.bold().paint("Running unit tests ..."));
 
     let seed_u64 = match seed {
         Some(s) => s,
@@ -771,10 +851,10 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
     }
 
     if num_failed == 0 {
-        eprintln!("Test result: {}", Color::Green.bold().paint("ok"));
+        eprintln!("Unit test result: {}", Color::Green.bold().paint("ok"));
         Ok(true)
     } else {
-        eprintln!("Test result: {}", Color::Red.bold().paint("FAILED"));
+        eprintln!("Unit test result: {}", Color::Red.bold().paint("FAILED"));
         Ok(false)
     }
 }

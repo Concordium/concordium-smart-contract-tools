@@ -8,7 +8,7 @@
     This behaviour ensures that unit tests run in Wasm and the integration tests run with the native target, but using the compiled Wasm module.
   - All the build options from `cargo concordium build` now also exist for `cargo concordium test`.
     - This allows you to run tests against the exact module you will also deploy on the chain.
-- When JSON parameters included in `cargo concordium run` cannot be serialized, the error returned now includes trace information, which should make it easier to identify the cause of the error.
+- When JSON parameters included in `cargo concordium run` cannot be serialized, the error returned now includes trace information, which makes it easier to identify the cause of the error.
 
 ## 2.8.1
 

@@ -5,18 +5,10 @@ import {
     DeployModulePayload,
     InitContractPayload,
     ModuleReference,
-    UpdateContractPayload,
-    serializeTypeValue,
     toBuffer,
 } from '@concordium/web-sdk';
 import { WalletConnection } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
-import { SmartContractParameters } from '@concordium/browser-wallet-api-helpers';
-import {
-    CONTRACT_SUB_INDEX,
-    CREDENTIAL_REGISTRY_BASE_64_SCHEMA,
-    STORAGE_CONTRACT_STORE_PARAMETER_SCHEMA,
-} from './constants';
 
 export async function deploy(connection: WalletConnection, account: string, base64Module: string) {
     if (base64Module === '') {
@@ -35,12 +27,9 @@ export async function initializeSmartContract(
     inputParameter: string,
     initName: string,
     contractSchema: string,
+    dropDown: string,
     amount?: string
 ) {
-    console.log(moduleReference);
-    console.log(initName);
-    console.log(contractSchema);
-    console.log(amount);
     if (moduleReference === '') {
         throw new Error(`Set moduleReference`);
     }
@@ -52,10 +41,38 @@ export async function initializeSmartContract(
     let schema;
 
     if (contractSchema !== '') {
-        schema = {
-            parameters: inputParameter,
-            schema: moduleSchemaFromBase64(contractSchema),
-        };
+        if (inputParameter === '') {
+            throw new Error('Both `contractSchema` and `inputParameter` needs to be set or none of them');
+        }
+
+        switch (dropDown) {
+            case 'number':
+                schema = {
+                    parameters: Number(inputParameter),
+                    schema: moduleSchemaFromBase64(contractSchema),
+                };
+                break;
+            case 'string':
+                schema = {
+                    parameters: inputParameter,
+                    schema: moduleSchemaFromBase64(contractSchema),
+                };
+                break;
+            case 'object':
+                schema = {
+                    parameters: JSON.parse(inputParameter),
+                    schema: moduleSchemaFromBase64(contractSchema),
+                };
+                break;
+            case 'array':
+                schema = {
+                    parameters: Array.from(inputParameter),
+                    schema: moduleSchemaFromBase64(contractSchema),
+                };
+                break;
+            default:
+                throw new Error(`Dropdown option does not exist`);
+        }
     }
 
     return connection.signAndSendTransaction(

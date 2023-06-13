@@ -1,21 +1,15 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
-import { toBuffer, serializeTypeValue, ModuleReference, CcdAmount } from '@concordium/web-sdk';
+import { ModuleReference } from '@concordium/web-sdk';
 import Switch from 'react-switch';
 import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
-import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { accountInfo } from './reading_from_blockchain';
 import { initializeSmartContract, deploy } from './writing_to_blockchain';
 
-import {
-    BROWSER_WALLET,
-    REFRESH_INTERVAL,
-    STORAGE_CONTRACT_SERIALIZATION_HELPER_PARAMETER_SCHEMA,
-    CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX,
-} from './constants';
+import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -33,64 +27,6 @@ function TestBox({ header, children, note }: TestBoxProps) {
     );
 }
 
-async function addSchema(
-    credentialTypes: string[],
-    setCredentialTypes: (value: string[]) => void,
-    schemas: object[],
-    setSchemas: (value: object[]) => void,
-    credentialSchemaURLs: string[],
-    setCredentialSchemaURLs: (value: string[]) => void,
-    newCredentialType: string,
-    setCredentialTypeInput: (value: string) => void,
-    credentialSchemaURLInput: string,
-    setCredentialSchemaURLInput: (value: string) => void
-) {
-    if (credentialTypes.includes(newCredentialType)) {
-        throw new Error(`duplicated CredentialType: ${newCredentialType}`);
-    }
-    if (newCredentialType) {
-        setCredentialTypes([...credentialTypes, newCredentialType]);
-        setCredentialSchemaURLs([...credentialSchemaURLs, credentialSchemaURLInput]);
-        setCredentialTypeInput('');
-        setCredentialSchemaURLInput('');
-
-        setSchemas([
-            ...schemas,
-            [
-                {
-                    credential_type: newCredentialType,
-                },
-                {
-                    schema_ref: {
-                        hash: {
-                            None: [],
-                        },
-                        url: credentialSchemaURLInput,
-                    },
-                },
-            ],
-        ]);
-    }
-}
-
-async function addRevokationKey(
-    revocationKeys: string[],
-    setRevocationKeys: (value: string[]) => void,
-    setRevoationKeyInput: (value: string) => void,
-    newRevocationKey: string
-) {
-    if (revocationKeys.includes(newRevocationKey)) {
-        throw new Error(`Duplicate revocation key: ${newRevocationKey}`);
-    }
-    if (newRevocationKey.length !== 64) {
-        throw new Error(`Revocation key should have a length of 64`);
-    }
-    if (newRevocationKey) {
-        setRevocationKeys([...revocationKeys, newRevocationKey]);
-        setRevoationKeyInput('');
-    }
-}
-
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
 
@@ -98,96 +34,36 @@ export default function Main(props: WalletConnectionProps) {
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
 
     const [viewError, setViewError] = useState('');
-    const [signingError, setSigningError] = useState('');
     const [transactionError, setTransactionError] = useState('');
-    const [userInputError, setUserInputError] = useState('');
-    const [userInputError2, setUserInputError2] = useState('');
     const [uploadError, setUploadError] = useState('');
     const [uploadError2, setUploadError2] = useState('');
-
-    const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState(0);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
 
     const [accountBalance, setAccountBalance] = useState('');
 
-    const [credentialState, setCredentialState] = useState('');
-    const [credentialStateError, setCredentialStateError] = useState('');
-
-    const [credentialRegistryState, setCredentialRegistryState] = useState('');
-    const [credentialRegistryStateError, setCredentialRegistryStateError] = useState('');
-
-    const [signature, setSignature] = useState('');
     const [inputParameter, setInputParameter] = useState('');
 
     const [txHash, setTxHash] = useState('');
-    const [publicKey, setPublicKey] = useState('');
 
-    const [browserPublicKey, setBrowserPublicKey] = useState('');
     const [initName, setInitName] = useState('');
 
     const [moduleReference, setModuleReference] = useState('');
-    const [credentialMetaDataURL, setCredentialMetaDataURL] = useState('myType');
-    const [credentialType, setCredentialType] = useState('https://credential/metaData/');
-    const [isHolderRevocable, setIsHolderRevocable] = useState(true);
-
-    const [revocationKeys, setRevocationKeys] = useState<string[]>([]);
-    const [revocationKeyInput, setRevocationKeyInput] = useState(
-        '8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82'
-    );
-
-    const [schemas, setSchemas] = useState<object[]>([]);
-    const [credentialTypes, setCredentialTypes] = useState<string[]>([]);
-    const [credentialSchemaURLs, setCredentialSchemaURLs] = useState<string[]>([]);
-    const [credentialTypeInput, setCredentialTypeInput] = useState('myType');
-    const [credentialSchemaURLInput, setCredentialSchemaURLInput] = useState('https://credentialSchema/metaData/');
-
-    const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
-    const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
-
     const [writeDropDown, setWriteDropDown] = useState('');
     const [hasInputParameter, setHasInputParameter] = useState(false);
 
     const [isPayable, setIsPayable] = useState(false);
+
+    const [exampleInputParameter, setExampleInputParameter] = useState('');
 
     const [cCDAmount, setCCDAmount] = useState('');
 
     const [base64Module, setBase64Module] = useState('');
     const [base64Schema, setBase64Schema] = useState('');
 
-    const handleValidFromDateChange = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setValidFromDate(target.value);
-    };
-
-    const handleValidUntilDateChange = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setValidUntilDate(target.value);
-    };
-
-    const changePublicKeyHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setPublicKey(target.value);
-    };
-
     const changeModuleReferenceHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setModuleReference(target.value);
-    };
-
-    const changeCredentialMetaDataURLHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialMetaDataURL(target.value);
-    };
-
-    const changeCredentialTypeHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialType(target.value);
-    };
-
-    const changeCredentialRegistryContratIndexHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialRegistryContratIndex(Number(target.value));
     };
 
     const changeWriteDropDownHandler = () => {
@@ -195,6 +71,12 @@ export default function Main(props: WalletConnectionProps) {
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
         setWriteDropDown(value);
+        if (writeDropDown === 'array') {
+            setExampleInputParameter('[a,b,c]');
+        }
+        if (writeDropDown === 'object') {
+            setExampleInputParameter('{"myFiled":"value"}');
+        }
     };
 
     const changeCCDAmountHandler = (event: ChangeEvent) => {
@@ -205,6 +87,11 @@ export default function Main(props: WalletConnectionProps) {
     const changeInitNameHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setInitName(target.value);
+    };
+
+    const changeInputParameterFieldHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setInputParameter(target.value);
     };
 
     //   export function useContractSchemaRpc(connection: WalletConnection, contract: Info) {
@@ -265,15 +152,11 @@ export default function Main(props: WalletConnectionProps) {
                     .then((value) => {
                         if (value !== undefined) {
                             setAccountBalance(value.accountAmount.toString());
-                            setBrowserPublicKey(
-                                value.accountCredentials[0].value.contents.credentialPublicKeys.keys[0].verifyKey
-                            );
                         }
                         setViewError('');
                     })
                     .catch((e) => {
                         setAccountBalance('');
-                        setBrowserPublicKey('');
                         setViewError((e as Error).message);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
@@ -287,26 +170,22 @@ export default function Main(props: WalletConnectionProps) {
                 .then((value) => {
                     if (value !== undefined) {
                         setAccountBalance(value.accountAmount.toString());
-                        setBrowserPublicKey(
-                            value.accountCredentials[0].value.contents.credentialPublicKeys.keys[0].verifyKey
-                        );
                     }
                     setViewError('');
                 })
                 .catch((e) => {
                     setViewError((e as Error).message);
                     setAccountBalance('');
-                    setBrowserPublicKey('');
                 });
         }
     }, [connection, account]);
 
-    const changeInputParameterHandler = (event: ChangeEvent) => {
-        const inputTextArea = document.getElementById('inputParameter');
+    const changeInputParameterTextAreaHandler = (event: ChangeEvent) => {
+        const inputTextArea = document.getElementById('inputParameterTextArea');
         inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
 
         const target = event.target as HTMLTextAreaElement;
-        setInputParameter(JSON.parse(target.value));
+        setInputParameter(JSON.stringify(JSON.parse(target.value)));
     };
 
     return (
@@ -552,9 +431,27 @@ export default function Main(props: WalletConnectionProps) {
                                         <br />
                                         {(writeDropDown === 'object' || writeDropDown === 'array') && (
                                             <label className="field">
-                                                Add your input parameter:
+                                                Add your input parameter ({writeDropDown}):
                                                 <br />
-                                                <textarea id="inputParameter" onChange={changeInputParameterHandler} />
+                                                <textarea
+                                                    id="inputParameterTextArea"
+                                                    onChange={changeInputParameterTextAreaHandler}
+                                                >
+                                                    {exampleInputParameter}
+                                                </textarea>
+                                            </label>
+                                        )}
+                                        {(writeDropDown === 'string' || writeDropDown === 'number') && (
+                                            <label className="field">
+                                                Add your input parameter ({writeDropDown}):
+                                                <br />
+                                                <input
+                                                    className="inputFieldStyle"
+                                                    id="inputParameterField"
+                                                    type="text"
+                                                    placeholder={writeDropDown === 'string' ? 'myString' : '1000000'}
+                                                    onChange={changeInputParameterFieldHandler}
+                                                />
                                             </label>
                                         )}
                                     </>
@@ -574,6 +471,7 @@ export default function Main(props: WalletConnectionProps) {
                                             inputParameter,
                                             initName,
                                             base64Schema,
+                                            writeDropDown,
                                             cCDAmount
                                         );
                                         tx.then(setTxHash).catch((err: Error) =>

@@ -1,13 +1,13 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
-import { toBuffer, serializeTypeValue, ModuleReference } from '@concordium/web-sdk';
+import { toBuffer, serializeTypeValue, ModuleReference, CcdAmount } from '@concordium/web-sdk';
 import Switch from 'react-switch';
 import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
-import { accountInfo, getStorageValue, getCredentialEntry } from './reading_from_blockchain';
+import { accountInfo } from './reading_from_blockchain';
 import { initializeSmartContract, deploy } from './writing_to_blockchain';
 
 import {
@@ -103,6 +103,7 @@ export default function Main(props: WalletConnectionProps) {
     const [userInputError, setUserInputError] = useState('');
     const [userInputError2, setUserInputError2] = useState('');
     const [uploadError, setUploadError] = useState('');
+    const [uploadError2, setUploadError2] = useState('');
 
     const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState(0);
 
@@ -117,11 +118,13 @@ export default function Main(props: WalletConnectionProps) {
     const [credentialRegistryStateError, setCredentialRegistryStateError] = useState('');
 
     const [signature, setSignature] = useState('');
+    const [inputParameter, setInputParameter] = useState('');
 
     const [txHash, setTxHash] = useState('');
     const [publicKey, setPublicKey] = useState('');
 
     const [browserPublicKey, setBrowserPublicKey] = useState('');
+    const [initName, setInitName] = useState('');
 
     const [moduleReference, setModuleReference] = useState('');
     const [credentialMetaDataURL, setCredentialMetaDataURL] = useState('myType');
@@ -142,7 +145,15 @@ export default function Main(props: WalletConnectionProps) {
     const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
     const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
 
+    const [writeDropDown, setWriteDropDown] = useState('');
+    const [hasInputParameter, setHasInputParameter] = useState(false);
+
+    const [isPayable, setIsPayable] = useState(false);
+
+    const [cCDAmount, setCCDAmount] = useState('');
+
     const [base64Module, setBase64Module] = useState('');
+    const [base64Schema, setBase64Schema] = useState('');
 
     const handleValidFromDateChange = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
@@ -177,6 +188,23 @@ export default function Main(props: WalletConnectionProps) {
     const changeCredentialRegistryContratIndexHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setCredentialRegistryContratIndex(Number(target.value));
+    };
+
+    const changeWriteDropDownHandler = () => {
+        const e = document.getElementById('write') as HTMLSelectElement;
+        const sel = e.selectedIndex;
+        const { value } = e.options[sel];
+        setWriteDropDown(value);
+    };
+
+    const changeCCDAmountHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setCCDAmount(target.value);
+    };
+
+    const changeInitNameHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setInitName(target.value);
     };
 
     //   export function useContractSchemaRpc(connection: WalletConnection, contract: Info) {
@@ -273,12 +301,19 @@ export default function Main(props: WalletConnectionProps) {
         }
     }, [connection, account]);
 
+    const changeInputParameterHandler = (event: ChangeEvent) => {
+        const inputTextArea = document.getElementById('inputParameter');
+        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+
+        const target = event.target as HTMLTextAreaElement;
+        setInputParameter(JSON.parse(target.value));
+    };
+
     return (
         <main className="container">
             <div className="textCenter">
                 Version: {version}
-                <h1>Developer Front End Tools</h1>
-                <h2>Deploying and Initializing of Smart Contracts</h2>
+                <h1>Deploying and Initializing of Smart Contracts on Concordium</h1>
                 <WalletConnectionTypeButton
                     connectorType={BROWSER_WALLET}
                     connectorName="Browser Wallet"
@@ -348,7 +383,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 ).trim();
                                                 setBase64Module(module);
                                             } else {
-                                                setUploadError('Upload file is undefined');
+                                                setUploadError('Upload module file is undefined');
                                             }
                                         }}
                                     >
@@ -389,151 +424,143 @@ export default function Main(props: WalletConnectionProps) {
                                         transaction hash or an error message should appear in the right column.
                                         "
                             >
-                                Add Module Reference:
-                                <br />
-                                <input
-                                    className="inputFieldStyle"
-                                    id="moduleReference"
-                                    type="text"
-                                    placeholder="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
-                                    onChange={changeModuleReferenceHandler}
-                                />
-                                {credentialTypes.length !== 0 && (
-                                    <div className="actionResultBox">
-                                        <div>You have added the following `CredentialSchemaTypes`:</div>
-                                        <div>
-                                            {credentialTypes?.map((element) => (
-                                                <li key={element}>{element}</li>
-                                            ))}
-                                        </div>
-                                        <div>You have added the following `CredentialSchemaURLs`:</div>
-                                        <div>
-                                            {credentialSchemaURLs?.map((element) => (
-                                                <li key={element}>{element}</li>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {userInputError !== '' && (
-                                    <div className="alert alert-danger" role="alert">
-                                        Error: {userInputError}.
-                                    </div>
-                                )}
-                                <br />
-                                <Form
-                                    onSubmit={(e) => {
-                                        e.preventDefault();
-                                        setUserInputError('');
-                                        addSchema(
-                                            credentialTypes,
-                                            setCredentialTypes,
-                                            schemas,
-                                            setSchemas,
-                                            credentialSchemaURLs,
-                                            setCredentialSchemaURLs,
-                                            credentialTypeInput,
-                                            setCredentialTypeInput,
-                                            credentialSchemaURLInput,
-                                            setCredentialSchemaURLInput
-                                        ).catch((err: Error) => setUserInputError((err as Error).message));
-                                    }}
-                                >
+                                <label className="field">
+                                    Add Module Reference:
                                     <br />
-                                    <div>Add pairs of `CredentialSchemaType` and `CredentialSchemaURL`:</div>
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="moduleReference"
+                                        type="text"
+                                        placeholder="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
+                                        onChange={changeModuleReferenceHandler}
+                                    />
+                                </label>
+                                <label className="field">
+                                    Add Smart Contract Name:
                                     <br />
-                                    <Row>
-                                        <Col sm={10}>
-                                            <InputGroup className="mb-3">
-                                                <Form.Control
-                                                    placeholder="CredentialSchemaType"
-                                                    value={credentialTypeInput}
-                                                    onChange={(e) => setCredentialTypeInput(e.target.value)}
-                                                />
-                                                <Form.Control
-                                                    placeholder="CredentialSchemaURL"
-                                                    value={credentialSchemaURLInput}
-                                                    onChange={(e) => setCredentialSchemaURLInput(e.target.value)}
-                                                />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="initName"
+                                        type="text"
+                                        placeholder="myContract"
+                                        onChange={changeInitNameHandler}
+                                    />
+                                </label>
+                                <div className="switch-wrapper">
+                                    <div> Is NOT payable</div>
+                                    <Switch
+                                        onChange={() => {
+                                            setIsPayable(!isPayable);
+                                        }}
+                                        onColor="#308274"
+                                        offColor="#308274"
+                                        onHandleColor="#174039"
+                                        offHandleColor="#174039"
+                                        checked={isPayable}
+                                        checkedIcon={false}
+                                        uncheckedIcon={false}
+                                    />
+                                    <div>Is payable</div>
+                                </div>
+                                {isPayable && (
+                                    <label className="field">
+                                        Add CCD amount (micro):
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="CCDAmount"
+                                            type="text"
+                                            placeholder="1000000"
+                                            onChange={changeCCDAmountHandler}
+                                        />
+                                    </label>
+                                )}
+                                <br />
+                                <div className="switch-wrapper">
+                                    <div> Init function has NO input parameter</div>
+                                    <Switch
+                                        onChange={() => {
+                                            setHasInputParameter(!hasInputParameter);
+                                        }}
+                                        onColor="#308274"
+                                        offColor="#308274"
+                                        onHandleColor="#174039"
+                                        offHandleColor="#174039"
+                                        checked={hasInputParameter}
+                                        checkedIcon={false}
+                                        uncheckedIcon={false}
+                                    />
+                                    <div>Init function has input parameter</div>
+                                </div>
+                                {hasInputParameter && (
+                                    <>
+                                        <section>
+                                            <input className="btn btn-primary" type="file" id="schemaFile" />
+                                            <br />
+                                            <button
+                                                className="btn btn-primary"
+                                                type="button"
+                                                onClick={async () => {
+                                                    setUploadError2('');
 
-                                                <Button type="submit" variant="outline-secondary">
-                                                    Add
-                                                </Button>
-                                            </InputGroup>
-                                        </Col>
-                                        <Col sm={1}>
-                                            <Button
-                                                variant="outline-secondary"
-                                                onClick={() => {
-                                                    setCredentialTypes([]);
-                                                    setSchemas([]);
-                                                    setCredentialSchemaURLs([]);
-                                                    setCredentialSchemaURLInput('');
-                                                    setCredentialTypeInput('');
-                                                    setUserInputError('');
+                                                    const hTMLInputElement = document.getElementById(
+                                                        'schemaFile'
+                                                    ) as HTMLInputElement;
+
+                                                    if (
+                                                        hTMLInputElement.files !== undefined &&
+                                                        hTMLInputElement.files !== null &&
+                                                        hTMLInputElement.files.length > 0
+                                                    ) {
+                                                        const file = hTMLInputElement.files[0];
+                                                        const arrayBuffer = await file.arrayBuffer();
+
+                                                        const schema = btoa(
+                                                            String.fromCharCode(...new Uint8Array(arrayBuffer))
+                                                        ).trim();
+                                                        setBase64Schema(schema);
+                                                    } else {
+                                                        setUploadError2('Upload schema file is undefined');
+                                                    }
                                                 }}
                                             >
-                                                Clear
-                                            </Button>
-                                        </Col>
-                                    </Row>
-                                </Form>
-                                {revocationKeys.length !== 0 && (
-                                    <div className="actionResultBox">
-                                        <div>You have added the following `revocationKeys`:</div>
-                                        <div>
-                                            {revocationKeys?.map((element) => (
-                                                <li key={element}>{element}</li>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {userInputError2 !== '' && (
-                                    <div className="alert alert-danger" role="alert">
-                                        Error: {userInputError2}.
-                                    </div>
+                                                Upload Smart Contract Schema
+                                            </button>
+                                            {uploadError2 !== '' && (
+                                                <div className="alert alert-danger" role="alert">
+                                                    Error: {uploadError2}.
+                                                </div>
+                                            )}
+                                            <br />
+                                            {base64Schema && (
+                                                <div className="actionResultBox">
+                                                    Schema in base64:
+                                                    <div>{base64Schema}</div>
+                                                </div>
+                                            )}
+                                        </section>
+                                        <label className="field">
+                                            Select input parameter type:
+                                            <br />
+                                            <select name="write" id="write" onChange={changeWriteDropDownHandler}>
+                                                <option value="number">number</option>
+                                                <option value="string">string</option>
+                                                <option value="object">object</option>
+                                                <option value="array">array</option>
+                                            </select>
+                                        </label>
+                                        <br />
+                                        {(writeDropDown === 'object' || writeDropDown === 'array') && (
+                                            <label className="field">
+                                                Add your input parameter:
+                                                <br />
+                                                <textarea id="inputParameter" onChange={changeInputParameterHandler} />
+                                            </label>
+                                        )}
+                                    </>
                                 )}
                                 <br />
-                                <Form
-                                    onSubmit={(e) => {
-                                        e.preventDefault();
-                                        setUserInputError2('');
-                                        addRevokationKey(
-                                            revocationKeys,
-                                            setRevocationKeys,
-                                            setRevocationKeyInput,
-                                            revocationKeyInput
-                                        ).catch((err: Error) => setUserInputError2((err as Error).message));
-                                    }}
-                                >
-                                    <div>Add `RevocationKeys`:</div>
-                                    <br />
-                                    <Row>
-                                        <Col sm={10}>
-                                            <InputGroup className="mb-3">
-                                                <Form.Control
-                                                    placeholder="RevocationKey"
-                                                    value={revocationKeyInput}
-                                                    onChange={(e) => setRevocationKeyInput(e.target.value)}
-                                                />
-                                                <Button type="submit" variant="outline-secondary">
-                                                    Add
-                                                </Button>
-                                            </InputGroup>
-                                        </Col>
-                                        <Col sm={1}>
-                                            <Button
-                                                variant="outline-secondary"
-                                                onClick={() => {
-                                                    setRevocationKeys([]);
-                                                    setRevocationKeyInput('');
-                                                    setUserInputError2('');
-                                                }}
-                                            >
-                                                Clear
-                                            </Button>
-                                        </Col>
-                                    </Row>
-                                </Form>
+                                <br />
                                 <button
                                     className="btn btn-primary"
                                     type="button"
@@ -544,8 +571,10 @@ export default function Main(props: WalletConnectionProps) {
                                             connection,
                                             account,
                                             moduleReference,
-                                            JSON.stringify(schemas),
-                                            JSON.stringify(revocationKeys)
+                                            inputParameter,
+                                            initName,
+                                            base64Schema,
+                                            cCDAmount
                                         );
                                         tx.then(setTxHash).catch((err: Error) =>
                                             setTransactionError((err as Error).message)

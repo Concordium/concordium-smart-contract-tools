@@ -32,43 +32,39 @@ export async function initializeSmartContract(
     connection: WalletConnection,
     account: string,
     moduleReference: string,
-    schemas: string,
-    revocationKeys: string
+    inputParameter: string,
+    initName: string,
+    contractSchema: string,
+    amount?: string
 ) {
+    console.log(moduleReference);
+    console.log(initName);
+    console.log(contractSchema);
+    console.log(amount);
     if (moduleReference === '') {
-        throw new Error(`Set issuerMetaData`);
+        throw new Error(`Set moduleReference`);
     }
 
-    const parameter = {
-        issuer_metadata: {
-            hash: {
-                None: [],
-            },
-            url: moduleReference,
-        },
-        storage_address: {
-            index: 4791,
-            subindex: 0,
-        },
-        schemas: JSON.parse(schemas),
-        issuer: {
-            None: [],
-        },
-        revocation_keys: JSON.parse(revocationKeys),
-    } as SmartContractParameters;
+    if (initName === '') {
+        throw new Error(`Set smart contract name`);
+    }
 
-    const schema = {
-        parameters: parameter,
-        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
-    };
+    let schema;
+
+    if (contractSchema !== '') {
+        schema = {
+            parameters: inputParameter,
+            schema: moduleSchemaFromBase64(contractSchema),
+        };
+    }
 
     return connection.signAndSendTransaction(
         account,
         AccountTransactionType.InitContract,
         {
-            amount: new CcdAmount(BigInt(0)),
+            amount: new CcdAmount(BigInt(amount ? Number(amount) : 0)),
             moduleRef: new ModuleReference(moduleReference),
-            initName: 'credential_registry',
+            initName,
             param: toBuffer(''),
             maxContractExecutionEnergy: 30000n,
         } as InitContractPayload,

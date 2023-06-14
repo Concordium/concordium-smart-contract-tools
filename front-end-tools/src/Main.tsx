@@ -13,16 +13,14 @@ import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
-    note: string;
 }>;
 
-function TestBox({ header, children, note }: TestBoxProps) {
+function TestBox({ header, children }: TestBoxProps) {
     return (
         <fieldset className="testBox">
             <legend>{header}</legend>
             <div className="testBoxFields">{children}</div>
             <br />
-            <p className="note">{note}</p>
         </fieldset>
     );
 }
@@ -34,7 +32,8 @@ export default function Main(props: WalletConnectionProps) {
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
 
     const [viewError, setViewError] = useState('');
-    const [transactionError, setTransactionError] = useState('');
+    const [transactionErrorDeploy, setTransactionErrorDeploy] = useState('');
+    const [transactionErrorInit, setTransactionErrorInit] = useState('');
     const [uploadError, setUploadError] = useState('');
     const [uploadError2, setUploadError2] = useState('');
 
@@ -44,12 +43,13 @@ export default function Main(props: WalletConnectionProps) {
 
     const [inputParameter, setInputParameter] = useState('');
 
-    const [txHash, setTxHash] = useState('');
+    const [txHashDeploy, setTxHashDeploy] = useState('');
+    const [txHashInit, setTxHashInit] = useState('');
 
     const [initName, setInitName] = useState('');
 
     const [moduleReference, setModuleReference] = useState('');
-    const [writeDropDown, setWriteDropDown] = useState('');
+    const [writeDropDown, setWriteDropDown] = useState('number');
     const [hasInputParameter, setHasInputParameter] = useState(false);
 
     const [isPayable, setIsPayable] = useState(false);
@@ -190,8 +190,9 @@ export default function Main(props: WalletConnectionProps) {
 
     return (
         <main className="container">
+            <div className="version">Version: {version}</div>
             <div className="textCenter">
-                Version: {version}
+                <br />
                 <h1>Deploying and Initializing of Smart Contracts on Concordium</h1>
                 <WalletConnectionTypeButton
                     connectorType={BROWSER_WALLET}
@@ -224,25 +225,40 @@ export default function Main(props: WalletConnectionProps) {
                     </p>
                 )}
             </div>
-
             {account && (
                 <div className="row">
                     {connection && account !== undefined && (
-                        <div className="col-lg-6">
-                            <TestBox
-                                header="Step 1: Deploy Smart Contract Module"
-                                note="
-                                        Expected result after pressing the button and confirming in wallet: The
-                                        transaction hash or an error message should appear in the right column.
-                                        "
-                            >
-                                <section>
-                                    <input className="btn btn-primary" type="file" id="moduleFile" />
+                        <div className="col-lg-12">
+                            {viewError && (
+                                <div className="alert alert-danger" role="alert">
+                                    Error: {viewError}.
+                                </div>
+                            )}
+                            <div className="label">Connected account:</div>
+                            <div>
+                                <a
+                                    className="link"
+                                    href={`https://testnet.ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    {account}
+                                </a>
+                            </div>
+                            <br />
+                            <div className="label">Your account balance:</div>
+                            <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
+                            <br />
+                            <TestBox header="Step 1: Deploy Smart Contract Module">
+                                <label className="field">
+                                    Upload Smart Contract Module File:
                                     <br />
-                                    <button
+                                    <br />
+                                    <input
                                         className="btn btn-primary"
-                                        type="button"
-                                        onClick={async () => {
+                                        type="file"
+                                        id="moduleFile"
+                                        onChange={async () => {
                                             setUploadError('');
 
                                             const hTMLInputElement = document.getElementById(
@@ -265,44 +281,61 @@ export default function Main(props: WalletConnectionProps) {
                                                 setUploadError('Upload module file is undefined');
                                             }
                                         }}
-                                    >
-                                        Upload Smart Contract Module
-                                    </button>
-                                    {uploadError !== '' && (
-                                        <div className="alert alert-danger" role="alert">
-                                            Error: {uploadError}.
-                                        </div>
-                                    )}
+                                    />
                                     <br />
-                                    {base64Module && (
+                                    <br />
+                                </label>
+                                {uploadError !== '' && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {uploadError}.
+                                    </div>
+                                )}
+                                <br />
+                                {base64Module && (
+                                    <>
                                         <div className="actionResultBox">
                                             Module in base64:
-                                            <div>{base64Module}</div>
+                                            <div>{base64Module.toString().slice(0, 30)} ...</div>
                                         </div>
-                                    )}
-                                </section>
-                                <button
-                                    className="btn btn-primary"
-                                    type="button"
-                                    onClick={() => {
-                                        setTxHash('');
-                                        setTransactionError('');
-                                        const tx = deploy(connection, account, base64Module);
-                                        tx.then(setTxHash).catch((err: Error) =>
-                                            setTransactionError((err as Error).message)
-                                        );
-                                    }}
-                                >
-                                    Deploy smart contract module
-                                </button>
+                                        <br />
+                                        <button
+                                            className="btn btn-primary"
+                                            type="button"
+                                            onClick={() => {
+                                                setTxHashDeploy('');
+                                                setTransactionErrorDeploy('');
+                                                const tx = deploy(connection, account, base64Module);
+                                                tx.then(setTxHashDeploy).catch((err: Error) =>
+                                                    setTransactionErrorDeploy((err as Error).message)
+                                                );
+                                            }}
+                                        >
+                                            Deploy smart contract module
+                                        </button>
+                                        <br />
+                                        <br />
+                                    </>
+                                )}
+                                {!txHashDeploy && transactionErrorDeploy && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {transactionErrorDeploy}.
+                                    </div>
+                                )}
+                                {txHashDeploy && (
+                                    <>
+                                        Transaction hash (May take a moment to finalize): {}
+                                        <a
+                                            className="link"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            href={`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
+                                        >
+                                            {txHashDeploy}
+                                        </a>
+                                    </>
+                                )}
                             </TestBox>
-                            <TestBox
-                                header="Step 2: Initialize Smart Contract"
-                                note="
-                                        Expected result after pressing the button and confirming in wallet: The
-                                        transaction hash or an error message should appear in the right column.
-                                        "
-                            >
+                            <TestBox header="Step 2: Initialize Smart Contract">
                                 <label className="field">
                                     Add Module Reference:
                                     <br />
@@ -314,6 +347,7 @@ export default function Main(props: WalletConnectionProps) {
                                         onChange={changeModuleReferenceHandler}
                                     />
                                 </label>
+                                <br />
                                 <label className="field">
                                     Add Smart Contract Name:
                                     <br />
@@ -356,7 +390,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                                 <br />
                                 <div className="switch-wrapper">
-                                    <div> Init function has NO input parameter</div>
+                                    <div> Has NO input parameter</div>
                                     <Switch
                                         onChange={() => {
                                             setHasInputParameter(!hasInputParameter);
@@ -369,18 +403,20 @@ export default function Main(props: WalletConnectionProps) {
                                         checkedIcon={false}
                                         uncheckedIcon={false}
                                     />
-                                    <div>Init function has input parameter</div>
+                                    <div>Has input parameter</div>
                                 </div>
                                 {hasInputParameter && (
                                     <>
-                                        <section>
-                                            <input className="btn btn-primary" type="file" id="schemaFile" />
+                                        <label className="field">
+                                            Upload Smart Contract Schema File:
                                             <br />
-                                            <button
+                                            <br />
+                                            <input
                                                 className="btn btn-primary"
-                                                type="button"
-                                                onClick={async () => {
-                                                    setUploadError2('');
+                                                type="file"
+                                                id="schemaFile"
+                                                onChange={async () => {
+                                                    setUploadError('');
 
                                                     const hTMLInputElement = document.getElementById(
                                                         'schemaFile'
@@ -402,22 +438,23 @@ export default function Main(props: WalletConnectionProps) {
                                                         setUploadError2('Upload schema file is undefined');
                                                     }
                                                 }}
-                                            >
-                                                Upload Smart Contract Schema
-                                            </button>
-                                            {uploadError2 !== '' && (
-                                                <div className="alert alert-danger" role="alert">
-                                                    Error: {uploadError2}.
-                                                </div>
-                                            )}
+                                            />
                                             <br />
-                                            {base64Schema && (
-                                                <div className="actionResultBox">
-                                                    Schema in base64:
-                                                    <div>{base64Schema}</div>
-                                                </div>
-                                            )}
-                                        </section>
+                                            <br />
+                                        </label>
+                                        {uploadError2 !== '' && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {uploadError2}.
+                                            </div>
+                                        )}
+                                        <br />
+                                        {base64Schema && (
+                                            <div className="actionResultBox">
+                                                Schema in base64:
+                                                <div>{base64Schema.toString().slice(0, 30)} ...</div>
+                                            </div>
+                                        )}
+
                                         <label className="field">
                                             Select input parameter type:
                                             <br />
@@ -462,8 +499,8 @@ export default function Main(props: WalletConnectionProps) {
                                     className="btn btn-primary"
                                     type="button"
                                     onClick={() => {
-                                        setTxHash('');
-                                        setTransactionError('');
+                                        setTxHashInit('');
+                                        setTransactionErrorInit('');
                                         const tx = initializeSmartContract(
                                             connection,
                                             account,
@@ -474,71 +511,34 @@ export default function Main(props: WalletConnectionProps) {
                                             writeDropDown,
                                             cCDAmount
                                         );
-                                        tx.then(setTxHash).catch((err: Error) =>
-                                            setTransactionError((err as Error).message)
+                                        tx.then(setTxHashInit).catch((err: Error) =>
+                                            setTransactionErrorInit((err as Error).message)
                                         );
                                     }}
                                 >
                                     Initialize Smart Contract
                                 </button>
+                                {!txHashInit && transactionErrorInit && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {transactionErrorInit}.
+                                    </div>
+                                )}
+                                {txHashInit && (
+                                    <>
+                                        Transaction hash (May take a moment to finalize): {}
+                                        <a
+                                            className="link"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            href={`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
+                                        >
+                                            {txHashInit}
+                                        </a>
+                                    </>
+                                )}
                             </TestBox>
                         </div>
                     )}
-                    <div className="col-lg-6">
-                        <div className="sticky-top">
-                            <br />
-                            <h5>
-                                This column refreshes every few seconds to update your account balanace. It displays
-                                your connected account, transaction hashes, and error messages.
-                            </h5>
-                            <div className="label">Connected account:</div>
-                            <div>
-                                <a
-                                    className="link"
-                                    href={`https://testnet.ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    {account}
-                                </a>
-                            </div>
-                            <br />
-                            <div className="label">Your account balance:</div>
-                            <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
-                            <br />
-                            <div className="label">
-                                Error or Transaction status
-                                {txHash === '' ? ':' : ' (May take a moment to finalize):'}
-                            </div>
-                            <br />
-                            {!txHash && !transactionError && (
-                                <div className="actionResultBox" role="alert">
-                                    IMPORTANT: After pressing a button on the left side that should send a transaction,
-                                    the transaction hash or error returned by the wallet are displayed HERE.
-                                </div>
-                            )}
-                            {!txHash && transactionError && (
-                                <div className="alert alert-danger" role="alert">
-                                    Error: {transactionError}.
-                                </div>
-                            )}
-                            {viewError && (
-                                <div className="alert alert-danger" role="alert">
-                                    Error: {viewError}.
-                                </div>
-                            )}
-                            {txHash && (
-                                <a
-                                    className="link"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    href={`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
-                                >
-                                    {txHash}
-                                </a>
-                            )}
-                        </div>
-                    </div>
                 </div>
             )}
         </main>

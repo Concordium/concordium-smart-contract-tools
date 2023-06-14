@@ -24,6 +24,12 @@ legend {
     font-size: 20px;
 }
 
+.version {
+    font-weight: bold;
+    text-align: right;
+    font-size: 20px;
+}
+
 label,
 .label {
     font-weight: bold;

@@ -41,10 +41,6 @@ export async function initializeSmartContract(
     let schema;
 
     if (contractSchema !== '') {
-        if (inputParameter === '') {
-            throw new Error('Both `contractSchema` and `inputParameter` needs to be set or none of them');
-        }
-
         switch (dropDown) {
             case 'number':
                 schema = {
@@ -66,7 +62,7 @@ export async function initializeSmartContract(
                 break;
             case 'array':
                 schema = {
-                    parameters: Array.from(inputParameter),
+                    parameters: JSON.parse(inputParameter),
                     schema: moduleSchemaFromBase64(contractSchema),
                 };
                 break;

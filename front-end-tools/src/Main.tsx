@@ -54,12 +54,11 @@ export default function Main(props: WalletConnectionProps) {
 
     const [isPayable, setIsPayable] = useState(false);
 
-    const [exampleInputParameter, setExampleInputParameter] = useState('');
-
     const [cCDAmount, setCCDAmount] = useState('');
 
     const [base64Module, setBase64Module] = useState('');
     const [base64Schema, setBase64Schema] = useState('');
+    const [parsingError, setParsingError] = useState('');
 
     const changeModuleReferenceHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
@@ -67,16 +66,12 @@ export default function Main(props: WalletConnectionProps) {
     };
 
     const changeWriteDropDownHandler = () => {
+        setParsingError('');
+        setInputParameter('');
         const e = document.getElementById('write') as HTMLSelectElement;
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
         setWriteDropDown(value);
-        if (writeDropDown === 'array') {
-            setExampleInputParameter('[a,b,c]');
-        }
-        if (writeDropDown === 'object') {
-            setExampleInputParameter('{"myFiled":"value"}');
-        }
     };
 
     const changeCCDAmountHandler = (event: ChangeEvent) => {
@@ -185,6 +180,15 @@ export default function Main(props: WalletConnectionProps) {
         inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
 
         const target = event.target as HTMLTextAreaElement;
+
+        setParsingError('');
+        try {
+            JSON.parse(target.value);
+        } catch (e) {
+            setParsingError((e as Error).message);
+            return;
+        }
+
         setInputParameter(JSON.stringify(JSON.parse(target.value)));
     };
 
@@ -393,6 +397,10 @@ export default function Main(props: WalletConnectionProps) {
                                     <div> Has NO input parameter</div>
                                     <Switch
                                         onChange={() => {
+                                            if (hasInputParameter) {
+                                                setInputParameter('');
+                                                setBase64Schema('');
+                                            }
                                             setHasInputParameter(!hasInputParameter);
                                         }}
                                         onColor="#308274"
@@ -408,7 +416,7 @@ export default function Main(props: WalletConnectionProps) {
                                 {hasInputParameter && (
                                     <>
                                         <label className="field">
-                                            Upload Smart Contract Schema File:
+                                            Upload Smart Contract Module Schema File:
                                             <br />
                                             <br />
                                             <input
@@ -461,7 +469,7 @@ export default function Main(props: WalletConnectionProps) {
                                             <select name="write" id="write" onChange={changeWriteDropDownHandler}>
                                                 <option value="number">number</option>
                                                 <option value="string">string</option>
-                                                <option value="object">object</option>
+                                                <option value="object">JSON object</option>
                                                 <option value="array">array</option>
                                             </select>
                                         </label>
@@ -470,12 +478,28 @@ export default function Main(props: WalletConnectionProps) {
                                             <label className="field">
                                                 Add your input parameter ({writeDropDown}):
                                                 <br />
-                                                <textarea
-                                                    id="inputParameterTextArea"
-                                                    onChange={changeInputParameterTextAreaHandler}
-                                                >
-                                                    {exampleInputParameter}
-                                                </textarea>
+                                                {writeDropDown === 'array' && (
+                                                    <textarea
+                                                        id="inputParameterTextArea"
+                                                        onChange={changeInputParameterTextAreaHandler}
+                                                    >
+                                                        Examples:&#10;&#10; [1,2,3] or&#10;&#10;
+                                                        [&#34;abc&#34;,&#34;def&#34;] or&#10;&#10; [&#123;
+                                                        &#34;myFieldKey&#34;:&#34;myFieldValue&#34;&#125;]
+                                                    </textarea>
+                                                )}
+                                                {writeDropDown === 'object' && (
+                                                    <textarea
+                                                        id="inputParameterTextArea"
+                                                        onChange={changeInputParameterTextAreaHandler}
+                                                    >
+                                                        &#123;&#10; &#34;myStringField&#34;:&#34;FieldValue&#34;,&#10;
+                                                        &#34;myNumberField&#34;:4,&#10; &#34;myArray&#34;:[1,2,3],&#10;
+                                                        &#34;myObject&#34;:&#123;&#10;
+                                                        &#9;&#9;&#34;myField1&#34;:&#34;FieldValue&#34;&#10;
+                                                        &#9;&#125;&#10; &#125;
+                                                    </textarea>
+                                                )}
                                             </label>
                                         )}
                                         {(writeDropDown === 'string' || writeDropDown === 'number') && (
@@ -490,6 +514,11 @@ export default function Main(props: WalletConnectionProps) {
                                                     onChange={changeInputParameterFieldHandler}
                                                 />
                                             </label>
+                                        )}
+                                        {parsingError && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {parsingError}.
+                                            </div>
                                         )}
                                     </>
                                 )}
@@ -518,6 +547,8 @@ export default function Main(props: WalletConnectionProps) {
                                 >
                                     Initialize Smart Contract
                                 </button>
+                                <br />
+                                <br />
                                 {!txHashInit && transactionErrorInit && (
                                     <div className="alert alert-danger" role="alert">
                                         Error: {transactionErrorInit}.

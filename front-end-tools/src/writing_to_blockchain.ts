@@ -20,7 +20,7 @@ export async function deploy(connection: WalletConnection, account: string, base
     } as DeployModulePayload);
 }
 
-export async function initializeSmartContract(
+export async function initialize(
     connection: WalletConnection,
     account: string,
     moduleReference: string,

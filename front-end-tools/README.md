@@ -9,7 +9,7 @@ Only the browser wallet (no walletConnect) is supported in the first version.
 
 ## Prerequisites
 
--   Browser wallet extension must be installed in Chrome browser and the Concordium testnet needs to be selected.
+-   Browser wallet extension must be installed in Chrome browser.
 
 ## Running the front end
 

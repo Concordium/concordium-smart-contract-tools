@@ -6,7 +6,7 @@ import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { accountInfo } from './reading_from_blockchain';
-import { initializeSmartContract, deploy } from './writing_to_blockchain';
+import { initialize, deploy } from './writing_to_blockchain';
 
 import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
 
@@ -35,29 +35,23 @@ export default function Main(props: WalletConnectionProps) {
     const [transactionErrorInit, setTransactionErrorInit] = useState('');
     const [uploadError, setUploadError] = useState('');
     const [uploadError2, setUploadError2] = useState('');
-
-    const [isWaitingForTransaction, setWaitingForUser] = useState(false);
-
-    const [accountBalance, setAccountBalance] = useState('');
-
-    const [inputParameter, setInputParameter] = useState('');
+    const [parsingError, setParsingError] = useState('');
 
     const [txHashDeploy, setTxHashDeploy] = useState('');
     const [txHashInit, setTxHashInit] = useState('');
 
+    const [accountBalance, setAccountBalance] = useState('');
+    const [inputParameter, setInputParameter] = useState('');
     const [initName, setInitName] = useState('');
-
     const [moduleReference, setModuleReference] = useState('');
-    const [writeDropDown, setWriteDropDown] = useState('number');
-    const [hasInputParameter, setHasInputParameter] = useState(false);
-
-    const [isPayable, setIsPayable] = useState(false);
-
     const [cCDAmount, setCCDAmount] = useState('');
-
     const [base64Module, setBase64Module] = useState('');
     const [base64Schema, setBase64Schema] = useState('');
-    const [parsingError, setParsingError] = useState('');
+    const [writeDropDown, setWriteDropDown] = useState('number');
+
+    const [isWaitingForTransaction, setWaitingForUser] = useState(false);
+    const [hasInputParameter, setHasInputParameter] = useState(false);
+    const [isPayable, setIsPayable] = useState(false);
 
     const changeModuleReferenceHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
@@ -86,6 +80,23 @@ export default function Main(props: WalletConnectionProps) {
     const changeInputParameterFieldHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setInputParameter(target.value);
+    };
+
+    const changeInputParameterTextAreaHandler = (event: ChangeEvent) => {
+        const inputTextArea = document.getElementById('inputParameterTextArea');
+        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+
+        const target = event.target as HTMLTextAreaElement;
+
+        setParsingError('');
+        try {
+            JSON.parse(target.value);
+        } catch (e) {
+            setParsingError((e as Error).message);
+            return;
+        }
+
+        setInputParameter(JSON.stringify(JSON.parse(target.value)));
     };
 
     // Refresh accountInfo periodically.
@@ -125,23 +136,6 @@ export default function Main(props: WalletConnectionProps) {
                 });
         }
     }, [connection, account]);
-
-    const changeInputParameterTextAreaHandler = (event: ChangeEvent) => {
-        const inputTextArea = document.getElementById('inputParameterTextArea');
-        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
-
-        const target = event.target as HTMLTextAreaElement;
-
-        setParsingError('');
-        try {
-            JSON.parse(target.value);
-        } catch (e) {
-            setParsingError((e as Error).message);
-            return;
-        }
-
-        setInputParameter(JSON.stringify(JSON.parse(target.value)));
-    };
 
     return (
         <main className="container">
@@ -482,7 +476,7 @@ export default function Main(props: WalletConnectionProps) {
                                     onClick={() => {
                                         setTxHashInit('');
                                         setTransactionErrorInit('');
-                                        const tx = initializeSmartContract(
+                                        const tx = initialize(
                                             connection,
                                             account,
                                             moduleReference,

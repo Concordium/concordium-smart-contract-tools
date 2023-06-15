@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
-import { ModuleReference } from '@concordium/web-sdk';
 import Switch from 'react-switch';
 import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
 import { version } from '../package.json';
@@ -88,54 +87,6 @@ export default function Main(props: WalletConnectionProps) {
         const target = event.target as HTMLTextAreaElement;
         setInputParameter(target.value);
     };
-
-    //   export function useContractSchemaRpc(connection: WalletConnection, contract: Info) {
-    // const [result, setResult] = useState<Result<SchemaRpcResult | undefined, string>>();
-    useEffect(() => {
-        if (connection && account) {
-            withJsonRpcClient(connection, (rpcClient) =>
-                rpcClient.getModuleSource(
-                    new ModuleReference('91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693')
-                )
-            )
-                .then((value) => {
-                    if (value !== undefined) {
-                        console.log(`hhhhhhhhhhhh${value}`);
-                        // setAccountBalance(value.accountAmount.toString());
-                        // setBrowserPublicKey(
-                        //     value.accountCredentials[0].value.contents.credentialPublicKeys.keys[0].verifyKey
-                        // );
-                    }
-                    // setViewError('');
-                })
-                .catch((e) => {
-                    // setAccountBalance('');
-                    // setBrowserPublicKey('');
-                    // setViewError((e as Error).message);
-                });
-        }
-    }, [connection, account]);
-
-    //     ResultAsync.fromPromise(
-    //         withJsonRpcClient(connection, (rpc) => rpc.getModuleSource(new ModuleReference(contract.moduleRef))),
-    //         errorString
-    //     )
-    //         .andThen((r) => {
-    //             if (!r) {
-    //                 return err('module source is empty');
-    //             }
-    //             // Skip 8-byte header (module version and length).
-    //             if (r.length < 8) {
-    //                 return err(`module source is ${r.length} bytes which is not enough to fit an 8-byte header`);
-    //             }
-    //             return ResultAsync.fromPromise(WebAssembly.compile(r.slice(8)), errorString);
-    //         })
-    //         .andThen(findSchema)
-    //         .then(setResult);
-    // }, [contract, connection]);
-
-    //     return result;
-    // }
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -238,6 +189,7 @@ export default function Main(props: WalletConnectionProps) {
                                     Error: {viewError}.
                                 </div>
                             )}
+                            <br />
                             <div className="label">Connected account:</div>
                             <div>
                                 <a

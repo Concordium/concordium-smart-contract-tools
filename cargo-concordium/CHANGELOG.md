@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased changes
+## 2.9.0
 
 - Make `cargo concordium test` compile your smart contract module and run integration on it, if available.
   - This makes it easier to use the `concordium-smart-contract-testing` library for integration tests, without the risk of running the tests against a stale Wasm module.

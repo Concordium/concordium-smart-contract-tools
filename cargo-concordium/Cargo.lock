@@ -221,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-concordium"
-version = "2.8.1"
+version = "2.9.0"
 dependencies = [
  "ansi_term",
  "anyhow",
@@ -318,7 +318,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-contracts-common"
-version = "6.0.0"
+version = "7.0.0"
 dependencies = [
  "bs58",
  "chrono",
@@ -337,7 +337,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-contracts-common-derive"
-version = "2.0.0"
+version = "3.0.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -346,7 +346,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-smart-contract-engine"
-version = "1.2.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -369,7 +369,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-wasm"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "concordium-contracts-common",

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.1.0
+
+- Contains `cargo-concordium` version 2.9.0
+
 ## 1.0.3
 
 - Add `--locked` argument when installing `cargo-generate` for the user.

@@ -53,16 +53,16 @@ Additional information can be found [here](https://techtalkbook.com/env-noder-no
 
 ## Build and run the Docker image
 
-To build the docker image run the following command **from the root of the repository**:
+To build the docker image run the following command **in the folder of this README.md file**:
 
 ```
-docker build -f front-end-tools/Dockerfile -t front-end-tools:$PROJECT_VERSION .
+docker build -f ./Dockerfile -t front-end-tools:$PROJECT_VERSION .
 ```
 
 e.g.
 
 ```
-docker build -f front-end-tools/Dockerfile -t front-end-tools:3.0.0 .
+docker build -f ./Dockerfile -t front-end-tools:3.0.0 .
 ```
 
 To run the docker image run the following command:

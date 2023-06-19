@@ -25,7 +25,7 @@ pipeline {
                       --build-arg build_image="${build_image}" \
                       --label build_image="${build_image}" \
                       --tag="${image_name}" \
-                      -f ./front-end-tools/Dockerfile \
+                      -f ./Dockerfile \
                       .
                     docker push "${image_name}"
                 '''.stripIndent()

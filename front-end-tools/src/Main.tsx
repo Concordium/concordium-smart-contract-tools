@@ -1,14 +1,14 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
 import Switch from 'react-switch';
-import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
+import { WalletConnectionProps, useConnection, useConnect, useGrpcClient } from '@concordium/react-components';
+import { AccountAddress } from '@concordium/web-sdk';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
-import { accountInfo } from './reading_from_blockchain';
 import { initialize, deploy } from './writing_to_blockchain';
 
-import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
+import { BROWSER_WALLET, REFRESH_INTERVAL, TESTNET } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -29,6 +29,7 @@ export default function Main(props: WalletConnectionProps) {
 
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
+    const client = useGrpcClient(TESTNET);
 
     const [viewError, setViewError] = useState('');
     const [transactionErrorDeploy, setTransactionErrorDeploy] = useState('');
@@ -105,7 +106,8 @@ export default function Main(props: WalletConnectionProps) {
         if (connection && account) {
             const interval = setInterval(() => {
                 console.log('refreshing');
-                withJsonRpcClient(connection, (rpcClient) => accountInfo(rpcClient, account))
+                client
+                    ?.getAccountInfo(new AccountAddress(account))
                     .then((value) => {
                         if (value !== undefined) {
                             setAccountBalance(value.accountAmount.toString());
@@ -123,7 +125,8 @@ export default function Main(props: WalletConnectionProps) {
 
     useEffect(() => {
         if (connection && account) {
-            withJsonRpcClient(connection, (rpcClient) => accountInfo(rpcClient, account))
+            client
+                ?.getAccountInfo(new AccountAddress(account))
                 .then((value) => {
                     if (value !== undefined) {
                         setAccountBalance(value.accountAmount.toString());

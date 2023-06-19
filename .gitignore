@@ -13,7 +13,6 @@ dist
 .eslintcache
 
 target
-*.json
 /.dir-locals.el
 *.bin
 pkg

@@ -9,8 +9,10 @@ export const TESTNET: Network = {
     name: 'testnet',
     genesisHash: TESTNET_GENESIS_BLOCK_HASH,
     jsonRpcUrl: 'https://json-rpc.testnet.concordium.com',
+    grpcOpts: {
+        baseUrl: 'https://grpc.testnet.concordium.com:20000',
+    },
     ccdScanBaseUrl: 'https://testnet.ccdscan.io',
-    grpcOpts: undefined,
 };
 
 export const BROWSER_WALLET = ephemeralConnectorType(BrowserWalletConnector.create);

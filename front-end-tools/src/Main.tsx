@@ -241,7 +241,7 @@ export default function Main(props: ConnectionProps) {
                             <br />
                             <TestBox header="Step 1: Deploy Smart Contract Module">
                                 <label className="field">
-                                    Upload Smart Contract Module File:
+                                    Upload Smart Contract Module File (e.g. myContract.wasm.v1):
                                     <br />
                                     <br />
                                     <input
@@ -264,8 +264,11 @@ export default function Main(props: ConnectionProps) {
                                                 const arrayBuffer = await file.arrayBuffer();
 
                                                 const module = btoa(
-                                                    String.fromCharCode(...new Uint8Array(arrayBuffer))
-                                                ).trim();
+                                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                        return data + String.fromCharCode(byte);
+                                                    }, '')
+                                                );
+
                                                 setBase64Module(module);
                                             } else {
                                                 setUploadError('Upload module file is undefined');
@@ -404,7 +407,7 @@ export default function Main(props: ConnectionProps) {
                                 {hasInputParameter && (
                                     <>
                                         <label className="field">
-                                            Upload Smart Contract Module Schema File:
+                                            Upload Smart Contract Module Schema File (e.g. schema.bin):
                                             <br />
                                             <br />
                                             <input
@@ -427,8 +430,11 @@ export default function Main(props: ConnectionProps) {
                                                         const arrayBuffer = await file.arrayBuffer();
 
                                                         const schema = btoa(
-                                                            String.fromCharCode(...new Uint8Array(arrayBuffer))
-                                                        ).trim();
+                                                            new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                                return data + String.fromCharCode(byte);
+                                                            }, '')
+                                                        );
+
                                                         setBase64Schema(schema);
                                                     } else {
                                                         setUploadError2('Upload schema file is undefined');

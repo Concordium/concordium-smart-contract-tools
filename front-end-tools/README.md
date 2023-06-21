@@ -1,15 +1,15 @@
 # Developer Front End Tools
 
-The front end contains useful tools for developers:
+The front end contains useful functionalities for smart contract developers:
 
 - Upload and deploy a smart contract module to chain.
 - Initialize a smart contract module on chain.
 
-Only the browser wallet (no walletConnect) is supported in the first version.
+Only the browser wallet is supported in the first version (no support for mobile wallets).
 
 ## Prerequisites
 
--   Browser wallet extension must be installed in Chrome browser.
+-   Browser wallet extension must be installed in a Chromium-based browser.
 
 ## Running the front end
 

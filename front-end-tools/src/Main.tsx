@@ -1,14 +1,20 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
 import Switch from 'react-switch';
-import { WalletConnectionProps, useConnection, useConnect, useGrpcClient } from '@concordium/react-components';
+import {
+    WalletConnectionProps,
+    useConnection,
+    useConnect,
+    useGrpcClient,
+    TESTNET,
+    MAINNET,
+} from '@concordium/react-components';
 import { AccountAddress } from '@concordium/web-sdk';
-import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { initialize, deploy } from './writing_to_blockchain';
 
-import { BROWSER_WALLET, REFRESH_INTERVAL, TESTNET } from './constants';
+import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -24,12 +30,20 @@ function TestBox({ header, children }: TestBoxProps) {
     );
 }
 
-export default function Main(props: WalletConnectionProps) {
-    const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
+interface ConnectionProps {
+    walletConnectionProps: WalletConnectionProps;
+    isTestnet: boolean;
+}
+
+export default function Main(props: ConnectionProps) {
+    const { walletConnectionProps, isTestnet } = props;
+
+    const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } =
+        walletConnectionProps;
 
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
-    const client = useGrpcClient(TESTNET);
+    const client = useGrpcClient(isTestnet ? TESTNET : MAINNET);
 
     const [viewError, setViewError] = useState('');
     const [transactionErrorDeploy, setTransactionErrorDeploy] = useState('');
@@ -49,6 +63,8 @@ export default function Main(props: WalletConnectionProps) {
     const [base64Module, setBase64Module] = useState('');
     const [base64Schema, setBase64Schema] = useState('');
     const [writeDropDown, setWriteDropDown] = useState('number');
+
+    const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameter, setHasInputParameter] = useState(false);
@@ -111,12 +127,16 @@ export default function Main(props: WalletConnectionProps) {
                     .then((value) => {
                         if (value !== undefined) {
                             setAccountBalance(value.accountAmount.toString());
+                            setAccountExistsOnNetwork(true);
+                        } else {
+                            setAccountExistsOnNetwork(false);
                         }
                         setViewError('');
                     })
                     .catch((e) => {
                         setAccountBalance('');
                         setViewError((e as Error).message);
+                        setAccountExistsOnNetwork(false);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
             return () => clearInterval(interval);
@@ -130,28 +150,30 @@ export default function Main(props: WalletConnectionProps) {
                 .then((value) => {
                     if (value !== undefined) {
                         setAccountBalance(value.accountAmount.toString());
+                        setAccountExistsOnNetwork(true);
+                    } else {
+                        setAccountExistsOnNetwork(false);
                     }
                     setViewError('');
                 })
                 .catch((e) => {
                     setViewError((e as Error).message);
                     setAccountBalance('');
+                    setAccountExistsOnNetwork(false);
                 });
         }
     }, [connection, account]);
 
     return (
         <main className="container">
-            <div className="version">Version: {version}</div>
             <div className="textCenter">
                 <br />
-                <h1>Deploying and Initializing of Smart Contracts on Concordium</h1>
                 <WalletConnectionTypeButton
                     connectorType={BROWSER_WALLET}
                     connectorName="Browser Wallet"
                     setWaitingForUser={setWaitingForUser}
                     connection={connection}
-                    {...props}
+                    {...walletConnectionProps}
                 />
                 {activeConnectorError && (
                     <p className="alert alert-danger" role="alert">
@@ -176,6 +198,19 @@ export default function Main(props: WalletConnectionProps) {
                         </button>
                     </p>
                 )}
+                {connection && !accountExistsOnNetwork && (
+                    <>
+                        <div className="alert alert-danger" role="alert">
+                            Please ensure that your browser wallet is connected to network `
+                            {walletConnectionProps.network.name}` and you have an account in that wallet that is
+                            connected to this website.
+                        </div>
+                        <div className="alert alert-danger" role="alert">
+                            Alternatively, if you intend to use `{isTestnet ? 'mainnet' : 'testnet'}`, switch the
+                            network button at the top of this webpage.
+                        </div>
+                    </>
+                )}
             </div>
             {account && (
                 <div className="row">
@@ -191,7 +226,9 @@ export default function Main(props: WalletConnectionProps) {
                             <div>
                                 <a
                                     className="link"
-                                    href={`https://testnet.ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                                    href={`https://${
+                                        isTestnet ? `testnet.` : ``
+                                    }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
                                     target="_blank"
                                     rel="noreferrer"
                                 >
@@ -281,7 +318,9 @@ export default function Main(props: WalletConnectionProps) {
                                             className="link"
                                             target="_blank"
                                             rel="noreferrer"
-                                            href={`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
+                                            href={`https://${
+                                                isTestnet ? `testnet.` : ``
+                                            }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
                                         >
                                             {txHashDeploy}
                                         </a>
@@ -510,7 +549,9 @@ export default function Main(props: WalletConnectionProps) {
                                             className="link"
                                             target="_blank"
                                             rel="noreferrer"
-                                            href={`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
+                                            href={`https://${
+                                                isTestnet ? `testnet.` : ``
+                                            }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
                                         >
                                             {txHashInit}
                                         </a>

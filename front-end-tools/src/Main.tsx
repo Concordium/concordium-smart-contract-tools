@@ -62,7 +62,7 @@ export default function Main(props: ConnectionProps) {
     const [cCDAmount, setCCDAmount] = useState('');
     const [base64Module, setBase64Module] = useState('');
     const [base64Schema, setBase64Schema] = useState('');
-    const [writeDropDown, setWriteDropDown] = useState('number');
+    const [dropDown, setDropDown] = useState('number');
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
 
@@ -71,17 +71,19 @@ export default function Main(props: ConnectionProps) {
     const [isPayable, setIsPayable] = useState(false);
 
     const changeModuleReferenceHandler = (event: ChangeEvent) => {
+        setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
         setModuleReference(target.value);
     };
 
-    const changeWriteDropDownHandler = () => {
+    const changeDropDownHandler = () => {
         setParsingError('');
         setInputParameter('');
+        setTransactionErrorInit('');
         const e = document.getElementById('write') as HTMLSelectElement;
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
-        setWriteDropDown(value);
+        setDropDown(value);
     };
 
     const changeCCDAmountHandler = (event: ChangeEvent) => {
@@ -90,22 +92,25 @@ export default function Main(props: ConnectionProps) {
     };
 
     const changeInitNameHandler = (event: ChangeEvent) => {
+        setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
         setInitName(target.value);
     };
 
     const changeInputParameterFieldHandler = (event: ChangeEvent) => {
+        setParsingError('');
+        setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
         setInputParameter(target.value);
     };
 
     const changeInputParameterTextAreaHandler = (event: ChangeEvent) => {
+        setParsingError('');
+        setTransactionErrorInit('');
         const inputTextArea = document.getElementById('inputParameterTextArea');
         inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
-
         const target = event.target as HTMLTextAreaElement;
 
-        setParsingError('');
         try {
             JSON.parse(target.value);
         } catch (e) {
@@ -388,10 +393,11 @@ export default function Main(props: ConnectionProps) {
                                     <div> Has NO input parameter</div>
                                     <Switch
                                         onChange={() => {
-                                            if (hasInputParameter) {
-                                                setInputParameter('');
-                                                setBase64Schema('');
-                                            }
+                                            setParsingError('');
+                                            setInputParameter('');
+                                            setBase64Schema('');
+                                            setTransactionErrorInit('');
+                                            setDropDown('number');
                                             setHasInputParameter(!hasInputParameter);
                                         }}
                                         onColor="#308274"
@@ -460,7 +466,7 @@ export default function Main(props: ConnectionProps) {
                                         <label className="field">
                                             Select input parameter type:
                                             <br />
-                                            <select name="write" id="write" onChange={changeWriteDropDownHandler}>
+                                            <select name="write" id="write" onChange={changeDropDownHandler}>
                                                 <option value="number">number</option>
                                                 <option value="string">string</option>
                                                 <option value="object">JSON object</option>
@@ -468,11 +474,11 @@ export default function Main(props: ConnectionProps) {
                                             </select>
                                         </label>
                                         <br />
-                                        {(writeDropDown === 'object' || writeDropDown === 'array') && (
+                                        {(dropDown === 'object' || dropDown === 'array') && (
                                             <label className="field">
-                                                Add your input parameter ({writeDropDown}):
+                                                Add your input parameter ({dropDown}):
                                                 <br />
-                                                {writeDropDown === 'array' && (
+                                                {dropDown === 'array' && (
                                                     <textarea
                                                         id="inputParameterTextArea"
                                                         onChange={changeInputParameterTextAreaHandler}
@@ -482,7 +488,7 @@ export default function Main(props: ConnectionProps) {
                                                         &#34;myFieldKey&#34;:&#34;myFieldValue&#34;&#125;]
                                                     </textarea>
                                                 )}
-                                                {writeDropDown === 'object' && (
+                                                {dropDown === 'object' && (
                                                     <textarea
                                                         id="inputParameterTextArea"
                                                         onChange={changeInputParameterTextAreaHandler}
@@ -496,15 +502,15 @@ export default function Main(props: ConnectionProps) {
                                                 )}
                                             </label>
                                         )}
-                                        {(writeDropDown === 'string' || writeDropDown === 'number') && (
+                                        {(dropDown === 'string' || dropDown === 'number') && (
                                             <label className="field">
-                                                Add your input parameter ({writeDropDown}):
+                                                Add your input parameter ({dropDown}):
                                                 <br />
                                                 <input
                                                     className="inputFieldStyle"
                                                     id="inputParameterField"
                                                     type="text"
-                                                    placeholder={writeDropDown === 'string' ? 'myString' : '1000000'}
+                                                    placeholder={dropDown === 'string' ? 'myString' : '1000000'}
                                                     onChange={changeInputParameterFieldHandler}
                                                 />
                                             </label>
@@ -531,7 +537,7 @@ export default function Main(props: ConnectionProps) {
                                             inputParameter,
                                             initName,
                                             base64Schema,
-                                            writeDropDown,
+                                            dropDown,
                                             cCDAmount
                                         );
                                         tx.then(setTxHashInit).catch((err: Error) =>

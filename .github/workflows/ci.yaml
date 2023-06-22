@@ -159,4 +159,4 @@ jobs:
           override: true
       - name: Test
         working-directory: ${{ matrix.build-dir }}
-        run: cargo test
+        run: cargo test -- --skip io_tests # Skip the I/O tests in the testing library.

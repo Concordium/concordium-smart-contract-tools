@@ -16,8 +16,9 @@ export default function Root() {
             <main className="textCenter">
                 <div className="version">Version: {version}</div>
                 <h1>Deploy and Initialize Smart Contracts on Concordium {isTestnet ? 'Testnet' : 'Mainnet'}</h1>
+                <br />
                 <div className="switch-wrapper">
-                    <div>Use Testnet</div>
+                    <div>Testnet</div>
                     <Switch
                         onChange={() => {
                             setIsTestnet(!isTestnet);
@@ -30,8 +31,9 @@ export default function Root() {
                         checkedIcon={false}
                         uncheckedIcon={false}
                     />
-                    <div>Use Mainnet</div>
+                    <div>Mainnet</div>
                 </div>
+                <br />
                 <WithWalletConnector network={isTestnet ? TESTNET : MAINNET}>
                     {(props) => <Main walletConnectionProps={props} isTestnet={isTestnet} />}
                 </WithWalletConnector>

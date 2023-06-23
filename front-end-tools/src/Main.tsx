@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
-import Switch from 'react-switch';
 import {
     WalletConnectionProps,
     useConnection,
@@ -432,8 +431,39 @@ export default function Main(props: ConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox header="Step 2: Initialize Smart Contract">
+                                <br />
+                                <br />
+                                <div className="checkbox-wrapper">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            id="useModuleReferenceFromStep1"
+                                            onChange={() => {
+                                                const checkboxElement = document.getElementById(
+                                                    'useModuleReferenceFromStep1'
+                                                ) as HTMLInputElement;
+
+                                                if (
+                                                    checkboxElement.checked &&
+                                                    (moduleReferenceDeployed || moduleReferenceCalculated !== undefined)
+                                                ) {
+                                                    const element = document.getElementById(
+                                                        'moduleReference'
+                                                    ) as HTMLTextAreaElement;
+                                                    element.value =
+                                                        moduleReferenceDeployed || moduleReferenceCalculated;
+
+                                                    setModuleReference(
+                                                        moduleReferenceDeployed || moduleReferenceCalculated
+                                                    );
+                                                }
+                                            }}
+                                        />
+                                        <span>{' Use Module Reference from Step 1'}</span>
+                                    </label>
+                                </div>
                                 <label className="field">
-                                    Add Module Reference:
+                                    Module Reference:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -443,9 +473,8 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeModuleReferenceHandler}
                                     />
                                 </label>
-                                <br />
                                 <label className="field">
-                                    Add Smart Contract Name:
+                                    Smart Contract Name:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -455,39 +484,39 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeInitNameHandler}
                                     />
                                 </label>
-                                <div className="switch-wrapper">
-                                    <div> Is NOT payable</div>
-                                    <Switch
-                                        onChange={() => {
-                                            setIsPayable(!isPayable);
-                                        }}
-                                        onColor="#308274"
-                                        offColor="#308274"
-                                        onHandleColor="#174039"
-                                        offHandleColor="#174039"
-                                        checked={isPayable}
-                                        checkedIcon={false}
-                                        uncheckedIcon={false}
-                                    />
-                                    <div>Is payable</div>
+                                <br />
+                                <br />
+                                <div className="checkbox-wrapper">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            onChange={() => {
+                                                setIsPayable(!isPayable);
+                                            }}
+                                        />
+                                        <span>{' Is Payable'}</span>
+                                    </label>
                                 </div>
                                 {isPayable && (
-                                    <label className="field">
-                                        Add CCD amount (micro):
-                                        <br />
-                                        <input
-                                            className="inputFieldStyle"
-                                            id="CCDAmount"
-                                            type="text"
-                                            placeholder="1000000"
-                                            onChange={changeCCDAmountHandler}
-                                        />
-                                    </label>
+                                    <div className="testBox">
+                                        <label className="field">
+                                            CCD amount (micro):
+                                            <br />
+                                            <input
+                                                className="inputFieldStyle"
+                                                id="CCDAmount"
+                                                type="text"
+                                                placeholder="1000000"
+                                                onChange={changeCCDAmountHandler}
+                                            />
+                                        </label>
+                                    </div>
                                 )}
                                 <br />
-                                <div className="switch-wrapper">
-                                    <div> Has NO input parameter</div>
-                                    <Switch
+                                <br />
+                                <label>
+                                    <input
+                                        type="checkbox"
                                         onChange={() => {
                                             setParsingError('');
                                             setInputParameter('');
@@ -496,18 +525,13 @@ export default function Main(props: ConnectionProps) {
                                             setDropDown('number');
                                             setHasInputParameter(!hasInputParameter);
                                         }}
-                                        onColor="#308274"
-                                        offColor="#308274"
-                                        onHandleColor="#174039"
-                                        offHandleColor="#174039"
-                                        checked={hasInputParameter}
-                                        checkedIcon={false}
-                                        uncheckedIcon={false}
                                     />
-                                    <div>Has input parameter</div>
-                                </div>
+                                    <span>{' Has Input Parameter'}</span>
+                                </label>
+                                <br />
+
                                 {hasInputParameter && (
-                                    <>
+                                    <div className="testBox">
                                         <label className="field">
                                             Upload Smart Contract Module Schema File (e.g. schema.bin):
                                             <br />
@@ -617,7 +641,7 @@ export default function Main(props: ConnectionProps) {
                                                 Error: {parsingError}.
                                             </div>
                                         )}
-                                    </>
+                                    </div>
                                 )}
                                 <br />
                                 <br />
@@ -633,6 +657,7 @@ export default function Main(props: ConnectionProps) {
                                             moduleReference,
                                             inputParameter,
                                             initName,
+                                            hasInputParameter,
                                             base64Schema,
                                             dropDown,
                                             cCDAmount

@@ -26,6 +26,7 @@ export async function initialize(
     moduleReference: string,
     inputParameter: string,
     initName: string,
+    hasInputParameter: boolean,
     contractSchema: string,
     dropDown: string,
     amount?: string
@@ -36,6 +37,12 @@ export async function initialize(
 
     if (initName === '') {
         throw new Error(`Set smart contract name`);
+    }
+
+    if (hasInputParameter) {
+        if (contractSchema === '') {
+            throw new Error(`Set schema`);
+        }
     }
 
     let schema;

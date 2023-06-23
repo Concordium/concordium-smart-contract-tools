@@ -4,7 +4,7 @@
 pipeline {
     agent any
     environment {
-        image_repo = "concordium/issuer-front-end"
+        image_repo = "concordium/front-end-tools"
         image_name = "${image_repo}:${image_tag}"
     }
     stages {

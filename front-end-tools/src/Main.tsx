@@ -9,7 +9,14 @@ import {
     TESTNET,
     MAINNET,
 } from '@concordium/react-components';
-import { AccountAddress } from '@concordium/web-sdk';
+import { Buffer } from 'buffer';
+import {
+    AccountAddress,
+    ModuleReference,
+    TransactionKindString,
+    TransactionSummaryType,
+    sha256,
+} from '@concordium/web-sdk';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { initialize, deploy } from './writing_to_blockchain';
@@ -45,15 +52,22 @@ export default function Main(props: ConnectionProps) {
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
     const client = useGrpcClient(isTestnet ? TESTNET : MAINNET);
 
-    const [viewError, setViewError] = useState('');
+    const [viewErrorAccountInfo, setViewErrorAccountInfo] = useState('');
+    const [viewErrorModuleReference, setViewErrorModuleReference] = useState('');
     const [transactionErrorDeploy, setTransactionErrorDeploy] = useState('');
     const [transactionErrorInit, setTransactionErrorInit] = useState('');
     const [uploadError, setUploadError] = useState('');
     const [uploadError2, setUploadError2] = useState('');
     const [parsingError, setParsingError] = useState('');
 
+    const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState('');
+
     const [txHashDeploy, setTxHashDeploy] = useState('');
+
+    const [moduleReferenceAlreadyDeployed, setModuleReferenceAlreadyDeployed] = useState(false);
+
     const [txHashInit, setTxHashInit] = useState('');
+    const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState('');
 
     const [accountBalance, setAccountBalance] = useState('');
     const [inputParameter, setInputParameter] = useState('');
@@ -124,11 +138,11 @@ export default function Main(props: ConnectionProps) {
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
     useEffect(() => {
-        if (connection && account) {
+        if (connection && client && account) {
             const interval = setInterval(() => {
-                console.log('refreshing');
+                console.log('refreshing_accountInfo');
                 client
-                    ?.getAccountInfo(new AccountAddress(account))
+                    .getAccountInfo(new AccountAddress(account))
                     .then((value) => {
                         if (value !== undefined) {
                             setAccountBalance(value.accountAmount.toString());
@@ -136,22 +150,68 @@ export default function Main(props: ConnectionProps) {
                         } else {
                             setAccountExistsOnNetwork(false);
                         }
-                        setViewError('');
+                        setViewErrorAccountInfo('');
                     })
                     .catch((e) => {
                         setAccountBalance('');
-                        setViewError((e as Error).message);
+                        setViewErrorAccountInfo((e as Error).message);
                         setAccountExistsOnNetwork(false);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
             return () => clearInterval(interval);
         }
-    }, [connection, account]);
+    }, [connection, account, client]);
+
+    // Refresh moduleReference periodically.
+    // eslint-disable-next-line consistent-return
+    useEffect(() => {
+        if (connection && client && account && txHashDeploy !== '') {
+            const interval = setInterval(() => {
+                console.log('refreshing_moduleReference');
+                client
+                    .getBlockItemStatus(txHashDeploy)
+                    .then((report) => {
+                        if (report !== undefined) {
+                            setViewErrorModuleReference('');
+                            if (
+                                report.status === 'finalized' &&
+                                report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
+                                report.outcome.summary.transactionType === TransactionKindString.DeployModule
+                            ) {
+                                setModuleReferenceDeployed(report.outcome.summary.moduleDeployed.contents);
+                            }
+                        }
+                    })
+                    .catch((e) => {
+                        setModuleReferenceDeployed('');
+                        setViewErrorModuleReference((e as Error).message);
+                    });
+            }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
+        }
+    }, [connection, account, client, txHashDeploy]);
 
     useEffect(() => {
-        if (connection && account) {
+        if (connection && client && account && moduleReferenceCalculated) {
             client
-                ?.getAccountInfo(new AccountAddress(account))
+                .getModuleSource(new ModuleReference(moduleReferenceCalculated))
+                .then((value) => {
+                    if (value === undefined) {
+                        setModuleReferenceAlreadyDeployed(false);
+                    } else {
+                        setModuleReferenceAlreadyDeployed(true);
+                    }
+                })
+                .catch(() => {
+                    setModuleReferenceAlreadyDeployed(false);
+                });
+        }
+    }, [connection, account, client, moduleReferenceCalculated]);
+
+    useEffect(() => {
+        if (connection && client && account) {
+            client
+                .getAccountInfo(new AccountAddress(account))
                 .then((value) => {
                     if (value !== undefined) {
                         setAccountBalance(value.accountAmount.toString());
@@ -159,15 +219,15 @@ export default function Main(props: ConnectionProps) {
                     } else {
                         setAccountExistsOnNetwork(false);
                     }
-                    setViewError('');
+                    setViewErrorAccountInfo('');
                 })
                 .catch((e) => {
-                    setViewError((e as Error).message);
+                    setViewErrorAccountInfo((e as Error).message);
                     setAccountBalance('');
                     setAccountExistsOnNetwork(false);
                 });
         }
-    }, [connection, account]);
+    }, [connection, account, client]);
 
     return (
         <main className="container">
@@ -221,9 +281,14 @@ export default function Main(props: ConnectionProps) {
                 <div className="row">
                     {connection && account !== undefined && (
                         <div className="col-lg-12">
-                            {viewError && (
+                            {viewErrorAccountInfo && (
                                 <div className="alert alert-danger" role="alert">
-                                    Error: {viewError}.
+                                    Error: {viewErrorAccountInfo}.
+                                </div>
+                            )}
+                            {viewErrorModuleReference && (
+                                <div className="alert alert-danger" role="alert">
+                                    Error: {viewErrorModuleReference}.
                                 </div>
                             )}
                             <br />
@@ -253,8 +318,12 @@ export default function Main(props: ConnectionProps) {
                                         className="btn btn-primary"
                                         type="file"
                                         id="moduleFile"
+                                        accept=".wasm,.wasm.v0,.wasm.v1"
                                         onChange={async () => {
                                             setUploadError('');
+                                            setModuleReferenceDeployed('');
+                                            setTransactionErrorDeploy('');
+                                            setTxHashDeploy('');
 
                                             const hTMLInputElement = document.getElementById(
                                                 'moduleFile'
@@ -275,6 +344,9 @@ export default function Main(props: ConnectionProps) {
                                                 );
 
                                                 setBase64Module(module);
+                                                setModuleReferenceCalculated(
+                                                    Buffer.from(sha256([new Uint8Array(arrayBuffer)])).toString('hex')
+                                                );
                                             } else {
                                                 setUploadError('Upload module file is undefined');
                                             }
@@ -289,27 +361,41 @@ export default function Main(props: ConnectionProps) {
                                     </div>
                                 )}
                                 <br />
-                                {base64Module && (
+                                {base64Module && moduleReferenceCalculated && (
                                     <>
+                                        <div className="actionResultBox">
+                                            Calculated module reference:
+                                            <div>{moduleReferenceCalculated}</div>
+                                        </div>
                                         <div className="actionResultBox">
                                             Module in base64:
                                             <div>{base64Module.toString().slice(0, 30)} ...</div>
                                         </div>
+                                        {moduleReferenceAlreadyDeployed && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Module reference already deployed.
+                                            </div>
+                                        )}
                                         <br />
-                                        <button
-                                            className="btn btn-primary"
-                                            type="button"
-                                            onClick={() => {
-                                                setTxHashDeploy('');
-                                                setTransactionErrorDeploy('');
-                                                const tx = deploy(connection, account, base64Module);
-                                                tx.then(setTxHashDeploy).catch((err: Error) =>
-                                                    setTransactionErrorDeploy((err as Error).message)
-                                                );
-                                            }}
-                                        >
-                                            Deploy smart contract module
-                                        </button>
+                                        {!moduleReferenceAlreadyDeployed && (
+                                            <button
+                                                className="btn btn-primary"
+                                                type="button"
+                                                onClick={() => {
+                                                    setTxHashDeploy('');
+                                                    setTransactionErrorDeploy('');
+                                                    const tx = deploy(connection, account, base64Module);
+                                                    tx.then((txHash) => {
+                                                        setModuleReferenceDeployed('');
+                                                        setTxHashDeploy(txHash);
+                                                    }).catch((err: Error) =>
+                                                        setTransactionErrorDeploy((err as Error).message)
+                                                    );
+                                                }}
+                                            >
+                                                Deploy smart contract module
+                                            </button>
+                                        )}
                                         <br />
                                         <br />
                                     </>
@@ -332,6 +418,16 @@ export default function Main(props: ConnectionProps) {
                                         >
                                             {txHashDeploy}
                                         </a>
+                                    </>
+                                )}
+                                {moduleReferenceDeployed && (
+                                    <>
+                                        <br />
+                                        <br />
+                                        <div className="actionResultBox">
+                                            Module Reference deployed:
+                                            <div>{moduleReferenceDeployed}</div>
+                                        </div>
                                     </>
                                 )}
                             </TestBox>
@@ -420,6 +516,7 @@ export default function Main(props: ConnectionProps) {
                                                 className="btn btn-primary"
                                                 type="file"
                                                 id="schemaFile"
+                                                accept=".bin"
                                                 onChange={async () => {
                                                     setUploadError('');
 

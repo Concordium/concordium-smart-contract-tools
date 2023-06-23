@@ -15,7 +15,7 @@ export default function Root() {
         <div>
             <main className="textCenter">
                 <div className="version">Version: {version}</div>
-                <h1>Deploying and Initializing of Smart Contracts on Concordium {isTestnet ? 'Testnet' : 'Mainnet'}</h1>
+                <h1>Deploy and Initialize Smart Contracts on Concordium {isTestnet ? 'Testnet' : 'Mainnet'}</h1>
                 <div className="switch-wrapper">
                     <div>Use Testnet</div>
                     <Switch

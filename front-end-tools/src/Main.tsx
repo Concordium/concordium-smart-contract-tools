@@ -58,15 +58,15 @@ export default function Main(props: ConnectionProps) {
     const [uploadError, setUploadError] = useState('');
     const [uploadError2, setUploadError2] = useState('');
     const [parsingError, setParsingError] = useState('');
+    const [smartContractIndexError, setSmartContractIndexError] = useState('');
 
+    const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
     const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState('');
+    const [moduleReferenceAlreadyDeployed, setModuleReferenceAlreadyDeployed] = useState(false);
+    const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState('');
 
     const [txHashDeploy, setTxHashDeploy] = useState('');
-
-    const [moduleReferenceAlreadyDeployed, setModuleReferenceAlreadyDeployed] = useState(false);
-
     const [txHashInit, setTxHashInit] = useState('');
-    const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState('');
 
     const [accountBalance, setAccountBalance] = useState('');
     const [inputParameter, setInputParameter] = useState('');
@@ -76,8 +76,7 @@ export default function Main(props: ConnectionProps) {
     const [base64Module, setBase64Module] = useState('');
     const [base64Schema, setBase64Schema] = useState('');
     const [dropDown, setDropDown] = useState('number');
-
-    const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
+    const [smartContractIndex, setSmartContractIndex] = useState('');
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameter, setHasInputParameter] = useState(false);
@@ -189,6 +188,40 @@ export default function Main(props: ConnectionProps) {
             return () => clearInterval(interval);
         }
     }, [connection, account, client, txHashDeploy]);
+
+    // Refresh smartContractIndex periodically.
+    // eslint-disable-next-line consistent-return
+    useEffect(() => {
+        if (connection && client && account && txHashInit !== '') {
+            const interval = setInterval(() => {
+                console.log('refreshing_smartContractIndex');
+                client
+                    .getBlockItemStatus(txHashInit)
+                    .then((report) => {
+                        if (report !== undefined) {
+                            setViewErrorModuleReference('');
+                            if (report.status === 'finalized') {
+                                if (
+                                    report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
+                                    report.outcome.summary.transactionType === TransactionKindString.InitContract
+                                ) {
+                                    setSmartContractIndex(
+                                        report.outcome.summary.contractInitialized.address.index.toString()
+                                    );
+                                } else {
+                                    setSmartContractIndexError('Contract initialization failed');
+                                }
+                            }
+                        }
+                    })
+                    .catch((e) => {
+                        setModuleReferenceDeployed('');
+                        setViewErrorModuleReference((e as Error).message);
+                    });
+            }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
+        }
+    }, [connection, account, client, txHashInit]);
 
     useEffect(() => {
         if (connection && client && account && moduleReferenceCalculated) {
@@ -583,7 +616,6 @@ export default function Main(props: ConnectionProps) {
                                                 <div>{base64Schema.toString().slice(0, 30)} ...</div>
                                             </div>
                                         )}
-
                                         <label className="field">
                                             Select input parameter type:
                                             <br />
@@ -650,6 +682,8 @@ export default function Main(props: ConnectionProps) {
                                     type="button"
                                     onClick={() => {
                                         setTxHashInit('');
+                                        setSmartContractIndexError('');
+                                        setSmartContractIndex('');
                                         setTransactionErrorInit('');
                                         const tx = initialize(
                                             connection,
@@ -690,6 +724,19 @@ export default function Main(props: ConnectionProps) {
                                             {txHashInit}
                                         </a>
                                     </>
+                                )}
+                                <br />
+                                <br />
+                                {smartContractIndexError !== '' && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {smartContractIndexError}.
+                                    </div>
+                                )}
+                                {smartContractIndex !== '' && (
+                                    <div className="actionResultBox">
+                                        Smart Contract Inedex:
+                                        <div>{smartContractIndex}</div>
+                                    </div>
                                 )}
                             </TestBox>
                         </div>

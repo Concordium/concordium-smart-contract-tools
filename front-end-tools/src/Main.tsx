@@ -77,6 +77,7 @@ export default function Main(props: ConnectionProps) {
     const [base64Schema, setBase64Schema] = useState('');
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState('');
+    const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('');
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameter, setHasInputParameter] = useState(false);
@@ -101,6 +102,11 @@ export default function Main(props: ConnectionProps) {
     const changeCCDAmountHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setCCDAmount(target.value);
+    };
+
+    const changeMaxExecutionEnergyHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setMaxContractExecutionEnergy(target.value);
     };
 
     const changeInitNameHandler = (event: ChangeEvent) => {
@@ -152,7 +158,7 @@ export default function Main(props: ConnectionProps) {
                     })
                     .catch((e) => {
                         setAccountBalance('');
-                        setViewErrorAccountInfo((e as Error).message);
+                        setViewErrorAccountInfo((e as Error).message.replaceAll('%20', ' '));
                         setAccountExistsOnNetwork(false);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
@@ -254,7 +260,7 @@ export default function Main(props: ConnectionProps) {
                     setViewErrorAccountInfo('');
                 })
                 .catch((e) => {
-                    setViewErrorAccountInfo((e as Error).message);
+                    setViewErrorAccountInfo((e as Error).message.replaceAll('%20', ' '));
                     setAccountBalance('');
                     setAccountExistsOnNetwork(false);
                 });
@@ -517,6 +523,17 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeInitNameHandler}
                                     />
                                 </label>
+                                <label className="field">
+                                    Max Execution Energy:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="maxContractExecutionEnergy"
+                                        type="text"
+                                        placeholder="30000"
+                                        onChange={changeMaxExecutionEnergyHandler}
+                                    />
+                                </label>
                                 <br />
                                 <br />
                                 <div className="checkbox-wrapper">
@@ -694,6 +711,7 @@ export default function Main(props: ConnectionProps) {
                                             hasInputParameter,
                                             base64Schema,
                                             dropDown,
+                                            maxContractExecutionEnergy,
                                             cCDAmount
                                         );
                                         tx.then(setTxHashInit).catch((err: Error) =>

@@ -29,14 +29,19 @@ export async function initialize(
     hasInputParameter: boolean,
     contractSchema: string,
     dropDown: string,
+    maxContractExecutionEnergy: string,
     amount?: string
 ) {
     if (moduleReference === '') {
-        throw new Error(`Set moduleReference`);
+        throw new Error(`Set module reference`);
     }
 
     if (initName === '') {
         throw new Error(`Set smart contract name`);
+    }
+
+    if (maxContractExecutionEnergy === '') {
+        throw new Error(`Set max contract execution energy`);
     }
 
     if (hasInputParameter) {
@@ -86,7 +91,7 @@ export async function initialize(
             moduleRef: new ModuleReference(moduleReference),
             initName,
             param: toBuffer(''),
-            maxContractExecutionEnergy: 30000n,
+            maxContractExecutionEnergy: BigInt(maxContractExecutionEnergy),
         } as InitContractPayload,
         schema
     );

@@ -20,15 +20,17 @@ pipeline {
         }
         stage('build-push') {
             steps {
-                sh '''\
-                    docker build \
-                      --build-arg build_image="${build_image}" \
-                      --label build_image="${build_image}" \
-                      --tag="${image_name}" \
-                      -f ./Dockerfile \
-                      .
-                    docker push "${image_name}"
-                '''.stripIndent()
+                dir("front-end-tools") {
+                    sh '''\
+                        docker build \
+                        --build-arg build_image="${build_image}" \
+                        --label build_image="${build_image}" \
+                        --tag="${image_name}" \
+                        -f ./Dockerfile \
+                        .
+                        docker push "${image_name}"
+                    '''.stripIndent()
+                }
             }
         }
     }

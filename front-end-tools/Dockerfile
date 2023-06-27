@@ -1,6 +1,6 @@
-ARG base_image=node:16-slim
+ARG build_image=node:16-slim
 
-FROM ${base_image} AS build
+FROM ${build_image} AS build
 
 WORKDIR /app
 COPY ./package.json ./package.json

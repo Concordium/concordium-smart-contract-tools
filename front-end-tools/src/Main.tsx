@@ -59,6 +59,7 @@ export default function Main(props: ConnectionProps) {
     const [uploadError2, setUploadError2] = useState('');
     const [parsingError, setParsingError] = useState('');
     const [smartContractIndexError, setSmartContractIndexError] = useState('');
+    const [moduleReferenceError, setModuleReferenceError] = useState('');
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
     const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState('');
@@ -78,6 +79,8 @@ export default function Main(props: ConnectionProps) {
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState('');
     const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('');
+    const [checkedBoxElemenChecked, setCheckedBoxElemenChecked] = useState(false);
+    const [contracts, setContracts] = useState<string[]>([]);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameter, setHasInputParameter] = useState(false);
@@ -89,7 +92,7 @@ export default function Main(props: ConnectionProps) {
         setModuleReference(target.value);
     };
 
-    const changeDropDownHandler = () => {
+    const changeInputParameterDropDownHandler = () => {
         setParsingError('');
         setInputParameter('');
         setTransactionErrorInit('');
@@ -97,6 +100,14 @@ export default function Main(props: ConnectionProps) {
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
         setDropDown(value);
+    };
+
+    const changeSmarContractDropDownHandler = () => {
+        setTransactionErrorInit('');
+        const e = document.getElementById('contractNameDropDown') as HTMLSelectElement;
+        const sel = e.selectedIndex;
+        const { value } = e.options[sel];
+        setInitName(value);
     };
 
     const changeCCDAmountHandler = (event: ChangeEvent) => {
@@ -374,6 +385,17 @@ export default function Main(props: ConnectionProps) {
                                                 const file = hTMLInputElement.files[0];
                                                 const arrayBuffer = await file.arrayBuffer();
 
+                                                const moduleFunctions = WebAssembly.Module.exports(
+                                                    await WebAssembly.compile(arrayBuffer.slice(8))
+                                                );
+                                                const contractNames = [];
+                                                for (let i = 0; i < moduleFunctions.length; i += 1) {
+                                                    if (moduleFunctions[i].name.slice(0, 5) === 'init_') {
+                                                        contractNames.push(moduleFunctions[i].name.slice(5));
+                                                    }
+                                                }
+                                                setContracts(contractNames);
+
                                                 const module = btoa(
                                                     new Uint8Array(arrayBuffer).reduce((data, byte) => {
                                                         return data + String.fromCharCode(byte);
@@ -477,29 +499,55 @@ export default function Main(props: ConnectionProps) {
                                             type="checkbox"
                                             id="useModuleReferenceFromStep1"
                                             onChange={() => {
+                                                setModuleReferenceError('');
+                                                setModuleReference('');
+                                                setInitName('');
                                                 const checkboxElement = document.getElementById(
                                                     'useModuleReferenceFromStep1'
                                                 ) as HTMLInputElement;
 
+                                                setCheckedBoxElemenChecked(checkboxElement.checked);
+
+                                                const element = document.getElementById(
+                                                    'moduleReference'
+                                                ) as HTMLTextAreaElement;
+
+                                                element.value = '';
+
                                                 if (
                                                     checkboxElement.checked &&
-                                                    (moduleReferenceDeployed || moduleReferenceCalculated !== undefined)
+                                                    moduleReferenceDeployed === '' &&
+                                                    moduleReferenceCalculated === ''
                                                 ) {
-                                                    const element = document.getElementById(
-                                                        'moduleReference'
-                                                    ) as HTMLTextAreaElement;
+                                                    setModuleReferenceError('Module reference is not set in step 1');
+                                                }
+
+                                                if (
+                                                    checkboxElement.checked &&
+                                                    (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '')
+                                                ) {
                                                     element.value =
-                                                        moduleReferenceDeployed || moduleReferenceCalculated;
+                                                        moduleReferenceDeployed !== ''
+                                                            ? moduleReferenceDeployed
+                                                            : moduleReferenceCalculated;
 
                                                     setModuleReference(
-                                                        moduleReferenceDeployed || moduleReferenceCalculated
+                                                        moduleReferenceDeployed !== ''
+                                                            ? moduleReferenceDeployed
+                                                            : moduleReferenceCalculated
                                                     );
+                                                    setInitName(contracts[0]);
                                                 }
                                             }}
                                         />
                                         <span>{' Use Module Reference from Step 1'}</span>
                                     </label>
                                 </div>
+                                {moduleReferenceError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {moduleReferenceError}.
+                                    </div>
+                                )}
                                 <label className="field">
                                     Module Reference:
                                     <br />
@@ -509,17 +557,6 @@ export default function Main(props: ConnectionProps) {
                                         type="text"
                                         placeholder="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
                                         onChange={changeModuleReferenceHandler}
-                                    />
-                                </label>
-                                <label className="field">
-                                    Smart Contract Name:
-                                    <br />
-                                    <input
-                                        className="inputFieldStyle"
-                                        id="initName"
-                                        type="text"
-                                        placeholder="myContract"
-                                        onChange={changeInitNameHandler}
                                     />
                                 </label>
                                 <label className="field">
@@ -533,6 +570,35 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeMaxExecutionEnergyHandler}
                                     />
                                 </label>
+                                {checkedBoxElemenChecked &&
+                                (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '') ? (
+                                    <label className="field">
+                                        Smart Contract Name:
+                                        <br />
+                                        <br />
+                                        <select
+                                            name="contractNameDropDown"
+                                            id="contractNameDropDown"
+                                            onChange={changeSmarContractDropDownHandler}
+                                        >
+                                            {contracts?.map((contract) => (
+                                                <option key={contract}>{contract}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                ) : (
+                                    <label className="field">
+                                        Smart Contract Name:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="initName"
+                                            type="text"
+                                            placeholder="myContract"
+                                            onChange={changeInitNameHandler}
+                                        />
+                                    </label>
+                                )}
                                 <br />
                                 <br />
                                 <div className="checkbox-wrapper">
@@ -635,7 +701,11 @@ export default function Main(props: ConnectionProps) {
                                         <label className="field">
                                             Select input parameter type:
                                             <br />
-                                            <select name="write" id="write" onChange={changeDropDownHandler}>
+                                            <select
+                                                name="write"
+                                                id="write"
+                                                onChange={changeInputParameterDropDownHandler}
+                                            >
                                                 <option value="number">number</option>
                                                 <option value="string">string</option>
                                                 <option value="object">JSON object</option>

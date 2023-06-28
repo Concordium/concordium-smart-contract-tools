@@ -346,7 +346,6 @@ export default function Main(props: ConnectionProps) {
                             <br />
                             <div className="label">Your account balance:</div>
                             <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
-                            <br />
                             <TestBox header="Step 1: Deploy Smart Contract Module">
                                 <label className="field">
                                     Upload Smart Contract Module File (e.g. myContract.wasm.v1):
@@ -757,6 +756,15 @@ export default function Main(props: ConnectionProps) {
                                     </div>
                                 )}
                             </TestBox>
+                            <br />
+                            <a
+                                href="https://developer.concordium.software/en/mainnet/smart-contracts/guides/on-chain-index.html"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                Learn more about how deployment and initialization works on Concordium.
+                            </a>
+                            <br />
                         </div>
                     )}
                 </div>

@@ -385,16 +385,31 @@ export default function Main(props: ConnectionProps) {
                                                 const file = hTMLInputElement.files[0];
                                                 const arrayBuffer = await file.arrayBuffer();
 
-                                                const moduleFunctions = WebAssembly.Module.exports(
-                                                    await WebAssembly.compile(arrayBuffer.slice(8))
-                                                );
-                                                const contractNames = [];
-                                                for (let i = 0; i < moduleFunctions.length; i += 1) {
-                                                    if (moduleFunctions[i].name.slice(0, 5) === 'init_') {
-                                                        contractNames.push(moduleFunctions[i].name.slice(5));
+                                                // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
+                                                // Unversioned modules cannot be created by Concordium's tooling anymore.
+                                                // We assume that the uploaded module is a versioned module
+                                                // and remove the versioned 8 bytes at the beginning.
+                                                const wasmModule = await WebAssembly.compile(
+                                                    arrayBuffer.slice(8)
+                                                ).catch((e) => {
+                                                    setUploadError(
+                                                        `You might have not uploaded a versioned module. Original error: ${
+                                                            (e as Error).message
+                                                        }`
+                                                    );
+                                                });
+
+                                                if (wasmModule) {
+                                                    const moduleFunctions = WebAssembly.Module.exports(wasmModule);
+
+                                                    const contractNames = [];
+                                                    for (let i = 0; i < moduleFunctions.length; i += 1) {
+                                                        if (moduleFunctions[i].name.slice(0, 5) === 'init_') {
+                                                            contractNames.push(moduleFunctions[i].name.slice(5));
+                                                        }
                                                     }
+                                                    setContracts(contractNames);
                                                 }
-                                                setContracts(contractNames);
 
                                                 const module = btoa(
                                                     new Uint8Array(arrayBuffer).reduce((data, byte) => {
@@ -540,7 +555,7 @@ export default function Main(props: ConnectionProps) {
                                                 }
                                             }}
                                         />
-                                        <span>{' Use Module Reference from Step 1'}</span>
+                                        <span>{' Use Module from Step 1'}</span>
                                     </label>
                                 </div>
                                 {moduleReferenceError && (
@@ -571,6 +586,7 @@ export default function Main(props: ConnectionProps) {
                                     />
                                 </label>
                                 {checkedBoxElemenChecked &&
+                                contracts.length > 0 &&
                                 (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '') ? (
                                     <label className="field">
                                         Smart Contract Name:

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
+import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback, useRef } from 'react';
 import {
     WalletConnectionProps,
     useConnection,
@@ -86,57 +86,65 @@ export default function Main(props: ConnectionProps) {
     const [hasInputParameter, setHasInputParameter] = useState(false);
     const [isPayable, setIsPayable] = useState(false);
 
-    const changeModuleReferenceHandler = (event: ChangeEvent) => {
+    const moduleFileRef = useRef(null);
+    const inputParameterDropDownRef = useRef(null);
+    const contractNameDropDownRef = useRef(null);
+    const schemaFileRef = useRef(null);
+    const inputParameterTextAreaRef = useRef(null);
+    const useModuleReferenceFromStep1Ref = useRef(null);
+    const moduleReferenceRef = useRef(null);
+
+    const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
         setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
         setModuleReference(target.value);
-    };
+    }, []);
 
-    const changeInputParameterDropDownHandler = () => {
+    const changeInputParameterDropDownHandler = useCallback(() => {
         setParsingError('');
         setInputParameter('');
         setTransactionErrorInit('');
-        const e = document.getElementById('write') as HTMLSelectElement;
+        const e = inputParameterDropDownRef.current as unknown as HTMLSelectElement;
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
         setDropDown(value);
-    };
+    }, []);
 
-    const changeSmarContractDropDownHandler = () => {
+    const changeSmarContractDropDownHandler = useCallback(() => {
         setTransactionErrorInit('');
-        const e = document.getElementById('contractNameDropDown') as HTMLSelectElement;
+        const e = contractNameDropDownRef.current as unknown as HTMLSelectElement;
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
         setInitName(value);
-    };
+    }, []);
 
-    const changeCCDAmountHandler = (event: ChangeEvent) => {
+    const changeCCDAmountHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setCCDAmount(target.value);
-    };
+    }, []);
 
-    const changeMaxExecutionEnergyHandler = (event: ChangeEvent) => {
+    const changeMaxExecutionEnergyHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setMaxContractExecutionEnergy(target.value);
-    };
+    }, []);
 
-    const changeInitNameHandler = (event: ChangeEvent) => {
+    const changeInitNameHandler = useCallback((event: ChangeEvent) => {
         setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
         setInitName(target.value);
-    };
+    }, []);
 
-    const changeInputParameterFieldHandler = (event: ChangeEvent) => {
+    const changeInputParameterFieldHandler = useCallback((event: ChangeEvent) => {
         setParsingError('');
         setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
         setInputParameter(target.value);
-    };
+    }, []);
 
-    const changeInputParameterTextAreaHandler = (event: ChangeEvent) => {
+    const changeInputParameterTextAreaHandler = useCallback((event: ChangeEvent) => {
         setParsingError('');
         setTransactionErrorInit('');
-        const inputTextArea = document.getElementById('inputParameterTextArea');
+        const inputTextArea = inputParameterTextAreaRef.current as unknown as HTMLTextAreaElement;
         inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
         const target = event.target as HTMLTextAreaElement;
 
@@ -148,7 +156,7 @@ export default function Main(props: ConnectionProps) {
         }
 
         setInputParameter(JSON.stringify(JSON.parse(target.value)));
-    };
+    }, []);
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -366,6 +374,7 @@ export default function Main(props: ConnectionProps) {
                                         className="btn btn-primary"
                                         type="file"
                                         id="moduleFile"
+                                        ref={moduleFileRef}
                                         accept=".wasm,.wasm.v0,.wasm.v1"
                                         onChange={async () => {
                                             setUploadError('');
@@ -373,9 +382,8 @@ export default function Main(props: ConnectionProps) {
                                             setTransactionErrorDeploy('');
                                             setTxHashDeploy('');
 
-                                            const hTMLInputElement = document.getElementById(
-                                                'moduleFile'
-                                            ) as HTMLInputElement;
+                                            const hTMLInputElement =
+                                                moduleFileRef.current as unknown as HTMLInputElement;
 
                                             if (
                                                 hTMLInputElement.files !== undefined &&
@@ -389,15 +397,16 @@ export default function Main(props: ConnectionProps) {
                                                 // Unversioned modules cannot be created by Concordium's tooling anymore.
                                                 // We assume that the uploaded module is a versioned module
                                                 // and remove the versioned 8 bytes at the beginning.
-                                                const wasmModule = await WebAssembly.compile(
-                                                    arrayBuffer.slice(8)
-                                                ).catch((e) => {
+                                                let wasmModule;
+                                                try {
+                                                    wasmModule = await WebAssembly.compile(arrayBuffer.slice(8));
+                                                } catch (e) {
                                                     setUploadError(
                                                         `You might have not uploaded a versioned module. Original error: ${
                                                             (e as Error).message
                                                         }`
                                                     );
-                                                });
+                                                }
 
                                                 if (wasmModule) {
                                                     const moduleFunctions = WebAssembly.Module.exports(wasmModule);
@@ -513,19 +522,18 @@ export default function Main(props: ConnectionProps) {
                                         <input
                                             type="checkbox"
                                             id="useModuleReferenceFromStep1"
+                                            ref={useModuleReferenceFromStep1Ref}
                                             onChange={() => {
                                                 setModuleReferenceError('');
                                                 setModuleReference('');
                                                 setInitName('');
-                                                const checkboxElement = document.getElementById(
-                                                    'useModuleReferenceFromStep1'
-                                                ) as HTMLInputElement;
+                                                const checkboxElement =
+                                                    useModuleReferenceFromStep1Ref.current as unknown as HTMLInputElement;
 
                                                 setCheckedBoxElemenChecked(checkboxElement.checked);
 
-                                                const element = document.getElementById(
-                                                    'moduleReference'
-                                                ) as HTMLTextAreaElement;
+                                                const element =
+                                                    moduleReferenceRef.current as unknown as HTMLTextAreaElement;
 
                                                 element.value = '';
 
@@ -569,6 +577,7 @@ export default function Main(props: ConnectionProps) {
                                     <input
                                         className="inputFieldStyle"
                                         id="moduleReference"
+                                        ref={moduleReferenceRef}
                                         type="text"
                                         placeholder="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
                                         onChange={changeModuleReferenceHandler}
@@ -595,6 +604,7 @@ export default function Main(props: ConnectionProps) {
                                         <select
                                             name="contractNameDropDown"
                                             id="contractNameDropDown"
+                                            ref={contractNameDropDownRef}
                                             onChange={changeSmarContractDropDownHandler}
                                         >
                                             {contracts?.map((contract) => (
@@ -671,13 +681,13 @@ export default function Main(props: ConnectionProps) {
                                                 className="btn btn-primary"
                                                 type="file"
                                                 id="schemaFile"
+                                                ref={schemaFileRef}
                                                 accept=".bin"
                                                 onChange={async () => {
                                                     setUploadError('');
 
-                                                    const hTMLInputElement = document.getElementById(
-                                                        'schemaFile'
-                                                    ) as HTMLInputElement;
+                                                    const hTMLInputElement =
+                                                        schemaFileRef.current as unknown as HTMLInputElement;
 
                                                     if (
                                                         hTMLInputElement.files !== undefined &&
@@ -718,8 +728,9 @@ export default function Main(props: ConnectionProps) {
                                             Select input parameter type:
                                             <br />
                                             <select
-                                                name="write"
-                                                id="write"
+                                                name="inputParameterDropDown"
+                                                id="inputParameterDropDown"
+                                                ref={inputParameterDropDownRef}
                                                 onChange={changeInputParameterDropDownHandler}
                                             >
                                                 <option value="number">number</option>
@@ -736,6 +747,7 @@ export default function Main(props: ConnectionProps) {
                                                 {dropDown === 'array' && (
                                                     <textarea
                                                         id="inputParameterTextArea"
+                                                        ref={inputParameterTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
                                                         Examples:&#10;&#10; [1,2,3] or&#10;&#10;
@@ -746,6 +758,7 @@ export default function Main(props: ConnectionProps) {
                                                 {dropDown === 'object' && (
                                                     <textarea
                                                         id="inputParameterTextArea"
+                                                        ref={inputParameterTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
                                                         &#123;&#10; &#34;myStringField&#34;:&#34;FieldValue&#34;,&#10;

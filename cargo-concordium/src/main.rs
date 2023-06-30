@@ -202,8 +202,8 @@ A schema has to be provided either as part of a smart contract module or with th
     },
     #[structopt(
         name = "schema-template",
-        about = "Convert a schema into its template representation and output it to a file or print \
-                 it to the console.
+        about = "Convert a schema into its template representation and output it to a file or \
+                 print it to the console.
 A schema has to be provided either as part of a smart contract module or with the schema flag. You \
                  need to use exactly one of the two flags(`--schema` or `--module`) with this \
                  command."
@@ -214,9 +214,9 @@ A schema has to be provided either as part of a smart contract module or with th
             long = "out",
             short = "o",
             default_value = "-",
-            help = "Path and filename to write the converted template representation to or use the \
-                    default value `-` to print the template schema to the console. The path has to \
-                    exist while the file will be created. (expected input: \
+            help = "Path and filename to write the converted template representation to or use \
+                    the default value `-` to print the template schema to the console. The path \
+                    has to exist while the file will be created. (expected input: \
                     `./my/path/template_schema.txt` or `-`)."
         )]
         out:          PathBuf,
@@ -295,9 +295,9 @@ struct BuildOptions {
         name = "schema-template-out",
         long = "schema-template-out",
         short = "p",
-        help = "Writes the template of the schema to file at specified location or prints \
-                the template of the schema to the console if the value `-` is used. The path \
-                has to exist while the file will be created. (expected input: \
+        help = "Writes the template of the schema to file at specified location or prints the \
+                template of the schema to the console if the value `-` is used. The path has to \
+                exist while the file will be created. (expected input: \
                 `./my/path/schema_template.txt` or `-`)."
     )]
     schema_template_out: Option<PathBuf>,
@@ -623,7 +623,8 @@ pub fn main() -> anyhow::Result<()> {
                 .context("Could not get schema.")?;
 
             if out.as_path() == Path::new("-") {
-                write_schema_template(None, &schema).context("Could not print the template of the schema.")?;
+                write_schema_template(None, &schema)
+                    .context("Could not print the template of the schema.")?;
             } else {
                 // A valid path needs to be provided when using the `--out` flag.
                 if out.file_name().is_none() || out.is_dir() {

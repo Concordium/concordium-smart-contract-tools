@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
+import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback, useRef } from 'react';
 import {
     WalletConnectionProps,
     useConnection,
@@ -59,6 +59,7 @@ export default function Main(props: ConnectionProps) {
     const [uploadError2, setUploadError2] = useState('');
     const [parsingError, setParsingError] = useState('');
     const [smartContractIndexError, setSmartContractIndexError] = useState('');
+    const [moduleReferenceError, setModuleReferenceError] = useState('');
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
     const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState('');
@@ -78,54 +79,72 @@ export default function Main(props: ConnectionProps) {
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState('');
     const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('');
+    const [checkedBoxElemenChecked, setCheckedBoxElemenChecked] = useState(false);
+    const [contracts, setContracts] = useState<string[]>([]);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameter, setHasInputParameter] = useState(false);
     const [isPayable, setIsPayable] = useState(false);
 
-    const changeModuleReferenceHandler = (event: ChangeEvent) => {
+    const moduleFileRef = useRef(null);
+    const inputParameterDropDownRef = useRef(null);
+    const contractNameDropDownRef = useRef(null);
+    const schemaFileRef = useRef(null);
+    const inputParameterTextAreaRef = useRef(null);
+    const useModuleReferenceFromStep1Ref = useRef(null);
+    const moduleReferenceRef = useRef(null);
+
+    const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
         setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
         setModuleReference(target.value);
-    };
+    }, []);
 
-    const changeDropDownHandler = () => {
+    const changeInputParameterDropDownHandler = useCallback(() => {
         setParsingError('');
         setInputParameter('');
         setTransactionErrorInit('');
-        const e = document.getElementById('write') as HTMLSelectElement;
+        const e = inputParameterDropDownRef.current as unknown as HTMLSelectElement;
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
         setDropDown(value);
-    };
+    }, []);
 
-    const changeCCDAmountHandler = (event: ChangeEvent) => {
+    const changeSmarContractDropDownHandler = useCallback(() => {
+        setTransactionErrorInit('');
+        const e = contractNameDropDownRef.current as unknown as HTMLSelectElement;
+        const sel = e.selectedIndex;
+        const { value } = e.options[sel];
+        setInitName(value);
+    }, []);
+
+    const changeCCDAmountHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setCCDAmount(target.value);
-    };
+    }, []);
 
-    const changeMaxExecutionEnergyHandler = (event: ChangeEvent) => {
+    const changeMaxExecutionEnergyHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setMaxContractExecutionEnergy(target.value);
-    };
+    }, []);
 
-    const changeInitNameHandler = (event: ChangeEvent) => {
+    const changeInitNameHandler = useCallback((event: ChangeEvent) => {
         setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
         setInitName(target.value);
-    };
+    }, []);
 
-    const changeInputParameterFieldHandler = (event: ChangeEvent) => {
+    const changeInputParameterFieldHandler = useCallback((event: ChangeEvent) => {
         setParsingError('');
         setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
         setInputParameter(target.value);
-    };
+    }, []);
 
-    const changeInputParameterTextAreaHandler = (event: ChangeEvent) => {
+    const changeInputParameterTextAreaHandler = useCallback((event: ChangeEvent) => {
         setParsingError('');
         setTransactionErrorInit('');
-        const inputTextArea = document.getElementById('inputParameterTextArea');
+        const inputTextArea = inputParameterTextAreaRef.current as unknown as HTMLTextAreaElement;
         inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
         const target = event.target as HTMLTextAreaElement;
 
@@ -137,7 +156,7 @@ export default function Main(props: ConnectionProps) {
         }
 
         setInputParameter(JSON.stringify(JSON.parse(target.value)));
-    };
+    }, []);
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -355,6 +374,7 @@ export default function Main(props: ConnectionProps) {
                                         className="btn btn-primary"
                                         type="file"
                                         id="moduleFile"
+                                        ref={moduleFileRef}
                                         accept=".wasm,.wasm.v0,.wasm.v1"
                                         onChange={async () => {
                                             setUploadError('');
@@ -362,9 +382,8 @@ export default function Main(props: ConnectionProps) {
                                             setTransactionErrorDeploy('');
                                             setTxHashDeploy('');
 
-                                            const hTMLInputElement = document.getElementById(
-                                                'moduleFile'
-                                            ) as HTMLInputElement;
+                                            const hTMLInputElement =
+                                                moduleFileRef.current as unknown as HTMLInputElement;
 
                                             if (
                                                 hTMLInputElement.files !== undefined &&
@@ -373,6 +392,50 @@ export default function Main(props: ConnectionProps) {
                                             ) {
                                                 const file = hTMLInputElement.files[0];
                                                 const arrayBuffer = await file.arrayBuffer();
+
+                                                // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
+                                                // Unversioned modules `.wasm` cannot be created by Concordium's tooling anymore.
+                                                // The old unversioned modules had the following magic value:
+                                                const magicValueUnversionedModule = new Uint8Array(4);
+                                                magicValueUnversionedModule[0] = 0x00;
+                                                magicValueUnversionedModule[1] = 0x61;
+                                                magicValueUnversionedModule[2] = 0x73;
+                                                magicValueUnversionedModule[3] = 0x6d;
+
+                                                let slice = 8;
+                                                if (
+                                                    arrayBuffer.byteLength > 4 &&
+                                                    arrayBuffer.slice(0, 4) === magicValueUnversionedModule
+                                                ) {
+                                                    // If we have an unversioned module, we only remove 4 bytes.
+                                                    slice = 4;
+                                                } else {
+                                                    // If we have a versioned module, we remove 8 bytes (remove the versioned 8 bytes at the beginning)
+                                                    slice = 8;
+                                                }
+
+                                                let wasmModule;
+                                                try {
+                                                    wasmModule = await WebAssembly.compile(arrayBuffer.slice(slice));
+                                                } catch (e) {
+                                                    setUploadError(
+                                                        `You might have not uploaded a Concordium module. Original error: ${
+                                                            (e as Error).message
+                                                        }`
+                                                    );
+                                                }
+
+                                                if (wasmModule) {
+                                                    const moduleFunctions = WebAssembly.Module.exports(wasmModule);
+
+                                                    const contractNames = [];
+                                                    for (let i = 0; i < moduleFunctions.length; i += 1) {
+                                                        if (moduleFunctions[i].name.slice(0, 5) === 'init_') {
+                                                            contractNames.push(moduleFunctions[i].name.slice(5));
+                                                        }
+                                                    }
+                                                    setContracts(contractNames);
+                                                }
 
                                                 const module = btoa(
                                                     new Uint8Array(arrayBuffer).reduce((data, byte) => {
@@ -476,50 +539,65 @@ export default function Main(props: ConnectionProps) {
                                         <input
                                             type="checkbox"
                                             id="useModuleReferenceFromStep1"
+                                            ref={useModuleReferenceFromStep1Ref}
                                             onChange={() => {
-                                                const checkboxElement = document.getElementById(
-                                                    'useModuleReferenceFromStep1'
-                                                ) as HTMLInputElement;
+                                                setModuleReferenceError('');
+                                                setModuleReference('');
+                                                setInitName('');
+                                                const checkboxElement =
+                                                    useModuleReferenceFromStep1Ref.current as unknown as HTMLInputElement;
+
+                                                setCheckedBoxElemenChecked(checkboxElement.checked);
+
+                                                const element =
+                                                    moduleReferenceRef.current as unknown as HTMLTextAreaElement;
+
+                                                element.value = '';
 
                                                 if (
                                                     checkboxElement.checked &&
-                                                    (moduleReferenceDeployed || moduleReferenceCalculated !== undefined)
+                                                    moduleReferenceDeployed === '' &&
+                                                    moduleReferenceCalculated === ''
                                                 ) {
-                                                    const element = document.getElementById(
-                                                        'moduleReference'
-                                                    ) as HTMLTextAreaElement;
+                                                    setModuleReferenceError('Module reference is not set in step 1');
+                                                }
+
+                                                if (
+                                                    checkboxElement.checked &&
+                                                    (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '')
+                                                ) {
                                                     element.value =
-                                                        moduleReferenceDeployed || moduleReferenceCalculated;
+                                                        moduleReferenceDeployed !== ''
+                                                            ? moduleReferenceDeployed
+                                                            : moduleReferenceCalculated;
 
                                                     setModuleReference(
-                                                        moduleReferenceDeployed || moduleReferenceCalculated
+                                                        moduleReferenceDeployed !== ''
+                                                            ? moduleReferenceDeployed
+                                                            : moduleReferenceCalculated
                                                     );
+                                                    setInitName(contracts[0]);
                                                 }
                                             }}
                                         />
-                                        <span>{' Use Module Reference from Step 1'}</span>
+                                        <span>{' Use Module from Step 1'}</span>
                                     </label>
                                 </div>
+                                {moduleReferenceError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {moduleReferenceError}.
+                                    </div>
+                                )}
                                 <label className="field">
                                     Module Reference:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
                                         id="moduleReference"
+                                        ref={moduleReferenceRef}
                                         type="text"
                                         placeholder="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
                                         onChange={changeModuleReferenceHandler}
-                                    />
-                                </label>
-                                <label className="field">
-                                    Smart Contract Name:
-                                    <br />
-                                    <input
-                                        className="inputFieldStyle"
-                                        id="initName"
-                                        type="text"
-                                        placeholder="myContract"
-                                        onChange={changeInitNameHandler}
                                     />
                                 </label>
                                 <label className="field">
@@ -533,6 +611,37 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeMaxExecutionEnergyHandler}
                                     />
                                 </label>
+                                {checkedBoxElemenChecked &&
+                                contracts.length > 0 &&
+                                (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '') ? (
+                                    <label className="field">
+                                        Smart Contract Name:
+                                        <br />
+                                        <select
+                                            className="dropDownStyle"
+                                            name="contractNameDropDown"
+                                            id="contractNameDropDown"
+                                            ref={contractNameDropDownRef}
+                                            onChange={changeSmarContractDropDownHandler}
+                                        >
+                                            {contracts?.map((contract) => (
+                                                <option key={contract}>{contract}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                ) : (
+                                    <label className="field">
+                                        Smart Contract Name:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="initName"
+                                            type="text"
+                                            placeholder="myContract"
+                                            onChange={changeInitNameHandler}
+                                        />
+                                    </label>
+                                )}
                                 <br />
                                 <br />
                                 <div className="checkbox-wrapper">
@@ -589,13 +698,13 @@ export default function Main(props: ConnectionProps) {
                                                 className="btn btn-primary"
                                                 type="file"
                                                 id="schemaFile"
+                                                ref={schemaFileRef}
                                                 accept=".bin"
                                                 onChange={async () => {
                                                     setUploadError('');
 
-                                                    const hTMLInputElement = document.getElementById(
-                                                        'schemaFile'
-                                                    ) as HTMLInputElement;
+                                                    const hTMLInputElement =
+                                                        schemaFileRef.current as unknown as HTMLInputElement;
 
                                                     if (
                                                         hTMLInputElement.files !== undefined &&
@@ -635,7 +744,13 @@ export default function Main(props: ConnectionProps) {
                                         <label className="field">
                                             Select input parameter type:
                                             <br />
-                                            <select name="write" id="write" onChange={changeDropDownHandler}>
+                                            <select
+                                                className="dropDownStyle"
+                                                name="inputParameterDropDown"
+                                                id="inputParameterDropDown"
+                                                ref={inputParameterDropDownRef}
+                                                onChange={changeInputParameterDropDownHandler}
+                                            >
                                                 <option value="number">number</option>
                                                 <option value="string">string</option>
                                                 <option value="object">JSON object</option>
@@ -650,6 +765,7 @@ export default function Main(props: ConnectionProps) {
                                                 {dropDown === 'array' && (
                                                     <textarea
                                                         id="inputParameterTextArea"
+                                                        ref={inputParameterTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
                                                         Examples:&#10;&#10; [1,2,3] or&#10;&#10;
@@ -660,6 +776,7 @@ export default function Main(props: ConnectionProps) {
                                                 {dropDown === 'object' && (
                                                     <textarea
                                                         id="inputParameterTextArea"
+                                                        ref={inputParameterTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
                                                         &#123;&#10; &#34;myStringField&#34;:&#34;FieldValue&#34;,&#10;

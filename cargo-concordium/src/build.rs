@@ -451,6 +451,37 @@ fn write_schema_json(
     Ok(())
 }
 
+/// Write the template of the schema to a file or print it
+/// to the console if `out` is None.
+pub fn write_schema_template(
+    out: Option<PathBuf>,
+    schema: &VersionedModuleSchema,
+) -> anyhow::Result<()> {
+    match out {
+        // writing the template of the schema to a file
+        Some(out) => {
+            println!(
+                "   Writing the template of the schema to {}.",
+                out.display()
+            );
+            if let Some(out_dir) = out.parent() {
+                fs::create_dir_all(out_dir).context(
+                    "Unable to create directory for the resulting template of the schema.",
+                )?;
+            }
+            // saving the template of the schema to the file
+            std::fs::write(out, format!("{}", schema))
+                .context("Unable to write the template of the schema output.")?;
+        }
+        // printing template of the schema to console
+        None => {
+            println!("   The template of the schema is:\n{}", schema)
+        }
+    }
+
+    Ok(())
+}
+
 /// Write the provided schema in its base64 representation to a file or print it
 /// to the console if `out` is None.
 pub fn write_schema_base64(
@@ -467,7 +498,7 @@ pub fn write_schema_base64(
                 fs::create_dir_all(out_dir)
                     .context("Unable to create directory for the resulting base64 schema.")?;
             }
-            // save the schema base64 representation to the file
+            // saving the schema base64 representation to the file
             std::fs::write(out, schema_base64).context("Unable to write schema output.")?;
         }
         // printing base64 schema to console

@@ -201,6 +201,56 @@ A schema has to be provided either as part of a smart contract module or with th
         module_path:  Option<PathBuf>,
     },
     #[structopt(
+        name = "schema-template",
+        about = "Convert a schema into its template representation and output it to a file or print \
+                 it to the console.
+A schema has to be provided either as part of a smart contract module or with the schema flag. You \
+                 need to use exactly one of the two flags(`--schema` or `--module`) with this \
+                 command."
+    )]
+    SchemaTemplate {
+        #[structopt(
+            name = "out",
+            long = "out",
+            short = "o",
+            default_value = "-",
+            help = "Path and filename to write the converted template representation to or use the \
+                    default value `-` to print the template schema to the console. The path has to \
+                    exist while the file will be created. (expected input: \
+                    `./my/path/template_schema.txt` or `-`)."
+        )]
+        out:          PathBuf,
+        #[structopt(
+            name = "schema",
+            long = "schema",
+            short = "s",
+            conflicts_with = "module",
+            required_unless = "module",
+            help = "Path and filename to a file with a schema (expected input: \
+                    `./my/path/schema.bin`)."
+        )]
+        schema_path:  Option<PathBuf>,
+        #[structopt(
+            name = "wasm-version",
+            long = "wasm-version",
+            short = "v",
+            help = "If the supplied schema or module is the unversioned one this flag should be \
+                    used to supply the version explicitly. Unversioned schemas and modules were \
+                    produced by older versions of `concordium-std` and `cargo-concordium`."
+        )]
+        wasm_version: Option<WasmVersion>,
+        #[structopt(
+            name = "module",
+            long = "module",
+            short = "m",
+            conflicts_with = "schema",
+            required_unless = "schema",
+            help = "Path and filename to a file with a smart contract module (expected input: \
+                    `./my/path/module.wasm.v1`)."
+        )]
+        module_path:  Option<PathBuf>,
+    },
+    #[structopt(
         name = "build",
         about = "Build a deployment ready smart-contract module."
     )]
@@ -225,14 +275,14 @@ struct BuildOptions {
         short = "e",
         help = "Builds the contract schema and embeds it into the wasm module."
     )]
-    schema_embed:      bool,
+    schema_embed:        bool,
     #[structopt(
         name = "schema-out",
         long = "schema-out",
         short = "s",
         help = "Builds the contract schema and writes it to file at specified location."
     )]
-    schema_out:        Option<PathBuf>,
+    schema_out:          Option<PathBuf>,
     #[structopt(
         name = "schema-json-out",
         long = "schema-json-out",
@@ -240,7 +290,17 @@ struct BuildOptions {
         help = "Builds the contract schema and writes it in JSON format to the specified \
                 directory."
     )]
-    schema_json_out:   Option<PathBuf>,
+    schema_json_out:     Option<PathBuf>,
+    #[structopt(
+        name = "schema-template-out",
+        long = "schema-template-out",
+        short = "p",
+        help = "Writes the template of the schema to file at specified location or prints \
+                the template of the schema to the console if the value `-` is used. The path \
+                has to exist while the file will be created. (expected input: \
+                `./my/path/schema_template.txt` or `-`)."
+    )]
+    schema_template_out: Option<PathBuf>,
     #[structopt(
         name = "schema-base64-out",
         long = "schema-base64-out",
@@ -250,14 +310,14 @@ struct BuildOptions {
                 path has to exist while the file will be created. (expected input: \
                 `./my/path/base64_schema.b64` or `-`)."
     )]
-    schema_base64_out: Option<PathBuf>,
+    schema_base64_out:   Option<PathBuf>,
     #[structopt(
         name = "out",
         long = "out",
         short = "o",
         help = "Writes the resulting module to file at specified location."
     )]
-    out:               Option<PathBuf>,
+    out:                 Option<PathBuf>,
     #[structopt(
         name = "contract-version",
         long = "contract-version",
@@ -265,12 +325,12 @@ struct BuildOptions {
         help = "Build a module of the given version.",
         default_value = "V1"
     )]
-    version:           utils::WasmVersion,
+    version:             utils::WasmVersion,
     #[structopt(
         raw = true,
         help = "Extra arguments passed to `cargo build` when building Wasm module."
     )]
-    cargo_args:        Vec<String>,
+    cargo_args:          Vec<String>,
 }
 
 impl BuildOptions {
@@ -281,6 +341,7 @@ impl BuildOptions {
         } else if self.schema_out.is_some()
             || self.schema_json_out.is_some()
             || self.schema_base64_out.is_some()
+            || self.schema_template_out.is_some()
         {
             SchemaBuildOptions::JustBuild
         } else {
@@ -552,6 +613,30 @@ pub fn main() -> anyhow::Result<()> {
                     .context("Could not write base64 schema file.")?;
             }
         }
+        Command::SchemaTemplate {
+            out,
+            module_path,
+            schema_path,
+            wasm_version,
+        } => {
+            let schema = get_schema(module_path, schema_path, wasm_version)
+                .context("Could not get schema.")?;
+
+            if out.as_path() == Path::new("-") {
+                write_schema_template(None, &schema).context("Could not print the template of the schema.")?;
+            } else {
+                // A valid path needs to be provided when using the `--out` flag.
+                if out.file_name().is_none() || out.is_dir() {
+                    anyhow::bail!(
+                        "The `--out` flag should point to an existing directory + filename \
+                         (expected input: `./my/path/template_schema.txt`) or be `-`."
+                    );
+                }
+
+                write_schema_template(Some(out), &schema)
+                    .context("Could not write template schema files.")?;
+            }
+        }
         Command::Build { build_options } => handle_build(build_options, true)?,
         Command::DisplayState { state_bin_path } => display_state_from_file(state_bin_path)?,
     };
@@ -630,6 +715,22 @@ fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Resul
         if let Some(schema_json_out) = options.schema_json_out {
             write_json_schema(&schema_json_out, module_schema)
                 .context("Could not write JSON schema files.")?;
+        }
+        if let Some(schema_template_out) = options.schema_template_out {
+            if schema_template_out.as_path() == Path::new("-") {
+                write_schema_template(None, module_schema)
+                    .context("Could not print the template of the schema.")?;
+            } else {
+                if schema_template_out.file_name().is_none() || schema_template_out.is_dir() {
+                    anyhow::bail!(
+                        "The `--schema-template-out` flag should point to an existing directory + \
+                         filename (expected input: `./my/path/template_schema.txt`) or be `-`."
+                    );
+                }
+
+                write_schema_template(Some(schema_template_out), module_schema)
+                    .context("Could not write template schema files.")?;
+            }
         }
         if let Some(schema_base64_out) = options.schema_base64_out {
             if schema_base64_out.as_path() == Path::new("-") {

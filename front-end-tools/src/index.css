@@ -107,3 +107,12 @@ label,
     margin: 7px 0px 7px 0px;
     padding: 10px 20px;
 }
+
+.dropDownStyle {
+    background-color: white;
+    box-sizing: border-box;
+    border-radius: 10px;
+    border: 1px solid #308274;
+    margin: 7px 0px 7px 0px;
+    padding: 9px 184px 9px 20px;
+  }

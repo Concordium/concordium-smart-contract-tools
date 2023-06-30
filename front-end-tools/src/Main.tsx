@@ -394,15 +394,32 @@ export default function Main(props: ConnectionProps) {
                                                 const arrayBuffer = await file.arrayBuffer();
 
                                                 // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
-                                                // Unversioned modules cannot be created by Concordium's tooling anymore.
-                                                // We assume that the uploaded module is a versioned module
-                                                // and remove the versioned 8 bytes at the beginning.
+                                                // Unversioned modules `.wasm` cannot be created by Concordium's tooling anymore.
+                                                // The old unversioned modules had the following magic value:
+                                                const magicValueUnversionedModule = new Uint8Array(4);
+                                                magicValueUnversionedModule[0] = 0x00;
+                                                magicValueUnversionedModule[1] = 0x61;
+                                                magicValueUnversionedModule[2] = 0x73;
+                                                magicValueUnversionedModule[3] = 0x6d;
+
+                                                let slice = 8;
+                                                if (
+                                                    arrayBuffer.byteLength > 4 &&
+                                                    arrayBuffer.slice(0, 4) === magicValueUnversionedModule
+                                                ) {
+                                                    // If we have an unversioned module, we only remove 4 bytes.
+                                                    slice = 4;
+                                                } else {
+                                                    // If we have a versioned module, we remove 8 bytes (remove the versioned 8 bytes at the beginning)
+                                                    slice = 8;
+                                                }
+
                                                 let wasmModule;
                                                 try {
-                                                    wasmModule = await WebAssembly.compile(arrayBuffer.slice(8));
+                                                    wasmModule = await WebAssembly.compile(arrayBuffer.slice(slice));
                                                 } catch (e) {
                                                     setUploadError(
-                                                        `You might have not uploaded a versioned module. Original error: ${
+                                                        `You might have not uploaded a Concordium module. Original error: ${
                                                             (e as Error).message
                                                         }`
                                                     );
@@ -600,8 +617,8 @@ export default function Main(props: ConnectionProps) {
                                     <label className="field">
                                         Smart Contract Name:
                                         <br />
-                                        <br />
                                         <select
+                                            className="dropDownStyle"
                                             name="contractNameDropDown"
                                             id="contractNameDropDown"
                                             ref={contractNameDropDownRef}
@@ -728,6 +745,7 @@ export default function Main(props: ConnectionProps) {
                                             Select input parameter type:
                                             <br />
                                             <select
+                                                className="dropDownStyle"
                                                 name="inputParameterDropDown"
                                                 id="inputParameterDropDown"
                                                 ref={inputParameterDropDownRef}

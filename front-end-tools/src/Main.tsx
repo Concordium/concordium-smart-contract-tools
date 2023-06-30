@@ -94,6 +94,17 @@ export default function Main(props: ConnectionProps) {
     const useModuleReferenceFromStep1Ref = useRef(null);
     const moduleReferenceRef = useRef(null);
 
+    function arraysEqual(a: Uint8Array, b: Uint8Array) {
+        if (a === b) return true;
+        if (a == null || b == null) return false;
+        if (a.length !== b.length) return false;
+
+        for (let i = 0; i < a.length; i += 1) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
+
     const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
         setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
@@ -395,24 +406,25 @@ export default function Main(props: ConnectionProps) {
 
                                                 // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
                                                 // Unversioned modules `.wasm` cannot be created by Concordium's tooling anymore.
-                                                // The old unversioned modules had the following magic value:
-                                                const magicValueUnversionedModule = new Uint8Array(4);
-                                                magicValueUnversionedModule[0] = 0x00;
-                                                magicValueUnversionedModule[1] = 0x61;
-                                                magicValueUnversionedModule[2] = 0x73;
-                                                magicValueUnversionedModule[3] = 0x6d;
+                                                // If the module is versioned, the first 8 bytes are the version, followed by the `magicValue` below.
+                                                // If the module is an old unversioned one, the module starts with the `magicValue` below.
+                                                const magicValue = new Uint8Array([0x00, 0x61, 0x73, 0x6d]);
+                                                let uploadedModuleFirst4Bytes = new Uint8Array([]);
 
-                                                let slice = 8;
-                                                if (
-                                                    arrayBuffer.byteLength > 4 &&
-                                                    arrayBuffer.slice(0, 4) === magicValueUnversionedModule
-                                                ) {
-                                                    // If we have an unversioned module, we only remove 4 bytes.
-                                                    slice = 4;
+                                                if (arrayBuffer.byteLength >= 4) {
+                                                    uploadedModuleFirst4Bytes = new Uint8Array(arrayBuffer).subarray(
+                                                        0,
+                                                        4
+                                                    );
                                                 } else {
-                                                    // If we have a versioned module, we remove 8 bytes (remove the versioned 8 bytes at the beginning)
-                                                    slice = 8;
+                                                    setUploadError(`You might have not uploaded a Concordium module.`);
                                                 }
+
+                                                // If we have an unversioned module, we remove no bytes.
+                                                // If we have a versioned module, we remove 8 bytes (remove the versioned 8 bytes at the beginning)
+                                                const slice = arraysEqual(uploadedModuleFirst4Bytes, magicValue)
+                                                    ? 0
+                                                    : 8;
 
                                                 let wasmModule;
                                                 try {

@@ -155,8 +155,12 @@ pub fn build_contract(
     strip(&mut skeleton);
     match version {
         WasmVersion::V0 => {
-            let module = validate_module(ValidationConfig::V0, &v0::ConcordiumAllowedImports, &skeleton)
-                .context("Could not validate resulting smart contract module as a V0 contract.")?;
+            let module = validate_module(
+                ValidationConfig::V0,
+                &v0::ConcordiumAllowedImports,
+                &skeleton,
+            )
+            .context("Could not validate resulting smart contract module as a V0 contract.")?;
             check_exports(&module, WasmVersion::V0)
                 .context("Contract and entrypoint validation failed for a V0 contract.")?;
             module

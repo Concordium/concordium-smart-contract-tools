@@ -14,7 +14,10 @@ import {
     ModuleReference,
     TransactionKindString,
     TransactionSummaryType,
+    displayTypeSchemaTemplate,
     sha256,
+    toBuffer,
+    getInitContractParameterSchema,
 } from '@concordium/web-sdk';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
@@ -81,6 +84,7 @@ export default function Main(props: ConnectionProps) {
     const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('');
     const [checkedBoxElemenChecked, setCheckedBoxElemenChecked] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
+    const [inputParameterTemplate, setInputParameterTemplate] = useState('');
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameter, setHasInputParameter] = useState(false);
@@ -447,6 +451,33 @@ export default function Main(props: ConnectionProps) {
                                                         }
                                                     }
                                                     setContracts(contractNames);
+
+                                                    const customSection = WebAssembly.Module.customSections(
+                                                        wasmModule,
+                                                        'concordium-schema'
+                                                    );
+
+                                                    const typeSchema = new Uint8Array(customSection[0]);
+
+                                                    const typeSchemaBase64 = btoa(
+                                                        new Uint8Array(typeSchema).reduce((data, byte) => {
+                                                            return data + String.fromCharCode(byte);
+                                                        }, '')
+                                                    );
+
+                                                    const inputParamterTypeSchema = getInitContractParameterSchema(
+                                                        toBuffer(typeSchemaBase64, 'base64'),
+                                                        contractNames[0],
+                                                        2
+                                                    );
+
+                                                    console.log(displayTypeSchemaTemplate(inputParamterTypeSchema));
+
+                                                    setInputParameterTemplate(
+                                                        JSON.stringify(
+                                                            displayTypeSchemaTemplate(inputParamterTypeSchema)
+                                                        )
+                                                    );
                                                 }
 
                                                 const module = btoa(
@@ -791,11 +822,8 @@ export default function Main(props: ConnectionProps) {
                                                         ref={inputParameterTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
-                                                        &#123;&#10; &#34;myStringField&#34;:&#34;FieldValue&#34;,&#10;
-                                                        &#34;myNumberField&#34;:4,&#10; &#34;myArray&#34;:[1,2,3],&#10;
-                                                        &#34;myObject&#34;:&#123;&#10;
-                                                        &#9;&#9;&#34;myField1&#34;:&#34;FieldValue&#34;&#10;
-                                                        &#9;&#125;&#10; &#125;
+                                                        {inputParameterTemplate ||
+                                                            '&#123;&#10; &#34;myStringField&#34;:&#34;FieldValue&#34;,&#10;&#34;myNumberField&#34;:4,&#10; &#34;myArray&#34;:[1,2,3],&#10;&#34;myObject&#34;:&#123;&#10;&#9;&#9;&#34;myField1&#34;:&#34;FieldValue&#34;&#10;&#9;&#125;&#10; &#125;'}
                                                     </textarea>
                                                 )}
                                             </label>

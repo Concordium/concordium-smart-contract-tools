@@ -1697,7 +1697,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                             eprintln!(
                                 "Receive call requested account signature check for address \
                                  {address}. The payload is {}.",
-                                hex::encode(&payload)
+                                hex::encode(payload)
                             );
                         }
                         v1::Interrupt::QueryAccountKeys { address } => {

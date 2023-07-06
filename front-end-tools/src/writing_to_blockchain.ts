@@ -7,7 +7,7 @@ import {
     ModuleReference,
     toBuffer,
 } from '@concordium/web-sdk';
-import { WalletConnection, typeSchemaFromBase64 } from '@concordium/react-components';
+import { WalletConnection } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
 
 export async function deploy(connection: WalletConnection, account: string, base64Module: string) {
@@ -23,22 +23,26 @@ export async function deploy(connection: WalletConnection, account: string, base
 export async function initialize(
     connection: WalletConnection,
     account: string,
+    moduleReferenceAlreadyDeployed: boolean,
     moduleReference: string,
     inputParameter: string,
-    initName: string,
+    contractName: string,
     hasInputParameter: boolean,
-    checkedBoxElemenChecked: boolean,
-    contractSchema: string,
-    inputParamterTypeSchema: string,
+    useModuleFromStep1: boolean,
+    moduleSchema: string,
     dropDown: string,
     maxContractExecutionEnergy: string,
     amount?: string
 ) {
+    if (moduleReferenceAlreadyDeployed === false) {
+        throw new Error(`Module reference does not exist on chain. First, deploy your module in step 1.`);
+    }
+
     if (moduleReference === '') {
         throw new Error(`Set module reference`);
     }
 
-    if (initName === '') {
+    if (contractName === '') {
         throw new Error(`Set smart contract name`);
     }
 
@@ -47,12 +51,10 @@ export async function initialize(
     }
 
     if (hasInputParameter) {
-        if (!checkedBoxElemenChecked && contractSchema === '') {
+        if (!useModuleFromStep1 && moduleSchema === '') {
             throw new Error(`Set schema`);
-        }
-
-        if (checkedBoxElemenChecked && inputParamterTypeSchema === '') {
-            throw new Error(`No embedded input parameter schema found in module`);
+        } else if (useModuleFromStep1 && moduleSchema === '') {
+            throw new Error(`No embedded module schema found in module`);
         }
     }
 
@@ -63,33 +65,25 @@ export async function initialize(
             case 'number':
                 schema = {
                     parameters: Number(inputParameter),
-                    schema: checkedBoxElemenChecked
-                        ? typeSchemaFromBase64(inputParamterTypeSchema)
-                        : moduleSchemaFromBase64(contractSchema),
+                    schema: moduleSchemaFromBase64(moduleSchema),
                 };
                 break;
             case 'string':
                 schema = {
                     parameters: inputParameter,
-                    schema: checkedBoxElemenChecked
-                        ? typeSchemaFromBase64(inputParamterTypeSchema)
-                        : moduleSchemaFromBase64(contractSchema),
+                    schema: moduleSchemaFromBase64(moduleSchema),
                 };
                 break;
             case 'object':
                 schema = {
                     parameters: JSON.parse(inputParameter),
-                    schema: checkedBoxElemenChecked
-                        ? typeSchemaFromBase64(inputParamterTypeSchema)
-                        : moduleSchemaFromBase64(contractSchema),
+                    schema: moduleSchemaFromBase64(moduleSchema),
                 };
                 break;
             case 'array':
                 schema = {
                     parameters: JSON.parse(inputParameter),
-                    schema: checkedBoxElemenChecked
-                        ? typeSchemaFromBase64(inputParamterTypeSchema)
-                        : moduleSchemaFromBase64(contractSchema),
+                    schema: moduleSchemaFromBase64(moduleSchema),
                 };
                 break;
             default:
@@ -103,7 +97,7 @@ export async function initialize(
         {
             amount: new CcdAmount(BigInt(amount ? Number(amount) : 0)),
             moduleRef: new ModuleReference(moduleReference),
-            initName,
+            initName: contractName,
             param: toBuffer(''),
             maxContractExecutionEnergy: BigInt(maxContractExecutionEnergy),
         } as InitContractPayload,

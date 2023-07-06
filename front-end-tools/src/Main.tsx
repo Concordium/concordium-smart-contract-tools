@@ -63,6 +63,7 @@ export default function Main(props: ConnectionProps) {
     const [parsingError, setParsingError] = useState('');
     const [smartContractIndexError, setSmartContractIndexError] = useState('');
     const [moduleReferenceError, setModuleReferenceError] = useState('');
+    const [embeddedSchemaError, setEmbeddedSchemaError] = useState('');
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
     const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState('');
@@ -85,6 +86,8 @@ export default function Main(props: ConnectionProps) {
     const [checkedBoxElemenChecked, setCheckedBoxElemenChecked] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
     const [inputParameterTemplate, setInputParameterTemplate] = useState('');
+    const [inputParamterTypeSchema, setInputParamterTypeSchema] = useState('');
+    const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState('');
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameter, setHasInputParameter] = useState(false);
@@ -97,6 +100,17 @@ export default function Main(props: ConnectionProps) {
     const inputParameterTextAreaRef = useRef(null);
     const useModuleReferenceFromStep1Ref = useRef(null);
     const moduleReferenceRef = useRef(null);
+
+    const defaultJSONObject = {
+        myStringField: 'FieldValue',
+        myNumberField: 4,
+        myArray: [1, 2, 3],
+        myObject: {
+            myField1: 'FieldValue',
+        },
+    };
+
+    const defaultArrayObject = 'Examples: \n\n[1,2,3] or \n\n["abc","def"] or \n\n[{"myFieldKey":"myFieldValue"}]';
 
     function arraysEqual(a: Uint8Array, b: Uint8Array) {
         if (a === b) return true;
@@ -124,6 +138,17 @@ export default function Main(props: ConnectionProps) {
         const { value } = e.options[sel];
         setDropDown(value);
     }, []);
+
+    function getObjectExample(useModuleFromStep1: boolean, template: string) {
+        const obj = template !== '' && useModuleFromStep1 ? JSON.parse(template) : JSON.stringify(defaultJSONObject);
+        return JSON.stringify(JSON.parse(obj), undefined, 2);
+    }
+
+    function getArrayExample(useModuleFromStep1: boolean, template: string) {
+        return template !== '' && useModuleFromStep1
+            ? JSON.stringify(JSON.parse(JSON.parse(template)), undefined, 2)
+            : defaultArrayObject;
+    }
 
     const changeSmarContractDropDownHandler = useCallback(() => {
         setTransactionErrorInit('');
@@ -279,6 +304,55 @@ export default function Main(props: ConnectionProps) {
                 });
         }
     }, [connection, account, client, moduleReferenceCalculated]);
+
+    useEffect(() => {
+        if (dropDown === 'array') {
+            const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
+            element.value = getArrayExample(checkedBoxElemenChecked, '');
+        }
+        if (dropDown === 'object') {
+            const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
+            element.value = getObjectExample(checkedBoxElemenChecked, '');
+        }
+
+        if (hasInputParameter && checkedBoxElemenChecked) {
+            try {
+                const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
+                    toBuffer(embeddedModuleSchemaBase64, 'base64'),
+                    initName,
+                    2
+                );
+
+                const paramterTypeSchema = btoa(
+                    new Uint8Array(inputParamterTypeSchemaBuffer).reduce((data, byte) => {
+                        return data + String.fromCharCode(byte);
+                    }, '')
+                );
+
+                setInputParamterTypeSchema(paramterTypeSchema);
+
+                const stringifiedInputParameterTemplate = JSON.stringify(
+                    displayTypeSchemaTemplate(inputParamterTypeSchemaBuffer)
+                );
+
+                setInputParameterTemplate(stringifiedInputParameterTemplate);
+
+                if (dropDown === 'array') {
+                    const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
+                    element.value = getArrayExample(checkedBoxElemenChecked, stringifiedInputParameterTemplate);
+                }
+
+                if (dropDown === 'object') {
+                    const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
+                    element.value = getObjectExample(checkedBoxElemenChecked, stringifiedInputParameterTemplate);
+                }
+            } catch (e) {
+                setEmbeddedSchemaError(
+                    `Was not able to get embedded input parameter schema from uploaded module. Orignial error: ${e}`
+                );
+            }
+        }
+    }, [hasInputParameter, checkedBoxElemenChecked]);
 
     useEffect(() => {
         if (connection && client && account) {
@@ -459,39 +533,29 @@ export default function Main(props: ConnectionProps) {
 
                                                     const typeSchema = new Uint8Array(customSection[0]);
 
-                                                    const typeSchemaBase64 = btoa(
+                                                    const moduleSchemaBase64 = btoa(
                                                         new Uint8Array(typeSchema).reduce((data, byte) => {
                                                             return data + String.fromCharCode(byte);
                                                         }, '')
                                                     );
 
-                                                    const inputParamterTypeSchema = getInitContractParameterSchema(
-                                                        toBuffer(typeSchemaBase64, 'base64'),
-                                                        contractNames[0],
-                                                        2
+                                                    setEmbeddedModuleSchemaBase64(moduleSchemaBase64);
+
+                                                    const module = btoa(
+                                                        new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                            return data + String.fromCharCode(byte);
+                                                        }, '')
                                                     );
 
-                                                    console.log(displayTypeSchemaTemplate(inputParamterTypeSchema));
-
-                                                    setInputParameterTemplate(
-                                                        JSON.stringify(
-                                                            displayTypeSchemaTemplate(inputParamterTypeSchema)
+                                                    setBase64Module(module);
+                                                    setModuleReferenceCalculated(
+                                                        Buffer.from(sha256([new Uint8Array(arrayBuffer)])).toString(
+                                                            'hex'
                                                         )
                                                     );
+                                                } else {
+                                                    setUploadError('Upload module file is undefined');
                                                 }
-
-                                                const module = btoa(
-                                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                        return data + String.fromCharCode(byte);
-                                                    }, '')
-                                                );
-
-                                                setBase64Module(module);
-                                                setModuleReferenceCalculated(
-                                                    Buffer.from(sha256([new Uint8Array(arrayBuffer)])).toString('hex')
-                                                );
-                                            } else {
-                                                setUploadError('Upload module file is undefined');
                                             }
                                         }}
                                     />
@@ -725,65 +789,77 @@ export default function Main(props: ConnectionProps) {
                                             setTransactionErrorInit('');
                                             setDropDown('number');
                                             setHasInputParameter(!hasInputParameter);
+                                            setInputParamterTypeSchema('');
+                                            setInputParameterTemplate('');
+                                            setEmbeddedSchemaError('');
                                         }}
                                     />
                                     <span>{' Has Input Parameter'}</span>
                                 </label>
                                 <br />
-
+                                {embeddedSchemaError !== '' && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {embeddedSchemaError}.
+                                    </div>
+                                )}
                                 {hasInputParameter && (
                                     <div className="testBox">
-                                        <label className="field">
-                                            Upload Smart Contract Module Schema File (e.g. schema.bin):
-                                            <br />
-                                            <br />
-                                            <input
-                                                className="btn btn-primary"
-                                                type="file"
-                                                id="schemaFile"
-                                                ref={schemaFileRef}
-                                                accept=".bin"
-                                                onChange={async () => {
-                                                    setUploadError('');
+                                        {!checkedBoxElemenChecked && (
+                                            <>
+                                                <label className="field">
+                                                    Upload Smart Contract Module Schema File (e.g. schema.bin):
+                                                    <br />
+                                                    <br />
+                                                    <input
+                                                        className="btn btn-primary"
+                                                        type="file"
+                                                        id="schemaFile"
+                                                        ref={schemaFileRef}
+                                                        accept=".bin"
+                                                        onChange={async () => {
+                                                            setUploadError('');
 
-                                                    const hTMLInputElement =
-                                                        schemaFileRef.current as unknown as HTMLInputElement;
+                                                            const hTMLInputElement =
+                                                                schemaFileRef.current as unknown as HTMLInputElement;
 
-                                                    if (
-                                                        hTMLInputElement.files !== undefined &&
-                                                        hTMLInputElement.files !== null &&
-                                                        hTMLInputElement.files.length > 0
-                                                    ) {
-                                                        const file = hTMLInputElement.files[0];
-                                                        const arrayBuffer = await file.arrayBuffer();
+                                                            if (
+                                                                hTMLInputElement.files !== undefined &&
+                                                                hTMLInputElement.files !== null &&
+                                                                hTMLInputElement.files.length > 0
+                                                            ) {
+                                                                const file = hTMLInputElement.files[0];
+                                                                const arrayBuffer = await file.arrayBuffer();
 
-                                                        const schema = btoa(
-                                                            new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                                return data + String.fromCharCode(byte);
-                                                            }, '')
-                                                        );
+                                                                const schema = btoa(
+                                                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                                        return data + String.fromCharCode(byte);
+                                                                    }, '')
+                                                                );
 
-                                                        setBase64Schema(schema);
-                                                    } else {
-                                                        setUploadError2('Upload schema file is undefined');
-                                                    }
-                                                }}
-                                            />
-                                            <br />
-                                            <br />
-                                        </label>
+                                                                setBase64Schema(schema);
+                                                            } else {
+                                                                setUploadError2('Upload schema file is undefined');
+                                                            }
+                                                        }}
+                                                    />
+                                                    <br />
+                                                    <br />
+                                                </label>
+                                                <br />
+                                                {base64Schema && (
+                                                    <div className="actionResultBox">
+                                                        Schema in base64:
+                                                        <div>{base64Schema.toString().slice(0, 30)} ...</div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                         {uploadError2 !== '' && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {uploadError2}.
                                             </div>
                                         )}
-                                        <br />
-                                        {base64Schema && (
-                                            <div className="actionResultBox">
-                                                Schema in base64:
-                                                <div>{base64Schema.toString().slice(0, 30)} ...</div>
-                                            </div>
-                                        )}
+
                                         <label className="field">
                                             Select input parameter type:
                                             <br />
@@ -811,9 +887,10 @@ export default function Main(props: ConnectionProps) {
                                                         ref={inputParameterTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
-                                                        Examples:&#10;&#10; [1,2,3] or&#10;&#10;
-                                                        [&#34;abc&#34;,&#34;def&#34;] or&#10;&#10; [&#123;
-                                                        &#34;myFieldKey&#34;:&#34;myFieldValue&#34;&#125;]
+                                                        {getArrayExample(
+                                                            checkedBoxElemenChecked,
+                                                            inputParameterTemplate
+                                                        )}
                                                     </textarea>
                                                 )}
                                                 {dropDown === 'object' && (
@@ -822,8 +899,10 @@ export default function Main(props: ConnectionProps) {
                                                         ref={inputParameterTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
-                                                        {inputParameterTemplate ||
-                                                            '&#123;&#10; &#34;myStringField&#34;:&#34;FieldValue&#34;,&#10;&#34;myNumberField&#34;:4,&#10; &#34;myArray&#34;:[1,2,3],&#10;&#34;myObject&#34;:&#123;&#10;&#9;&#9;&#34;myField1&#34;:&#34;FieldValue&#34;&#10;&#9;&#125;&#10; &#125;'}
+                                                        {getObjectExample(
+                                                            checkedBoxElemenChecked,
+                                                            inputParameterTemplate
+                                                        )}
                                                     </textarea>
                                                 )}
                                             </label>
@@ -865,7 +944,9 @@ export default function Main(props: ConnectionProps) {
                                             inputParameter,
                                             initName,
                                             hasInputParameter,
+                                            checkedBoxElemenChecked,
                                             base64Schema,
+                                            inputParamterTypeSchema,
                                             dropDown,
                                             maxContractExecutionEnergy,
                                             cCDAmount

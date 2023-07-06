@@ -7,7 +7,7 @@ import {
     ModuleReference,
     toBuffer,
 } from '@concordium/web-sdk';
-import { WalletConnection } from '@concordium/react-components';
+import { WalletConnection, typeSchemaFromBase64 } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
 
 export async function deploy(connection: WalletConnection, account: string, base64Module: string) {
@@ -27,7 +27,9 @@ export async function initialize(
     inputParameter: string,
     initName: string,
     hasInputParameter: boolean,
+    checkedBoxElemenChecked: boolean,
     contractSchema: string,
+    inputParamterTypeSchema: string,
     dropDown: string,
     maxContractExecutionEnergy: string,
     amount?: string
@@ -45,37 +47,49 @@ export async function initialize(
     }
 
     if (hasInputParameter) {
-        if (contractSchema === '') {
+        if (!checkedBoxElemenChecked && contractSchema === '') {
             throw new Error(`Set schema`);
+        }
+
+        if (checkedBoxElemenChecked && inputParamterTypeSchema === '') {
+            throw new Error(`No embedded input parameter schema found in module`);
         }
     }
 
     let schema;
 
-    if (contractSchema !== '') {
+    if (hasInputParameter) {
         switch (dropDown) {
             case 'number':
                 schema = {
                     parameters: Number(inputParameter),
-                    schema: moduleSchemaFromBase64(contractSchema),
+                    schema: checkedBoxElemenChecked
+                        ? typeSchemaFromBase64(inputParamterTypeSchema)
+                        : moduleSchemaFromBase64(contractSchema),
                 };
                 break;
             case 'string':
                 schema = {
                     parameters: inputParameter,
-                    schema: moduleSchemaFromBase64(contractSchema),
+                    schema: checkedBoxElemenChecked
+                        ? typeSchemaFromBase64(inputParamterTypeSchema)
+                        : moduleSchemaFromBase64(contractSchema),
                 };
                 break;
             case 'object':
                 schema = {
                     parameters: JSON.parse(inputParameter),
-                    schema: moduleSchemaFromBase64(contractSchema),
+                    schema: checkedBoxElemenChecked
+                        ? typeSchemaFromBase64(inputParamterTypeSchema)
+                        : moduleSchemaFromBase64(contractSchema),
                 };
                 break;
             case 'array':
                 schema = {
                     parameters: JSON.parse(inputParameter),
-                    schema: moduleSchemaFromBase64(contractSchema),
+                    schema: checkedBoxElemenChecked
+                        ? typeSchemaFromBase64(inputParamterTypeSchema)
+                        : moduleSchemaFromBase64(contractSchema),
                 };
                 break;
             default:

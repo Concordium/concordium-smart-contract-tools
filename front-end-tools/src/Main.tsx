@@ -317,11 +317,11 @@ export default function Main(props: ConnectionProps) {
             } catch (e) {
                 if (useModuleFromStep1) {
                     setSchemaError(
-                        `Was not able to get embedded input parameter schema from uploaded module. Uncheck "Use Module from Step 1" checkbox to upload manually a schema. Orignial error: ${e}`
+                        `Could not get embedded input parameter schema from the uploaded module. Uncheck "Use Module from Step 1" checkbox to upload manually a schema. Original error: ${e}`
                     );
                 } else {
                     setSchemaError(
-                        `Was not able to get input parameter schema from uploaded schema. Orignial error: ${e}`
+                        `Could not get input parameter schema from uploaded schema. Original error: ${e}`
                     );
                 }
             }

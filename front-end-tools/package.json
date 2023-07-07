@@ -7,9 +7,8 @@
         "node": ">=16.x"
     },
     "dependencies": {
-        "@concordium/browser-wallet-api-helpers": "^2.5.0",
         "@concordium/react-components": "^0.3.0",
-        "@concordium/web-sdk": "^3.4.0",
+        "@concordium/web-sdk": "6.0.0",
         "@walletconnect/types": "^2.1.4",
         "eslint": "^8.37.0",
         "moment": "^2.29.4",

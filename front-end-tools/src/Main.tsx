@@ -114,12 +114,13 @@ export default function Main(props: ConnectionProps) {
     }
 
     function getObjectExample(template: string) {
-        const obj = template !== '' ? JSON.parse(template) : JSON.stringify(DEFAULT_JSON_OBJECT);
-        return JSON.stringify(JSON.parse(obj), undefined, 2);
+        return template !== ''
+            ? JSON.stringify(JSON.parse(template), undefined, 2)
+            : JSON.stringify(DEFAULT_JSON_OBJECT, undefined, 2);
     }
 
     function getArrayExample(template: string) {
-        return template !== '' ? JSON.stringify(JSON.parse(JSON.parse(template)), undefined, 2) : DEFAULT_ARRAY_OBJECT;
+        return template !== '' ? JSON.stringify(JSON.parse(template), undefined, 2) : DEFAULT_ARRAY_OBJECT;
     }
 
     const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
@@ -307,22 +308,16 @@ export default function Main(props: ConnectionProps) {
                     2
                 );
 
-                const stringifiedInputParameterTemplate = JSON.stringify(
-                    displayTypeSchemaTemplate(inputParamterTypeSchemaBuffer)
-                );
+                template = displayTypeSchemaTemplate(inputParamterTypeSchemaBuffer);
 
-                setInputParameterTemplate(stringifiedInputParameterTemplate);
-
-                template = stringifiedInputParameterTemplate;
+                setInputParameterTemplate(template);
             } catch (e) {
                 if (useModuleFromStep1) {
                     setSchemaError(
                         `Could not get embedded input parameter schema from the uploaded module. Uncheck "Use Module from Step 1" checkbox to upload manually a schema. Original error: ${e}`
                     );
                 } else {
-                    setSchemaError(
-                        `Could not get input parameter schema from uploaded schema. Original error: ${e}`
-                    );
+                    setSchemaError(`Could not get input parameter schema from uploaded schema. Original error: ${e}`);
                 }
             }
         }
@@ -863,11 +858,7 @@ export default function Main(props: ConnectionProps) {
                                             <div className="actionResultBox">
                                                 Input Parameter Template:
                                                 <pre>
-                                                    {JSON.stringify(
-                                                        JSON.parse(JSON.parse(inputParameterTemplate)),
-                                                        undefined,
-                                                        2
-                                                    )}
+                                                    {JSON.stringify(JSON.parse(inputParameterTemplate), undefined, 2)}
                                                 </pre>
                                             </div>
                                         )}

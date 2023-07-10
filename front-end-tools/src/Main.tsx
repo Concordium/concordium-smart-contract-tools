@@ -894,6 +894,15 @@ export default function Main(props: ConnectionProps) {
                                 Learn more about how deployment and initialization works on Concordium.
                             </a>
                             <br />
+                            <br />
+                            <a
+                                href="https://github.com/Concordium/concordium-smart-contract-tools/tree/main/front-end-tools"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                Front end source code
+                            </a>
+                            <br />
                         </div>
                     )}
                 </div>

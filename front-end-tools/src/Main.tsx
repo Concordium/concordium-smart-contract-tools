@@ -14,13 +14,16 @@ import {
     ModuleReference,
     TransactionKindString,
     TransactionSummaryType,
+    displayTypeSchemaTemplate,
     sha256,
+    toBuffer,
+    getInitContractParameterSchema,
 } from '@concordium/web-sdk';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { initialize, deploy } from './writing_to_blockchain';
 
-import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
+import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ARRAYS, EXAMPLE_JSON_OBJECT } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -60,6 +63,7 @@ export default function Main(props: ConnectionProps) {
     const [parsingError, setParsingError] = useState('');
     const [smartContractIndexError, setSmartContractIndexError] = useState('');
     const [moduleReferenceError, setModuleReferenceError] = useState('');
+    const [schemaError, setSchemaError] = useState('');
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
     const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState('');
@@ -71,16 +75,19 @@ export default function Main(props: ConnectionProps) {
 
     const [accountBalance, setAccountBalance] = useState('');
     const [inputParameter, setInputParameter] = useState('');
-    const [initName, setInitName] = useState('');
+    const [contractName, setContractName] = useState('');
     const [moduleReference, setModuleReference] = useState('');
     const [cCDAmount, setCCDAmount] = useState('');
     const [base64Module, setBase64Module] = useState('');
-    const [base64Schema, setBase64Schema] = useState('');
+    const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState('');
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState('');
     const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('');
-    const [checkedBoxElemenChecked, setCheckedBoxElemenChecked] = useState(false);
+    const [useModuleFromStep1, setUseModuleFromStep1] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
+    const [displayContracts, setDisplayContracts] = useState<string[]>([]);
+    const [inputParameterTemplate, setInputParameterTemplate] = useState('');
+    const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState('');
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameter, setHasInputParameter] = useState(false);
@@ -93,6 +100,7 @@ export default function Main(props: ConnectionProps) {
     const inputParameterTextAreaRef = useRef(null);
     const useModuleReferenceFromStep1Ref = useRef(null);
     const moduleReferenceRef = useRef(null);
+    const inputParameterFieldRef = useRef(null);
 
     function arraysEqual(a: Uint8Array, b: Uint8Array) {
         if (a === b) return true;
@@ -103,6 +111,16 @@ export default function Main(props: ConnectionProps) {
             if (a[i] !== b[i]) return false;
         }
         return true;
+    }
+
+    function getObjectExample(template: string) {
+        return template !== ''
+            ? JSON.stringify(JSON.parse(template), undefined, 2)
+            : JSON.stringify(EXAMPLE_JSON_OBJECT, undefined, 2);
+    }
+
+    function getArrayExample(template: string) {
+        return template !== '' ? JSON.stringify(JSON.parse(template), undefined, 2) : EXAMPLE_ARRAYS;
     }
 
     const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
@@ -126,7 +144,7 @@ export default function Main(props: ConnectionProps) {
         const e = contractNameDropDownRef.current as unknown as HTMLSelectElement;
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
-        setInitName(value);
+        setContractName(value);
     }, []);
 
     const changeCCDAmountHandler = useCallback((event: ChangeEvent) => {
@@ -139,10 +157,10 @@ export default function Main(props: ConnectionProps) {
         setMaxContractExecutionEnergy(target.value);
     }, []);
 
-    const changeInitNameHandler = useCallback((event: ChangeEvent) => {
+    const changeContractNameHandler = useCallback((event: ChangeEvent) => {
         setTransactionErrorInit('');
         const target = event.target as HTMLTextAreaElement;
-        setInitName(target.value);
+        setContractName(target.value);
     }, []);
 
     const changeInputParameterFieldHandler = useCallback((event: ChangeEvent) => {
@@ -277,6 +295,43 @@ export default function Main(props: ConnectionProps) {
     }, [connection, account, client, moduleReferenceCalculated]);
 
     useEffect(() => {
+        setSchemaError('');
+        setInputParameterTemplate('');
+
+        let template = '';
+
+        if (hasInputParameter && contractName !== '' && (useModuleFromStep1 || uploadedModuleSchemaBase64 !== '')) {
+            try {
+                const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
+                    toBuffer(useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64, 'base64'),
+                    contractName,
+                    2
+                );
+
+                template = displayTypeSchemaTemplate(inputParamterTypeSchemaBuffer);
+
+                setInputParameterTemplate(template);
+            } catch (e) {
+                if (useModuleFromStep1) {
+                    setSchemaError(
+                        `Could not get embedded input parameter schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`
+                    );
+                } else {
+                    setSchemaError(`Could not get input parameter schema from uploaded schema. Original error: ${e}`);
+                }
+            }
+        }
+
+        if (dropDown === 'array') {
+            const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
+            element.value = getArrayExample(template);
+        } else if (dropDown === 'object') {
+            const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
+            element.value = getObjectExample(template);
+        }
+    }, [hasInputParameter, useModuleFromStep1, contractName, uploadedModuleSchemaBase64, dropDown]);
+
+    useEffect(() => {
         if (connection && client && account) {
             client
                 .getAccountInfo(new AccountAddress(account))
@@ -404,6 +459,17 @@ export default function Main(props: ConnectionProps) {
                                                 const file = hTMLInputElement.files[0];
                                                 const arrayBuffer = await file.arrayBuffer();
 
+                                                const module = btoa(
+                                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                        return data + String.fromCharCode(byte);
+                                                    }, '')
+                                                );
+
+                                                setBase64Module(module);
+                                                setModuleReferenceCalculated(
+                                                    Buffer.from(sha256([new Uint8Array(arrayBuffer)])).toString('hex')
+                                                );
+
                                                 // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
                                                 // Unversioned modules `.wasm` cannot be created by Concordium's tooling anymore.
                                                 // If the module is versioned, the first 8 bytes are the version, followed by the `magicValue` below.
@@ -447,20 +513,24 @@ export default function Main(props: ConnectionProps) {
                                                         }
                                                     }
                                                     setContracts(contractNames);
+
+                                                    const customSection = WebAssembly.Module.customSections(
+                                                        wasmModule,
+                                                        'concordium-schema'
+                                                    );
+
+                                                    const schema = new Uint8Array(customSection[0]);
+
+                                                    const moduleSchemaBase64Embedded = btoa(
+                                                        new Uint8Array(schema).reduce((data, byte) => {
+                                                            return data + String.fromCharCode(byte);
+                                                        }, '')
+                                                    );
+
+                                                    setEmbeddedModuleSchemaBase64(moduleSchemaBase64Embedded);
+                                                } else {
+                                                    setUploadError('Upload module file is undefined');
                                                 }
-
-                                                const module = btoa(
-                                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                        return data + String.fromCharCode(byte);
-                                                    }, '')
-                                                );
-
-                                                setBase64Module(module);
-                                                setModuleReferenceCalculated(
-                                                    Buffer.from(sha256([new Uint8Array(arrayBuffer)])).toString('hex')
-                                                );
-                                            } else {
-                                                setUploadError('Upload module file is undefined');
                                             }
                                         }}
                                     />
@@ -555,11 +625,13 @@ export default function Main(props: ConnectionProps) {
                                             onChange={() => {
                                                 setModuleReferenceError('');
                                                 setModuleReference('');
-                                                setInitName('');
+                                                setContractName('');
+                                                setUploadedModuleSchemaBase64('');
+
                                                 const checkboxElement =
                                                     useModuleReferenceFromStep1Ref.current as unknown as HTMLInputElement;
 
-                                                setCheckedBoxElemenChecked(checkboxElement.checked);
+                                                setUseModuleFromStep1(checkboxElement.checked);
 
                                                 const element =
                                                     moduleReferenceRef.current as unknown as HTMLTextAreaElement;
@@ -588,13 +660,30 @@ export default function Main(props: ConnectionProps) {
                                                             ? moduleReferenceDeployed
                                                             : moduleReferenceCalculated
                                                     );
-                                                    setInitName(contracts[0]);
+
+                                                    setDisplayContracts(contracts);
+                                                    setContractName(contracts[0]);
                                                 }
                                             }}
                                         />
                                         <span>{' Use Module from Step 1'}</span>
                                     </label>
                                 </div>
+                                {useModuleFromStep1 && (
+                                    <>
+                                        <br />
+                                        <div>
+                                            This checkbox autofilled the <code>module reference</code>, the{' '}
+                                            <code>smart contract name</code>, and the{' '}
+                                            <code>input parameter schema</code> from the above module.
+                                        </div>
+                                        <div>
+                                            <b>Uncheck</b> and <b>check</b> this box again, if you want to
+                                            load a new module from step 1.
+                                        </div>
+                                        <br />
+                                    </>
+                                )}
                                 {moduleReferenceError && (
                                     <div className="alert alert-danger" role="alert">
                                         Error: {moduleReferenceError}.
@@ -623,8 +712,8 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeMaxExecutionEnergyHandler}
                                     />
                                 </label>
-                                {checkedBoxElemenChecked &&
-                                contracts.length > 0 &&
+                                {useModuleFromStep1 &&
+                                displayContracts.length > 0 &&
                                 (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '') ? (
                                     <label className="field">
                                         Smart Contract Name:
@@ -636,7 +725,7 @@ export default function Main(props: ConnectionProps) {
                                             ref={contractNameDropDownRef}
                                             onChange={changeSmarContractDropDownHandler}
                                         >
-                                            {contracts?.map((contract) => (
+                                            {displayContracts?.map((contract) => (
                                                 <option key={contract}>{contract}</option>
                                             ))}
                                         </select>
@@ -647,10 +736,10 @@ export default function Main(props: ConnectionProps) {
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id="initName"
+                                            id="contractName"
                                             type="text"
                                             placeholder="myContract"
-                                            onChange={changeInitNameHandler}
+                                            onChange={changeContractNameHandler}
                                         />
                                     </label>
                                 )}
@@ -690,67 +779,88 @@ export default function Main(props: ConnectionProps) {
                                         onChange={() => {
                                             setParsingError('');
                                             setInputParameter('');
-                                            setBase64Schema('');
+                                            setUploadedModuleSchemaBase64('');
                                             setTransactionErrorInit('');
                                             setDropDown('number');
                                             setHasInputParameter(!hasInputParameter);
+                                            setInputParameterTemplate('');
+                                            setSchemaError('');
                                         }}
                                     />
                                     <span>{' Has Input Parameter'}</span>
                                 </label>
                                 <br />
-
                                 {hasInputParameter && (
                                     <div className="testBox">
-                                        <label className="field">
-                                            Upload Smart Contract Module Schema File (e.g. schema.bin):
-                                            <br />
-                                            <br />
-                                            <input
-                                                className="btn btn-primary"
-                                                type="file"
-                                                id="schemaFile"
-                                                ref={schemaFileRef}
-                                                accept=".bin"
-                                                onChange={async () => {
-                                                    setUploadError('');
+                                        {!useModuleFromStep1 && (
+                                            <>
+                                                <label className="field">
+                                                    Upload Smart Contract Module Schema File (e.g. schema.bin):
+                                                    <br />
+                                                    <br />
+                                                    <input
+                                                        className="btn btn-primary"
+                                                        type="file"
+                                                        id="schemaFile"
+                                                        ref={schemaFileRef}
+                                                        accept=".bin"
+                                                        onChange={async () => {
+                                                            setUploadError('');
 
-                                                    const hTMLInputElement =
-                                                        schemaFileRef.current as unknown as HTMLInputElement;
+                                                            const hTMLInputElement =
+                                                                schemaFileRef.current as unknown as HTMLInputElement;
 
-                                                    if (
-                                                        hTMLInputElement.files !== undefined &&
-                                                        hTMLInputElement.files !== null &&
-                                                        hTMLInputElement.files.length > 0
-                                                    ) {
-                                                        const file = hTMLInputElement.files[0];
-                                                        const arrayBuffer = await file.arrayBuffer();
+                                                            if (
+                                                                hTMLInputElement.files !== undefined &&
+                                                                hTMLInputElement.files !== null &&
+                                                                hTMLInputElement.files.length > 0
+                                                            ) {
+                                                                const file = hTMLInputElement.files[0];
+                                                                const arrayBuffer = await file.arrayBuffer();
 
-                                                        const schema = btoa(
-                                                            new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                                return data + String.fromCharCode(byte);
-                                                            }, '')
-                                                        );
+                                                                const schema = btoa(
+                                                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                                        return data + String.fromCharCode(byte);
+                                                                    }, '')
+                                                                );
 
-                                                        setBase64Schema(schema);
-                                                    } else {
-                                                        setUploadError2('Upload schema file is undefined');
-                                                    }
-                                                }}
-                                            />
-                                            <br />
-                                            <br />
-                                        </label>
+                                                                setUploadedModuleSchemaBase64(schema);
+                                                            } else {
+                                                                setUploadError2('Upload schema file is undefined');
+                                                            }
+                                                        }}
+                                                    />
+                                                    <br />
+                                                    <br />
+                                                </label>
+                                                <br />
+                                                {uploadedModuleSchemaBase64 && (
+                                                    <div className="actionResultBox">
+                                                        Schema in base64:
+                                                        <div>
+                                                            {uploadedModuleSchemaBase64.toString().slice(0, 30)} ...
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                         {uploadError2 !== '' && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {uploadError2}.
                                             </div>
                                         )}
+                                        {schemaError !== '' && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {schemaError}.
+                                            </div>
+                                        )}
                                         <br />
-                                        {base64Schema && (
+                                        {inputParameterTemplate && (
                                             <div className="actionResultBox">
-                                                Schema in base64:
-                                                <div>{base64Schema.toString().slice(0, 30)} ...</div>
+                                                Input Parameter Template:
+                                                <pre>
+                                                    {JSON.stringify(JSON.parse(inputParameterTemplate), undefined, 2)}
+                                                </pre>
                                             </div>
                                         )}
                                         <label className="field">
@@ -780,9 +890,7 @@ export default function Main(props: ConnectionProps) {
                                                         ref={inputParameterTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
-                                                        Examples:&#10;&#10; [1,2,3] or&#10;&#10;
-                                                        [&#34;abc&#34;,&#34;def&#34;] or&#10;&#10; [&#123;
-                                                        &#34;myFieldKey&#34;:&#34;myFieldValue&#34;&#125;]
+                                                        {getArrayExample(inputParameterTemplate)}
                                                     </textarea>
                                                 )}
                                                 {dropDown === 'object' && (
@@ -791,11 +899,7 @@ export default function Main(props: ConnectionProps) {
                                                         ref={inputParameterTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
-                                                        &#123;&#10; &#34;myStringField&#34;:&#34;FieldValue&#34;,&#10;
-                                                        &#34;myNumberField&#34;:4,&#10; &#34;myArray&#34;:[1,2,3],&#10;
-                                                        &#34;myObject&#34;:&#123;&#10;
-                                                        &#9;&#9;&#34;myField1&#34;:&#34;FieldValue&#34;&#10;
-                                                        &#9;&#125;&#10; &#125;
+                                                        {getObjectExample(inputParameterTemplate)}
                                                     </textarea>
                                                 )}
                                             </label>
@@ -807,6 +911,7 @@ export default function Main(props: ConnectionProps) {
                                                 <input
                                                     className="inputFieldStyle"
                                                     id="inputParameterField"
+                                                    ref={inputParameterFieldRef}
                                                     type="text"
                                                     placeholder={dropDown === 'string' ? 'myString' : '1000000'}
                                                     onChange={changeInputParameterFieldHandler}
@@ -833,11 +938,15 @@ export default function Main(props: ConnectionProps) {
                                         const tx = initialize(
                                             connection,
                                             account,
+                                            moduleReferenceAlreadyDeployed,
                                             moduleReference,
                                             inputParameter,
-                                            initName,
+                                            contractName,
                                             hasInputParameter,
-                                            base64Schema,
+                                            useModuleFromStep1,
+                                            useModuleFromStep1
+                                                ? embeddedModuleSchemaBase64
+                                                : uploadedModuleSchemaBase64,
                                             dropDown,
                                             maxContractExecutionEnergy,
                                             cCDAmount

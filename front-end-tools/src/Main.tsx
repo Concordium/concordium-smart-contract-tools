@@ -23,7 +23,7 @@ import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { initialize, deploy } from './writing_to_blockchain';
 
-import { BROWSER_WALLET, REFRESH_INTERVAL, DEFAULT_ARRAY_OBJECT, DEFAULT_JSON_OBJECT } from './constants';
+import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ARRAYS, EXAMPLE_JSON_OBJECT } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -116,11 +116,11 @@ export default function Main(props: ConnectionProps) {
     function getObjectExample(template: string) {
         return template !== ''
             ? JSON.stringify(JSON.parse(template), undefined, 2)
-            : JSON.stringify(DEFAULT_JSON_OBJECT, undefined, 2);
+            : JSON.stringify(EXAMPLE_JSON_OBJECT, undefined, 2);
     }
 
     function getArrayExample(template: string) {
-        return template !== '' ? JSON.stringify(JSON.parse(template), undefined, 2) : DEFAULT_ARRAY_OBJECT;
+        return template !== '' ? JSON.stringify(JSON.parse(template), undefined, 2) : EXAMPLE_ARRAYS;
     }
 
     const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
@@ -314,7 +314,7 @@ export default function Main(props: ConnectionProps) {
             } catch (e) {
                 if (useModuleFromStep1) {
                     setSchemaError(
-                        `Could not get embedded input parameter schema from the uploaded module. Uncheck "Use Module from Step 1" checkbox to upload manually a schema. Original error: ${e}`
+                        `Could not get embedded input parameter schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`
                     );
                 } else {
                     setSchemaError(`Could not get input parameter schema from uploaded schema. Original error: ${e}`);
@@ -673,12 +673,13 @@ export default function Main(props: ConnectionProps) {
                                     <>
                                         <br />
                                         <div>
-                                            This checkbox autofilled the `moduleReference`, the `contractNames`, and the
-                                            `embeddedInputParameterSchema` from the above module.
+                                            This checkbox autofilled the <code>module reference</code>, the{' '}
+                                            <code>smart contract name</code>, and the{' '}
+                                            <code>input parameter schema</code> from the above module.
                                         </div>
                                         <div>
-                                            If you want to load a new module from step 1, `uncheck` and `check` this box
-                                            again.
+                                            <b>Uncheck</b> and <b>check</b> this box again, if you want to
+                                            load a new module from step 1.
                                         </div>
                                         <br />
                                     </>

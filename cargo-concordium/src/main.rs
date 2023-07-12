@@ -16,6 +16,7 @@ use concordium_smart_contract_engine::{
     v1::{self, ReturnValue},
     InterpreterEnergy,
 };
+use concordium_wasm::validate::ValidationConfig;
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use std::{
     fs::{self, File},
@@ -1362,6 +1363,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 init_ctx,
                 &name,
                 loader,
+                ValidationConfig::V1,
                 false, /* Whether number of logs and size of return values should be limited.
                         * Limits removed in PV5. */
             )
@@ -1454,11 +1456,13 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             };
 
             let artifact = concordium_wasm::utils::instantiate_with_metering(
+                ValidationConfig::V1,
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
                 },
                 module,
-            )?;
+            )?
+            .artifact;
             let name = {
                 let chosen_name = format!("{}.{}", contract_name, entrypoint);
                 if let Err(e) = ReceiveName::is_valid_receive_name(&chosen_name) {
@@ -1499,12 +1503,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     energy:       runner.energy,
                 },
                 instance_state,
-                v1::ReceiveParams {
-                    // These are the parameters in PV5.
-                    max_parameter_size:           u16::MAX as usize,
-                    limit_logs_and_return_values: false,
-                    support_queries:              true,
-                },
+                v1::ReceiveParams::new_p6(),
             )
             .context("Calling receive failed.")?;
             match res {
@@ -1578,10 +1577,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                         ),
                         v1::Interrupt::Upgrade { module_ref } => eprintln!(
                             "Receive call requested to upgrade the contract to module reference \
-                             {}.",
-                            hex::encode(module_ref.as_ref()) /* use direct hex encoding until we
-                                                              * have a proper Display
-                                                              * implementation. */
+                             {module_ref}.",
                         ),
 
                         v1::Interrupt::QueryAccountBalance { address } => {
@@ -1594,6 +1590,16 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                         ),
                         v1::Interrupt::QueryExchangeRates => {
                             eprintln!("Receive call requested exchange rates.")
+                        }
+                        v1::Interrupt::CheckAccountSignature { address, payload } => {
+                            eprintln!(
+                                "Receive call requested account signature check for address \
+                                 {address}. The payload is {}.",
+                                hex::encode(&payload)
+                            );
+                        }
+                        v1::Interrupt::QueryAccountKeys { address } => {
+                            eprintln!("Receive call requested public keys of account {address}.");
                         }
                     }
                     eprintln!(

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased changes
+
+- Make `cargo-concordium` compatible with protocol 6 semantics on the chain. In
+  particular cargo-concordium now does validation according to protocol 6 rules,
+  allowing sign extension instructions, disallowing globals in initializers of
+  data and element segments, and allows host functions for checking account
+  signatures, and retrieving account keys.
+
 ## 2.9.0
 
 - Make `cargo concordium test` compile your smart contract module and run integration on it, if available.

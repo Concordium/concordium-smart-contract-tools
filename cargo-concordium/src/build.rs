@@ -19,7 +19,7 @@ use concordium_wasm::{
     parse::parse_skeleton,
     types::{CustomSection, ExportDescription, Module},
     utils::strip,
-    validate::validate_module,
+    validate::{validate_module, ValidationConfig},
 };
 use rand::{thread_rng, Rng};
 use serde_json::Value;
@@ -155,14 +155,19 @@ pub fn build_contract(
     strip(&mut skeleton);
     match version {
         WasmVersion::V0 => {
-            let module = validate_module(&v0::ConcordiumAllowedImports, &skeleton)
-                .context("Could not validate resulting smart contract module as a V0 contract.")?;
+            let module = validate_module(
+                ValidationConfig::V0,
+                &v0::ConcordiumAllowedImports,
+                &skeleton,
+            )
+            .context("Could not validate resulting smart contract module as a V0 contract.")?;
             check_exports(&module, WasmVersion::V0)
                 .context("Contract and entrypoint validation failed for a V0 contract.")?;
             module
         }
         WasmVersion::V1 => {
             let module = validate_module(
+                ValidationConfig::V1,
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
                 },

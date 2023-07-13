@@ -116,8 +116,8 @@ A schema has to be provided either as part of a smart contract module or with th
             short = "o",
             default_value = ".",
             help = "Writes the converted JSON representation of the schema to files named after \
-                    the smart contract names at the specified location. Directory path must \
-                    exist. (expected input: `./my/path/`)."
+                    the smart contract names at the specified location (expected input: \
+                    `./my/path/`)."
         )]
         out:          PathBuf,
         #[structopt(
@@ -153,10 +153,9 @@ A schema has to be provided either as part of a smart contract module or with th
     #[structopt(
         name = "schema-base64",
         about = "Convert a schema into its base64 representation and output it to a file or print \
-                 it to the console.
-A schema has to be provided either as part of a smart contract module or with the schema flag. You \
-                 need to use exactly one of the two flags(`--schema` or `--module`) with this \
-                 command."
+                 it to the console. A schema has to be provided either as part of a smart \
+                 contract module or with the schema flag. You need to use exactly one of the two \
+                 flags(`--schema` or `--module`) with this command."
     )]
     SchemaBase64 {
         #[structopt(
@@ -165,8 +164,7 @@ A schema has to be provided either as part of a smart contract module or with th
             short = "o",
             default_value = "-",
             help = "Path and filename to write the converted base64 representation to or use the \
-                    default value `-` to print the base64 schema to the console. The path has to \
-                    exist while the file will be created. (expected input: \
+                    default value `-` to print the base64 schema to the console (expected input: \
                     `./my/path/base64_schema.b64` or `-`)."
         )]
         out:          PathBuf,
@@ -203,10 +201,9 @@ A schema has to be provided either as part of a smart contract module or with th
     #[structopt(
         name = "schema-template",
         about = "Convert a schema into its template representation and output it to a file or \
-                 print it to the console.
-A schema has to be provided either as part of a smart contract module or with the schema flag. You \
-                 need to use exactly one of the two flags(`--schema` or `--module`) with this \
-                 command."
+                 print it to the console. A schema has to be provided either as part of a smart \
+                 contract module or with the schema flag. You need to use exactly one of the two \
+                 flags(`--schema` or `--module`) with this command."
     )]
     SchemaTemplate {
         #[structopt(
@@ -215,9 +212,8 @@ A schema has to be provided either as part of a smart contract module or with th
             short = "o",
             default_value = "-",
             help = "Path and filename to write the converted template representation to or use \
-                    the default value `-` to print the template schema to the console. The path \
-                    has to exist while the file will be created. (expected input: \
-                    `./my/path/template_schema.txt` or `-`)."
+                    the default value `-` to print the template schema to the console (expected \
+                    input: `./my/path/template_schema.txt` or `-`)."
         )]
         out:          PathBuf,
         #[structopt(
@@ -296,8 +292,7 @@ struct BuildOptions {
         long = "schema-template-out",
         short = "p",
         help = "Writes the template of the schema to file at specified location or prints the \
-                template of the schema to the console if the value `-` is used. The path has to \
-                exist while the file will be created. (expected input: \
+                template of the schema to the console if the value `-` is used (expected input: \
                 `./my/path/schema_template.txt` or `-`)."
     )]
     schema_template_out: Option<PathBuf>,
@@ -306,9 +301,8 @@ struct BuildOptions {
         long = "schema-base64-out",
         short = "b",
         help = "Builds the contract schema and writes it in base64 format to file at specified \
-                location or prints the base64 schema to the console if the value `-` is used. The \
-                path has to exist while the file will be created. (expected input: \
-                `./my/path/base64_schema.b64` or `-`)."
+                location or prints the base64 schema to the console if the value `-` is used \
+                (expected input: `./my/path/base64_schema.b64` or `-`)."
     )]
     schema_base64_out:   Option<PathBuf>,
     #[structopt(
@@ -577,13 +571,6 @@ pub fn main() -> anyhow::Result<()> {
             schema_path,
             wasm_version,
         } => {
-            // A valid path needs to be provided when using the `--out` flag.
-            ensure!(
-                out.is_dir(),
-                "The `--out` value must point to an existing directory (expected input: \
-                 `./my/path/`)."
-            );
-
             let schema = get_schema(module_path, schema_path, wasm_version)
                 .context("Could not get schema.")?;
 
@@ -604,8 +591,8 @@ pub fn main() -> anyhow::Result<()> {
                 // A valid path needs to be provided when using the `--out` flag.
                 if out.file_name().is_none() || out.is_dir() {
                     anyhow::bail!(
-                        "The `--out` flag should point to an existing directory + filename \
-                         (expected input: `./my/path/base64_schema.b64`) or be `-`."
+                        "The `--out` flag should point to a directory + filename (expected input: \
+                         `./my/path/base64_schema.b64`) or be `-`."
                     );
                 }
 
@@ -629,8 +616,8 @@ pub fn main() -> anyhow::Result<()> {
                 // A valid path needs to be provided when using the `--out` flag.
                 if out.file_name().is_none() || out.is_dir() {
                     anyhow::bail!(
-                        "The `--out` flag should point to an existing directory + filename \
-                         (expected input: `./my/path/template_schema.txt`) or be `-`."
+                        "The `--out` flag should point to a directory + filename (expected input: \
+                         `./my/path/template_schema.txt`) or be `-`."
                     );
                 }
 
@@ -724,8 +711,8 @@ fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Resul
             } else {
                 if schema_template_out.file_name().is_none() || schema_template_out.is_dir() {
                     anyhow::bail!(
-                        "The `--schema-template-out` flag should point to an existing directory + \
-                         filename (expected input: `./my/path/template_schema.txt`) or be `-`."
+                        "The `--schema-template-out` flag should point to a directory + filename \
+                         (expected input: `./my/path/template_schema.txt`) or be `-`."
                     );
                 }
 
@@ -740,8 +727,8 @@ fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Resul
             } else {
                 if schema_base64_out.file_name().is_none() || schema_base64_out.is_dir() {
                     anyhow::bail!(
-                        "The `--schema-base64-out` flag should point to an existing directory + \
-                         filename (expected input: `./my/path/base64_schema.b64`) or be `-`."
+                        "The `--schema-base64-out` flag should point to a directory + filename \
+                         (expected input: `./my/path/base64_schema.b64`) or be `-`."
                     );
                 }
 

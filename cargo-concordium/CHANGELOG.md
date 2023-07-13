@@ -2,6 +2,8 @@
 
 ## Unreleased changes
 
+- Add `schema-template` command to print the template of a given schema to a file or the console.
+- Add `--schema-template-out` option to `cargo concordium build` to optionally output the schema template to a file or the console.
 - Make `cargo-concordium` compatible with protocol 6 semantics on the chain. In
   particular cargo-concordium now does validation according to protocol 6 rules,
   allowing sign extension instructions, disallowing globals in initializers of

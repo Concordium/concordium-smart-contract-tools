@@ -27,6 +27,7 @@ use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     env, fs,
+    io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -446,8 +447,48 @@ fn write_schema_json(
         fs::create_dir_all(out_dir)
             .context("Unable to create directory for the resulting JSON schemas.")?;
     }
-    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
-        .context("Unable to write schema output.")?;
+    let mut out_file =
+        std::fs::File::create(out_path).context("Unable to create the output file.")?;
+    write!(
+        &mut out_file,
+        "{}",
+        serde_json::to_string_pretty(&schema_json)?
+    )
+    .context("Unable to write schema json output.")?;
+    Ok(())
+}
+
+/// Write the template of the schema to a file or print it
+/// to the console if `out` is None.
+pub fn write_schema_template(
+    out: Option<PathBuf>,
+    schema: &VersionedModuleSchema,
+) -> anyhow::Result<()> {
+    match out {
+        // writing the template of the schema to a file
+        Some(out) => {
+            println!(
+                "   Writing the template of the schema to {}.",
+                out.display()
+            );
+
+            if let Some(out_dir) = out.parent() {
+                fs::create_dir_all(out_dir).context(
+                    "Unable to create directory for the resulting template of the schema.",
+                )?;
+            }
+            // saving the template of the schema to the file
+            let mut out_file =
+                std::fs::File::create(out).context("Unable to create the output file.")?;
+            write!(&mut out_file, "{}", schema)
+                .context("Unable to write template schema output.")?;
+        }
+        // printing template of the schema to console
+        None => {
+            println!("   The template of the schema is:\n{}", schema)
+        }
+    }
+
     Ok(())
 }
 
@@ -467,8 +508,11 @@ pub fn write_schema_base64(
                 fs::create_dir_all(out_dir)
                     .context("Unable to create directory for the resulting base64 schema.")?;
             }
-            // save the schema base64 representation to the file
-            std::fs::write(out, schema_base64).context("Unable to write schema output.")?;
+            // saving the schema base64 representation to the file
+            let mut out_file =
+                std::fs::File::create(out).context("Unable to create the output file.")?;
+            write!(&mut out_file, "{}", schema_base64)
+                .context("Unable to write schema base64 output.")?;
         }
         // printing base64 schema to console
         None => {

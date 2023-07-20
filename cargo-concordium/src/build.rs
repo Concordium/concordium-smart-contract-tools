@@ -131,6 +131,16 @@ pub fn build_contract(
         .args(["--target", "wasm32-unknown-unknown"])
         .args(["--release"])
         .args(["--target-dir", target_dir.as_str()])
+        .env_remove("RUSTFLAGS")
+        .env("CARGO_HOME", format!("{}/cargo", metadata.target_directory))
+        .env(
+            "RUSTFLAGS",
+            format!(
+                "--remap-path-prefix={}= --remap-path-prefix={}=",
+                metadata.workspace_root,
+                format!("{}/cargo", metadata.target_directory)
+            ),
+        )
         .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())

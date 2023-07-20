@@ -125,7 +125,14 @@ pub fn build_contract(
         .context("Unable to determine package.")?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
-
+    let mut root_opt = Some(metadata.workspace_root.as_path());
+    let mut remaps = Vec::new();
+    while let Some(root) = root_opt {
+        remaps.push(format!("--remap-path-prefix={}=", root));
+        root_opt = root.parent();
+    }
+    remaps.reverse();
+    let remaps = remaps.join(" ");
     let result = Command::new("cargo")
         .arg("build")
         .args(["--target", "wasm32-unknown-unknown"])
@@ -136,8 +143,8 @@ pub fn build_contract(
         .env(
             "RUSTFLAGS",
             format!(
-                "--remap-path-prefix={}= --remap-path-prefix={}=",
-                metadata.workspace_root,
+                "{} --remap-path-prefix={}=",
+                remaps,
                 format!("{}/cargo", metadata.target_directory)
             ),
         )

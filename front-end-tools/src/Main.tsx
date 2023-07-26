@@ -67,7 +67,8 @@ export default function Main(props: ConnectionProps) {
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
     const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState('');
-    const [moduleReferenceAlreadyDeployed, setModuleReferenceAlreadyDeployed] = useState(false);
+    const [isModuleReferenceAlreadyDeployedStep1, setIsModuleReferenceAlreadyDeployedStep1] = useState(false);
+    const [isModuleReferenceAlreadyDeployedStep2, setIsModuleReferenceAlreadyDeployedStep2] = useState(false);
     const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState('');
 
     const [txHashDeploy, setTxHashDeploy] = useState('');
@@ -283,16 +284,33 @@ export default function Main(props: ConnectionProps) {
                 .getModuleSource(new ModuleReference(moduleReferenceCalculated))
                 .then((value) => {
                     if (value === undefined) {
-                        setModuleReferenceAlreadyDeployed(false);
+                        setIsModuleReferenceAlreadyDeployedStep1(false);
                     } else {
-                        setModuleReferenceAlreadyDeployed(true);
+                        setIsModuleReferenceAlreadyDeployedStep1(true);
                     }
                 })
                 .catch(() => {
-                    setModuleReferenceAlreadyDeployed(false);
+                    setIsModuleReferenceAlreadyDeployedStep1(false);
                 });
         }
     }, [connection, account, client, moduleReferenceCalculated]);
+
+    useEffect(() => {
+        if (connection && client && account && moduleReference) {
+            client
+                .getModuleSource(new ModuleReference(moduleReference))
+                .then((value) => {
+                    if (value === undefined) {
+                        setIsModuleReferenceAlreadyDeployedStep2(false);
+                    } else {
+                        setIsModuleReferenceAlreadyDeployedStep2(true);
+                    }
+                })
+                .catch(() => {
+                    setIsModuleReferenceAlreadyDeployedStep2(false);
+                });
+        }
+    }, [connection, account, client, moduleReference]);
 
     useEffect(() => {
         setSchemaError('');
@@ -553,13 +571,13 @@ export default function Main(props: ConnectionProps) {
                                             Module in base64:
                                             <div>{base64Module.toString().slice(0, 30)} ...</div>
                                         </div>
-                                        {moduleReferenceAlreadyDeployed && (
+                                        {isModuleReferenceAlreadyDeployedStep1 && (
                                             <div className="alert alert-danger" role="alert">
                                                 Module reference already deployed.
                                             </div>
                                         )}
                                         <br />
-                                        {!moduleReferenceAlreadyDeployed && (
+                                        {!isModuleReferenceAlreadyDeployedStep1 && (
                                             <button
                                                 className="btn btn-primary"
                                                 type="button"
@@ -678,8 +696,8 @@ export default function Main(props: ConnectionProps) {
                                             <code>input parameter schema</code> from the above module.
                                         </div>
                                         <div>
-                                            <b>Uncheck</b> and <b>check</b> this box again, if you want to
-                                            load a new module from step 1.
+                                            <b>Uncheck</b> and <b>check</b> this box again, if you want to load a new
+                                            module from step 1.
                                         </div>
                                         <br />
                                     </>
@@ -938,7 +956,7 @@ export default function Main(props: ConnectionProps) {
                                         const tx = initialize(
                                             connection,
                                             account,
-                                            moduleReferenceAlreadyDeployed,
+                                            isModuleReferenceAlreadyDeployedStep2,
                                             moduleReference,
                                             inputParameter,
                                             contractName,

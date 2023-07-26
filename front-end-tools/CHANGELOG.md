@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 2.1.0
+
+- Fix the `isModuleReferenceAlreadyDeployedStep2` check. `isModuleReferenceAlreadyDeployedStep2` uses the module reference from the input field in step 2 while the `isModuleReferenceAlreadyDeployedStep1` uses the module reference from the calculation in step 1.
+
 ## 2.0.0
 
 - Add support for getting the embedded schema from the module.

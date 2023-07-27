@@ -2,7 +2,7 @@
 
 ## 2.1.0
 
-- Fix the `isModuleReferenceAlreadyDeployedStep2` check. `isModuleReferenceAlreadyDeployedStep2` uses the module reference from the input field in step 2 while the `isModuleReferenceAlreadyDeployedStep1` uses the module reference from the calculation in step 1.
+- Fix check if module is already deployed in step 2.
 
 ## 2.0.0
 

@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 2.1.0
+
+- Fix check if module is already deployed in step 2.
+
 ## 2.0.0
 
 - Add support for getting the embedded schema from the module.

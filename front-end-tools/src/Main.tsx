@@ -73,7 +73,7 @@ export default function Main(props: ConnectionProps) {
     const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState('');
 
     const [shouldWarnDifferenceModuleReferences, setShouldWarnDifferenceModuleReferences] = useState(false);
-    const [shouldWarnInputPramaterInSchemaIgnored, setShouldWarnInputPramaterInSchemaIgnored] = useState(false);
+    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
 
     const [txHashDeploy, setTxHashDeploy] = useState('');
     const [txHashInit, setTxHashInit] = useState('');
@@ -340,9 +340,9 @@ export default function Main(props: ConnectionProps) {
 
     useEffect(() => {
         if (inputParameterTemplate !== '' && hasInputParameter === false) {
-            setShouldWarnInputPramaterInSchemaIgnored(true);
+            setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
-            setShouldWarnInputPramaterInSchemaIgnored(false);
+            setShouldWarnInputParameterInSchemaIgnored(false);
         }
     }, [inputParameterTemplate, hasInputParameter]);
 
@@ -1037,7 +1037,7 @@ export default function Main(props: ConnectionProps) {
                                         Warning: Module references in step 1 and step 2 are different.
                                     </div>
                                 )}
-                                {shouldWarnInputPramaterInSchemaIgnored && (
+                                {shouldWarnInputParameterInSchemaIgnored && (
                                     <div className="alert alert-warning" role="alert">
                                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
                                         checkbox is unchecked.

@@ -641,22 +641,28 @@ export default function Main(props: ConnectionProps) {
                                 )}
                                 {txHashDeploy && (
                                     <>
-                                        <div>Transaction hash:</div>
-                                        <div>CCDScan will take a moment to pick up the transaction.</div>
+                                        <div>
+                                            Transaction hash:{' '}
+                                            <a
+                                                className="link"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                href={`https://${
+                                                    isTestnet ? `testnet.` : ``
+                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
+                                            >
+                                                {txHashDeploy}
+                                            </a>
+                                        </div>
+                                        <br />
+                                        <div>
+                                            CCDScan will take a moment to pick up the above transaction, hence the above
+                                            link will work in a bit.
+                                        </div>
                                         <div>
                                             Deployed module reference will appear below once the transaction is
                                             finalized.
                                         </div>
-                                        <a
-                                            className="link"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            href={`https://${
-                                                isTestnet ? `testnet.` : ``
-                                            }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
-                                        >
-                                            {txHashDeploy}
-                                        </a>
                                     </>
                                 )}
                                 {moduleReferenceDeployed && (
@@ -1050,22 +1056,28 @@ export default function Main(props: ConnectionProps) {
                                 )}
                                 {txHashInit && (
                                     <>
-                                        <div>Transaction hash:</div>
-                                        <div>CCDScan will take a moment to pick up the transaction.</div>
                                         <div>
-                                            New smart contract index will appear below once the transaction is
+                                            Transaction hash:{' '}
+                                            <a
+                                                className="link"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                href={`https://${
+                                                    isTestnet ? `testnet.` : ``
+                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
+                                            >
+                                                {txHashInit}
+                                            </a>
+                                        </div>
+                                        <br />
+                                        <div>
+                                            CCDScan will take a moment to pick up the above transaction, hence the above
+                                            link will work in a bit.
+                                        </div>
+                                        <div>
+                                            The smart contract index will appear below once the transaction is
                                             finalized.
                                         </div>
-                                        <a
-                                            className="link"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            href={`https://${
-                                                isTestnet ? `testnet.` : ``
-                                            }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
-                                        >
-                                            {txHashInit}
-                                        </a>
                                     </>
                                 )}
                                 <br />

@@ -63,6 +63,7 @@ export default function Main(props: ConnectionProps) {
     const [parsingError, setParsingError] = useState('');
     const [smartContractIndexError, setSmartContractIndexError] = useState('');
     const [moduleReferenceError, setModuleReferenceError] = useState('');
+    const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState('');
     const [schemaError, setSchemaError] = useState('');
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
@@ -70,6 +71,9 @@ export default function Main(props: ConnectionProps) {
     const [isModuleReferenceAlreadyDeployedStep1, setIsModuleReferenceAlreadyDeployedStep1] = useState(false);
     const [isModuleReferenceAlreadyDeployedStep2, setIsModuleReferenceAlreadyDeployedStep2] = useState(false);
     const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState('');
+
+    const [shouldWarnDifferenceModuleReferences, setShouldWarnDifferenceModuleReferences] = useState(false);
+    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
 
     const [txHashDeploy, setTxHashDeploy] = useState('');
     const [txHashInit, setTxHashInit] = useState('');
@@ -126,8 +130,18 @@ export default function Main(props: ConnectionProps) {
 
     const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
         setTransactionErrorInit('');
+        setModuleReferenceLengthError('');
+        setModuleReference('');
+
         const target = event.target as HTMLTextAreaElement;
-        setModuleReference(target.value);
+
+        const moduleReferenceInput = target.value;
+
+        if (moduleReferenceInput.length !== 64) {
+            setModuleReferenceLengthError('Module reference has to be of length 64');
+        } else {
+            setModuleReference(target.value);
+        }
     }, []);
 
     const changeInputParameterDropDownHandler = useCallback(() => {
@@ -313,12 +327,32 @@ export default function Main(props: ConnectionProps) {
     }, [connection, account, client, moduleReference]);
 
     useEffect(() => {
+        if (
+            moduleReference !== '' &&
+            moduleReferenceCalculated !== '' &&
+            moduleReferenceCalculated !== moduleReference
+        ) {
+            setShouldWarnDifferenceModuleReferences(true);
+        } else {
+            setShouldWarnDifferenceModuleReferences(false);
+        }
+    }, [moduleReference, moduleReferenceCalculated]);
+
+    useEffect(() => {
+        if (inputParameterTemplate !== '' && hasInputParameter === false) {
+            setShouldWarnInputParameterInSchemaIgnored(true);
+        } else {
+            setShouldWarnInputParameterInSchemaIgnored(false);
+        }
+    }, [inputParameterTemplate, hasInputParameter]);
+
+    useEffect(() => {
         setSchemaError('');
         setInputParameterTemplate('');
 
         let template = '';
 
-        if (hasInputParameter && contractName !== '' && (useModuleFromStep1 || uploadedModuleSchemaBase64 !== '')) {
+        if (contractName !== '' && (useModuleFromStep1 || uploadedModuleSchemaBase64 !== '')) {
             try {
                 const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
                     toBuffer(useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64, 'base64'),
@@ -607,17 +641,28 @@ export default function Main(props: ConnectionProps) {
                                 )}
                                 {txHashDeploy && (
                                     <>
-                                        Transaction hash (May take a moment to finalize): {}
-                                        <a
-                                            className="link"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            href={`https://${
-                                                isTestnet ? `testnet.` : ``
-                                            }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
-                                        >
-                                            {txHashDeploy}
-                                        </a>
+                                        <div>
+                                            Transaction hash:{' '}
+                                            <a
+                                                className="link"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                href={`https://${
+                                                    isTestnet ? `testnet.` : ``
+                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
+                                            >
+                                                {txHashDeploy}
+                                            </a>
+                                        </div>
+                                        <br />
+                                        <div>
+                                            CCDScan will take a moment to pick up the above transaction, hence the above
+                                            link will work in a bit.
+                                        </div>
+                                        <div>
+                                            Deployed module reference will appear below once the transaction is
+                                            finalized.
+                                        </div>
                                     </>
                                 )}
                                 {moduleReferenceDeployed && (
@@ -690,14 +735,23 @@ export default function Main(props: ConnectionProps) {
                                 {useModuleFromStep1 && (
                                     <>
                                         <br />
-                                        <div>
-                                            This checkbox autofilled the <code>module reference</code>, the{' '}
-                                            <code>smart contract name</code>, and the{' '}
-                                            <code>input parameter schema</code> from the above module.
-                                        </div>
-                                        <div>
-                                            <b>Uncheck</b> and <b>check</b> this box again, if you want to load a new
-                                            module from step 1.
+                                        <div className="alert alert-info" role="alert">
+                                            <div>
+                                                This checkbox autofilled the <code>module reference</code>, the{' '}
+                                                <code>smart contract name</code>, and the{' '}
+                                                <code>input parameter schema</code> from the module in step1.
+                                            </div>
+                                            <br />
+                                            <div>
+                                                <b>Uncheck</b> this box, if you want to manually fill in a{' '}
+                                                <code>module reference</code>, the <code>smart contract name</code>, or
+                                                an <code>input parameter schema</code>.
+                                            </div>
+                                            <br />
+                                            <div>
+                                                <b>Uncheck</b> and <b>check</b> this box again, if you want to load a
+                                                new module from step 1.
+                                            </div>
                                         </div>
                                         <br />
                                     </>
@@ -714,6 +768,7 @@ export default function Main(props: ConnectionProps) {
                                         className="inputFieldStyle"
                                         id="moduleReference"
                                         ref={moduleReferenceRef}
+                                        disabled={useModuleFromStep1}
                                         type="text"
                                         placeholder="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
                                         onChange={changeModuleReferenceHandler}
@@ -760,6 +815,11 @@ export default function Main(props: ConnectionProps) {
                                             onChange={changeContractNameHandler}
                                         />
                                     </label>
+                                )}
+                                {moduleReferenceLengthError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {moduleReferenceLengthError}.
+                                    </div>
                                 )}
                                 <br />
                                 <br />
@@ -978,6 +1038,17 @@ export default function Main(props: ConnectionProps) {
                                 </button>
                                 <br />
                                 <br />
+                                {shouldWarnDifferenceModuleReferences && (
+                                    <div className="alert alert-warning" role="alert">
+                                        Warning: Module references in step 1 and step 2 are different.
+                                    </div>
+                                )}
+                                {shouldWarnInputParameterInSchemaIgnored && (
+                                    <div className="alert alert-warning" role="alert">
+                                        Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
+                                        checkbox is unchecked.
+                                    </div>
+                                )}
                                 {!txHashInit && transactionErrorInit && (
                                     <div className="alert alert-danger" role="alert">
                                         Error: {transactionErrorInit}.
@@ -985,17 +1056,28 @@ export default function Main(props: ConnectionProps) {
                                 )}
                                 {txHashInit && (
                                     <>
-                                        Transaction hash (May take a moment to finalize): {}
-                                        <a
-                                            className="link"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            href={`https://${
-                                                isTestnet ? `testnet.` : ``
-                                            }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
-                                        >
-                                            {txHashInit}
-                                        </a>
+                                        <div>
+                                            Transaction hash:{' '}
+                                            <a
+                                                className="link"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                href={`https://${
+                                                    isTestnet ? `testnet.` : ``
+                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
+                                            >
+                                                {txHashInit}
+                                            </a>
+                                        </div>
+                                        <br />
+                                        <div>
+                                            CCDScan will take a moment to pick up the above transaction, hence the above
+                                            link will work in a bit.
+                                        </div>
+                                        <div>
+                                            The smart contract index will appear below once the transaction is
+                                            finalized.
+                                        </div>
                                     </>
                                 )}
                                 <br />

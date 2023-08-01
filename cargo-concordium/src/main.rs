@@ -109,6 +109,42 @@ A schema has to be provided either as part of a smart contract module or with th
                  need to use exactly one of the two flags(`--schema` or `--module`) with this \
                  command."
     )]
+    #[structopt(name = "deploy", about = "Run a deployment or initialization script.")]
+    Deploy {
+        #[structopt(
+            name = "node",
+            long = "node",
+            short = "n",
+            conflicts_with = "network",
+            help = "GRPC V2 interface to a node. The node and port should be specified
+            (e.g. \
+                    `http://node.testnet.concordium.com:20000`). 
+            If this flag is specified, the `network` flag cannot be used."
+        )]
+        endpoint:  Option<concordium_rust_sdk::v2::Endpoint>,
+        #[structopt(
+            name = "network",
+            long = "network",
+            short = "w",
+            conflicts_with = "node",
+            help = "You can use the expression `testnet`/`mainnet`/`stagenet` with this flag to \
+                    use a hardcoded public node connection for each of these networks. If this \
+                    flag is specified, the `node` flag cannot be used.
+                    If this flag and the `node` flag are not specified the `testnet` network is \
+                    used as default."
+        )]
+        network:   Option<String>,
+        #[structopt(
+            name = "account",
+            long = "account",
+            short = "a",
+            help = "Path to the account key file (e.g. \
+                    `./3PXwJYYPf6fyVb4GJquxSZU8puxrHfzc4XogdMVot8MUQK53tW.export`).
+                    The key file has to have the format as it is exported from the Concoridum \
+                    browser wallet."
+        )]
+        keys_path: Option<PathBuf>,
+    },
     SchemaJSON {
         #[structopt(
             name = "out",
@@ -496,7 +532,8 @@ enum RunCommand {
 
 const WARNING_STYLE: ansi_term::Color = ansi_term::Color::Yellow;
 
-pub fn main() -> anyhow::Result<()> {
+#[tokio::main]
+pub async fn main() -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
         ansi_term::enable_ansi_support();
@@ -564,6 +601,13 @@ pub fn main() -> anyhow::Result<()> {
         Command::Init { path } => {
             init_concordium_project(path)
                 .context("Could not create a new Concordium smart contract project.")?;
+        }
+        Command::Deploy {
+            endpoint,
+            network,
+            keys_path,
+        } => {
+            run_server(endpoint, network, keys_path).await?;
         }
         Command::SchemaJSON {
             out,

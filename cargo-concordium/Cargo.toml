@@ -27,6 +27,12 @@ strsim = "0.10"
 which = "4.3"
 rand = { version = "=0.7", features = ["small_rng"] }
 cargo_metadata = "0.15"
+concordium-rust-sdk = "2.4"
+tokio = { version = "1", features = ["full"] }
+tonic = {version = "0.8", features = ["tls", "tls-roots"]} # Use system trust roots.
+warp = "0.3"
+log = "0.4.11"
+env_logger = "0.9"
 
 [dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"

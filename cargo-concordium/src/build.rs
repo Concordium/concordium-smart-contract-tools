@@ -10,6 +10,13 @@ use concordium_contracts_common::{
     },
     *,
 };
+use concordium_rust_sdk::{
+    types::{
+        hashes::{HashBytes, TransactionMarker},
+        Nonce, WalletAccount,
+    },
+    v2::Endpoint,
+};
 use concordium_smart_contract_engine::{
     utils::{self, WasmVersion},
     v0, v1, ExecResult,
@@ -30,10 +37,133 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::{Arc, Mutex},
 };
+use tonic::transport::ClientTlsConfig;
+use warp::{http, Filter};
 
 /// Encode all base64 strings using the standard alphabet and padding.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct TxHash {
+    pub tx_hash: HashBytes<TransactionMarker>,
+}
+
+const ENDPOINT_MAINNET: &str = "TODO";
+const ENDPOINT_TESTNET: &str = "http://node.testnet.concordium.com:20000";
+const ENDPOINT_STAGENET: &str = "TODO";
+
+#[derive(Clone)]
+pub struct Server {
+    pub nonce: Arc<Mutex<Nonce>>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct DeployParam {
+    pub contract_address: ContractAddress,
+}
+
+async fn handle_deploy(request: DeployParam) -> Result<impl warp::Reply, warp::Rejection> {
+    log::debug!("{:?}", request);
+    // TODO: deploy contract
+    let hash = &TxHash {
+        tx_hash: HashBytes::from([0u8; 32]),
+    }; // dummy tx Hash returned
+    Ok(warp::reply::json(&hash))
+}
+
+pub(crate) async fn run_server(
+    endpoint: Option<Endpoint>,
+    network: Option<String>,
+    keys_path: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    let mut log_builder = env_logger::Builder::new();
+    log_builder.filter_level(log::LevelFilter::Debug); // TODO: add a log-level flag
+    log_builder.init();
+
+    log::debug!("Get endpoint from flags.");
+
+    let endpoint = if let Some(endpoint) = endpoint {
+        // Get the endpoint from the `node` flag.
+        if endpoint
+            .uri()
+            .scheme()
+            .map_or(false, |x| x == &http::uri::Scheme::HTTPS)
+        {
+            endpoint.tls_config(ClientTlsConfig::new())?
+        } else {
+            endpoint
+        }
+    } else if let Some(network) = network {
+        // Get the endpoint from the `network` flag.
+        if network == "mainnet" {
+            Endpoint::from_static(ENDPOINT_MAINNET)
+        } else if network == "testnet" {
+            Endpoint::from_static(ENDPOINT_TESTNET)
+        } else if network == "stagenet" {
+            Endpoint::from_static(ENDPOINT_STAGENET)
+        } else {
+            anyhow::bail!(
+                "`network` flag can only be have the string values `mainnet`/`testnet`/`stagenet`."
+            )
+        }
+    } else {
+        // Use `testnet` as default if `network`/`node` flags were not specified.
+        Endpoint::from_static(ENDPOINT_TESTNET)
+    };
+
+    let mut client = concordium_rust_sdk::v2::Client::new(endpoint).await?;
+
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_header("Content-Type")
+        .allow_methods(vec!["POST", "GET"]);
+
+    if keys_path.is_none() {
+        anyhow::bail!("`keys` need to be provided when using the local deploy flow.")
+    } else {
+        // load account keys and sender address from a file
+        let keys: WalletAccount = serde_json::from_str(
+            &std::fs::read_to_string(keys_path.unwrap())
+                .context("Could not read the keys file.")?, /* unwrap is safe since we checked
+                                                             * before */
+        )
+        .context("Could not parse the keys file.")?;
+
+        let key_update_operator = Arc::new(keys);
+
+        log::debug!("Acquire nonce of wallet account.");
+
+        let nonce_response = client
+            .get_next_account_sequence_number(&key_update_operator.address)
+            .await
+            .map_err(|e| {
+                log::warn!("NonceQueryError {:#?}.", e);
+                //  LogError::NonceQueryError
+            })
+            .unwrap(); // TODO: handle error instead of unwrap
+
+        let _server = Server {
+            nonce: Arc::new(Mutex::new(nonce_response.nonce)),
+        }; // TODO: use it for nonce management of connected wallet.
+
+        // 1. Provide deploy endpoint
+        let deploy_endpoint = warp::post()
+            .and(warp::filters::body::content_length_limit(50 * 1024))
+            .and(warp::path!("api" / "deploy"))
+            .and(warp::body::json())
+            .and_then(move |request: DeployParam| {
+                log::debug!("Process update operator transaction.");
+                handle_deploy(request)
+            });
+
+        let server = deploy_endpoint.with(cors).with(warp::trace::request());
+        warp::serve(server).run(([0, 0, 0, 0], 2000)).await;
+    }
+
+    Ok(())
+}
 
 /// Convert a string to snake case by replacing `-` with `_`.
 ///

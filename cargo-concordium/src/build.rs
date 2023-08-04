@@ -58,7 +58,10 @@ fn get_crate_metadata(cargo_args: &[String]) -> anyhow::Result<Metadata> {
         }
         Some(p) => {
             // If a `--manifest-path` is provided, look for the `Cargo.toml` file there.
-            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
+            cmd.manifest_path(
+                p.strip_prefix("--manifest-path=")
+                    .context("Incorrect `--manifest-path` flag.")?,
+            );
         }
         None => {
             // If NO `--manifest-path` is provided, look for the `Cargo.toml`
@@ -746,13 +749,13 @@ pub(crate) fn build_and_run_integration_tests(
     build_options: BuildOptions,
     test_targets: Vec<String>,
 ) -> anyhow::Result<()> {
-    let cargo_args = build_options.cargo_args.clone();
+    let cargo_args = &build_options.cargo_args.clone();
 
     // Build the module in the same way as `cargo concordium build`, except that
     // schema information shouldn't be printed.
     crate::handle_build(build_options, false)?;
 
-    let metadata = get_crate_metadata(&cargo_args)?;
+    let metadata = get_crate_metadata(cargo_args)?;
 
     let mut cargo_test_args = vec!["test"];
 

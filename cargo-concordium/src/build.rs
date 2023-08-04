@@ -116,26 +116,27 @@ pub fn build_contract(
         }
     };
 
-    let metadata = if cargo_args.contains(&String::from("--manifest-path")) {
-        // If a `--manifest-path` flag is provided use this path as the package root to
-        // build the project
-        let index = cargo_args
-            .iter()
-            .position(|cargo_arg| cargo_arg == "--manifest-path")
-            .context("Could not get the index of the `--manifest-path` flag.")?;
+    let mut args = std::env::args().skip_while(|val| !val.starts_with("--manifest-path"));
 
-        let manifest_path_flag = &cargo_args[index + 1];
-
-        MetadataCommand::new()
-            .manifest_path(manifest_path_flag)
-            .exec()
-            .context("Could not access cargo metadata.")?
-    } else {
-        // Use the package root to build the project
-        MetadataCommand::new()
-            .exec()
-            .context("Could not access cargo metadata.")?
+    let mut cmd = MetadataCommand::new();
+    match args.next() {
+        Some(ref p) if p == "--manifest-path" => {
+            // If a `--manifest-path` is provided use this path as the package root to
+            // build the project.
+            cmd.manifest_path(args.next().context(
+                "The argument '--manifest-path <manifest-path>' requires a value but none was \
+                 supplied.",
+            )?);
+        }
+        Some(p) => {
+            // If a `--manifest-path` is provided use this path as the package root to
+            // build the project.
+            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
+        }
+        None => {}
     };
+
+    let metadata = cmd.exec().context("Could not access cargo metadata.")?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
 
@@ -349,26 +350,27 @@ pub fn build_contract_schema<A>(
     cargo_args: &[String],
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let metadata = if cargo_args.contains(&String::from("--manifest-path")) {
-        // If a `--manifest-path` flag is provided use this path as the package root to
-        // build the schemas
-        let index = cargo_args
-            .iter()
-            .position(|cargo_arg| cargo_arg == "--manifest-path")
-            .context("Could not get the index of the `--manifest-path` flag.")?;
+    let mut args = std::env::args().skip_while(|val| !val.starts_with("--manifest-path"));
 
-        let manifest_path_flag = &cargo_args[index + 1];
-
-        MetadataCommand::new()
-            .manifest_path(manifest_path_flag)
-            .exec()
-            .context("Could not access cargo metadata.")?
-    } else {
-        // Use the package root to build the schemas
-        MetadataCommand::new()
-            .exec()
-            .context("Could not access cargo metadata.")?
+    let mut cmd = MetadataCommand::new();
+    match args.next() {
+        Some(ref p) if p == "--manifest-path" => {
+            // If a `--manifest-path` is provided use this path as the package root to
+            // build the schema.
+            cmd.manifest_path(args.next().context(
+                "The argument '--manifest-path <manifest-path>' requires a value but none was \
+                 supplied.",
+            )?);
+        }
+        Some(p) => {
+            // If a `--manifest-path` is provided use this path as the package root to
+            // build the schema.
+            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
+        }
+        None => {}
     };
+
+    let metadata = cmd.exec().context("Could not access cargo metadata.")?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
 
@@ -761,26 +763,27 @@ pub(crate) fn build_and_run_integration_tests(
     // schema information shouldn't be printed.
     crate::handle_build(build_options, false)?;
 
-    let metadata = if cargo_args.contains(&String::from("--manifest-path")) {
-        // If a `--manifest-path` flag is provided use this path as the package root to
-        // test the project
-        let index = cargo_args
-            .iter()
-            .position(|cargo_arg| cargo_arg == "--manifest-path")
-            .context("Could not get the index of the `--manifest-path` flag.")?;
+    let mut args = std::env::args().skip_while(|val| !val.starts_with("--manifest-path"));
 
-        let manifest_path_flag = &cargo_args[index + 1];
-
-        MetadataCommand::new()
-            .manifest_path(manifest_path_flag)
-            .exec()
-            .context("Could not access cargo metadata.")?
-    } else {
-        // Use the package root to test the project
-        MetadataCommand::new()
-            .exec()
-            .context("Could not access cargo metadata.")?
+    let mut cmd = MetadataCommand::new();
+    match args.next() {
+        Some(ref p) if p == "--manifest-path" => {
+            // If a `--manifest-path` is provided use this path as the package root to
+            // test the project.
+            cmd.manifest_path(args.next().context(
+                "The argument '--manifest-path <manifest-path>' requires a value but none was \
+                 supplied.",
+            )?);
+        }
+        Some(p) => {
+            // If a `--manifest-path` is provided use this path as the package root to
+            // test the project.
+            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
+        }
+        None => {}
     };
+
+    let metadata = cmd.exec().context("Could not access cargo metadata.")?;
 
     let mut cargo_test_args = vec!["test"];
 
@@ -851,26 +854,27 @@ pub(crate) fn build_and_run_integration_tests(
 /// The `seed` argument allows for providing the seed to instantiate a random
 /// number generator. If `None` is given, a random seed will be sampled.
 pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
-    let metadata = if extra_args.contains(&String::from("--manifest-path")) {
-        // If a `--manifest-path` flag is provided use this path as the package root to
-        // test the project
-        let index = extra_args
-            .iter()
-            .position(|cargo_arg| cargo_arg == "--manifest-path")
-            .context("Could not get the index of the `--manifest-path` flag.")?;
+    let mut args = std::env::args().skip_while(|val| !val.starts_with("--manifest-path"));
 
-        let manifest_path_flag = &extra_args[index + 1];
-
-        MetadataCommand::new()
-            .manifest_path(manifest_path_flag)
-            .exec()
-            .context("Could not access cargo metadata.")?
-    } else {
-        // Use the package root to test the project
-        MetadataCommand::new()
-            .exec()
-            .context("Could not access cargo metadata.")?
+    let mut cmd = MetadataCommand::new();
+    match args.next() {
+        Some(ref p) if p == "--manifest-path" => {
+            // If a `--manifest-path` is provided use this path as the package root to
+            // test the project.
+            cmd.manifest_path(args.next().context(
+                "The argument '--manifest-path <manifest-path>' requires a value but none was \
+                 supplied.",
+            )?);
+        }
+        Some(p) => {
+            // If a `--manifest-path` is provided use this path as the package root to
+            // test the project.
+            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
+        }
+        None => {}
     };
+
+    let metadata = cmd.exec().context("Could not access cargo metadata.")?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
 

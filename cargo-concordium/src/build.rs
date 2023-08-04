@@ -116,7 +116,7 @@ pub fn build_contract(
         }
     };
 
-    let (target_dir, metadata) = if cargo_args.contains(&String::from("--manifest-path")) {
+    let metadata = if cargo_args.contains(&String::from("--manifest-path")) {
         // If a `--manifest-path` flag is provided use this path as the package root to
         // build the project
         let index = cargo_args
@@ -126,33 +126,18 @@ pub fn build_contract(
 
         let manifest_path_flag = &cargo_args[index + 1];
 
-        let metadata = MetadataCommand::new()
+        MetadataCommand::new()
             .manifest_path(manifest_path_flag)
             .exec()
-            .context("Could not access cargo metadata.")?;
-
-        let lengh = manifest_path_flag.len();
-
-        let mut manifest_path_flag_truncated = cargo_args[index + 1].clone();
-
-        // We remove the `/Cargo.toml` expression at the end of the path.
-        manifest_path_flag_truncated.truncate(lengh - 11);
-
-        (
-            format!("{}/target/concordium", manifest_path_flag_truncated),
-            metadata,
-        )
+            .context("Could not access cargo metadata.")?
     } else {
         // Use the package root to build the project
-        let metadata = MetadataCommand::new()
+        MetadataCommand::new()
             .exec()
-            .context("Could not access cargo metadata.")?;
-
-        (
-            format!("{}/concordium", metadata.target_directory),
-            metadata,
-        )
+            .context("Could not access cargo metadata.")?
     };
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let package = metadata
         .root_package()
@@ -364,7 +349,7 @@ pub fn build_contract_schema<A>(
     cargo_args: &[String],
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let (target_dir, metadata) = if cargo_args.contains(&String::from("--manifest-path")) {
+    let metadata = if cargo_args.contains(&String::from("--manifest-path")) {
         // If a `--manifest-path` flag is provided use this path as the package root to
         // build the schemas
         let index = cargo_args
@@ -374,33 +359,18 @@ pub fn build_contract_schema<A>(
 
         let manifest_path_flag = &cargo_args[index + 1];
 
-        let metadata = MetadataCommand::new()
+        MetadataCommand::new()
             .manifest_path(manifest_path_flag)
             .exec()
-            .context("Could not access cargo metadata.")?;
-
-        let lengh = manifest_path_flag.len();
-
-        let mut manifest_path_flag_truncated = cargo_args[index + 1].clone();
-
-        // We remove the `/Cargo.toml` expression at the end of the path.
-        manifest_path_flag_truncated.truncate(lengh - 11);
-
-        (
-            format!("{}/target/concordium", manifest_path_flag_truncated),
-            metadata,
-        )
+            .context("Could not access cargo metadata.")?
     } else {
         // Use the package root to build the schemas
-        let metadata = MetadataCommand::new()
+        MetadataCommand::new()
             .exec()
-            .context("Could not access cargo metadata.")?;
-
-        (
-            format!("{}/concordium", metadata.target_directory),
-            metadata,
-        )
+            .context("Could not access cargo metadata.")?
     };
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let package = metadata
         .root_package()
@@ -881,7 +851,7 @@ pub(crate) fn build_and_run_integration_tests(
 /// The `seed` argument allows for providing the seed to instantiate a random
 /// number generator. If `None` is given, a random seed will be sampled.
 pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
-    let (target_dir, metadata) = if extra_args.contains(&String::from("--manifest-path")) {
+    let metadata = if extra_args.contains(&String::from("--manifest-path")) {
         // If a `--manifest-path` flag is provided use this path as the package root to
         // test the project
         let index = extra_args
@@ -891,33 +861,18 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
 
         let manifest_path_flag = &extra_args[index + 1];
 
-        let metadata = MetadataCommand::new()
+        MetadataCommand::new()
             .manifest_path(manifest_path_flag)
             .exec()
-            .context("Could not access cargo metadata.")?;
-
-        let lengh = manifest_path_flag.len();
-
-        let mut manifest_path_flag_truncated = extra_args[index + 1].clone();
-
-        // We remove the `/Cargo.toml` expression at the end of the path.
-        manifest_path_flag_truncated.truncate(lengh - 11);
-
-        (
-            format!("{}/target/concordium", manifest_path_flag_truncated),
-            metadata,
-        )
+            .context("Could not access cargo metadata.")?
     } else {
         // Use the package root to test the project
-        let metadata = MetadataCommand::new()
+        MetadataCommand::new()
             .exec()
-            .context("Could not access cargo metadata.")?;
-
-        (
-            format!("{}/concordium", metadata.target_directory),
-            metadata,
-        )
+            .context("Could not access cargo metadata.")?
     };
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let package = metadata
         .root_package()

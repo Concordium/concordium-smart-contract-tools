@@ -2,7 +2,7 @@ use crate::BuildOptions;
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
-use cargo_metadata::MetadataCommand;
+use cargo_metadata::{Metadata, MetadataCommand};
 use concordium_contracts_common::{
     schema::{
         ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
@@ -40,6 +40,35 @@ const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
 /// Used for converting crate names, which often contain `-`, to module names,
 /// which cannot have `-`.
 fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_") }
+
+/// Get the crate's metadata either by looking for the `Cargo.toml` file at the
+/// `--manifest-path` or at the ancestors of the current directory.
+fn get_crate_metadata(cargo_args: &[String]) -> anyhow::Result<Metadata> {
+    let mut args = cargo_args
+        .iter()
+        .skip_while(|val| !val.starts_with("--manifest-path"));
+    let mut cmd = MetadataCommand::new();
+    match args.next() {
+        Some(p) if *p == "--manifest-path" => {
+            // If a `--manifest-path` is provided, look for the `Cargo.toml` file there.
+            cmd.manifest_path(args.next().context(
+                "The argument '--manifest-path <manifest-path>' requires a value but none was \
+                 supplied.",
+            )?);
+        }
+        Some(p) => {
+            // If a `--manifest-path` is provided, look for the `Cargo.toml` file there.
+            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
+        }
+        None => {
+            // If NO `--manifest-path` is provided, look for the `Cargo.toml`
+            // file at the ancestors of the current directory (default
+            // behavior).
+        }
+    };
+
+    cmd.exec().context("Could not access cargo metadata.")
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum SchemaBuildOptions {
@@ -116,27 +145,7 @@ pub fn build_contract(
         }
     };
 
-    let mut args = std::env::args().skip_while(|val| !val.starts_with("--manifest-path"));
-
-    let mut cmd = MetadataCommand::new();
-    match args.next() {
-        Some(ref p) if p == "--manifest-path" => {
-            // If a `--manifest-path` is provided use this path as the package root to
-            // build the project.
-            cmd.manifest_path(args.next().context(
-                "The argument '--manifest-path <manifest-path>' requires a value but none was \
-                 supplied.",
-            )?);
-        }
-        Some(p) => {
-            // If a `--manifest-path` is provided use this path as the package root to
-            // build the project.
-            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
-        }
-        None => {}
-    };
-
-    let metadata = cmd.exec().context("Could not access cargo metadata.")?;
+    let metadata = get_crate_metadata(cargo_args)?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
 
@@ -350,27 +359,7 @@ pub fn build_contract_schema<A>(
     cargo_args: &[String],
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let mut args = std::env::args().skip_while(|val| !val.starts_with("--manifest-path"));
-
-    let mut cmd = MetadataCommand::new();
-    match args.next() {
-        Some(ref p) if p == "--manifest-path" => {
-            // If a `--manifest-path` is provided use this path as the package root to
-            // build the schema.
-            cmd.manifest_path(args.next().context(
-                "The argument '--manifest-path <manifest-path>' requires a value but none was \
-                 supplied.",
-            )?);
-        }
-        Some(p) => {
-            // If a `--manifest-path` is provided use this path as the package root to
-            // build the schema.
-            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
-        }
-        None => {}
-    };
-
-    let metadata = cmd.exec().context("Could not access cargo metadata.")?;
+    let metadata = get_crate_metadata(cargo_args)?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
 
@@ -763,27 +752,7 @@ pub(crate) fn build_and_run_integration_tests(
     // schema information shouldn't be printed.
     crate::handle_build(build_options, false)?;
 
-    let mut args = std::env::args().skip_while(|val| !val.starts_with("--manifest-path"));
-
-    let mut cmd = MetadataCommand::new();
-    match args.next() {
-        Some(ref p) if p == "--manifest-path" => {
-            // If a `--manifest-path` is provided use this path as the package root to
-            // test the project.
-            cmd.manifest_path(args.next().context(
-                "The argument '--manifest-path <manifest-path>' requires a value but none was \
-                 supplied.",
-            )?);
-        }
-        Some(p) => {
-            // If a `--manifest-path` is provided use this path as the package root to
-            // test the project.
-            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
-        }
-        None => {}
-    };
-
-    let metadata = cmd.exec().context("Could not access cargo metadata.")?;
+    let metadata = get_crate_metadata(&cargo_args)?;
 
     let mut cargo_test_args = vec!["test"];
 
@@ -854,27 +823,7 @@ pub(crate) fn build_and_run_integration_tests(
 /// The `seed` argument allows for providing the seed to instantiate a random
 /// number generator. If `None` is given, a random seed will be sampled.
 pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
-    let mut args = std::env::args().skip_while(|val| !val.starts_with("--manifest-path"));
-
-    let mut cmd = MetadataCommand::new();
-    match args.next() {
-        Some(ref p) if p == "--manifest-path" => {
-            // If a `--manifest-path` is provided use this path as the package root to
-            // test the project.
-            cmd.manifest_path(args.next().context(
-                "The argument '--manifest-path <manifest-path>' requires a value but none was \
-                 supplied.",
-            )?);
-        }
-        Some(p) => {
-            // If a `--manifest-path` is provided use this path as the package root to
-            // test the project.
-            cmd.manifest_path(p.trim_start_matches("--manifest-path="));
-        }
-        None => {}
-    };
-
-    let metadata = cmd.exec().context("Could not access cargo metadata.")?;
+    let metadata = get_crate_metadata(extra_args)?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
 

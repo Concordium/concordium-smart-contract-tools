@@ -30,14 +30,14 @@ cargo_metadata = "0.15"
 
 [dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"
-version = "2.0"
+version = "3.0"
 
 [dependencies.concordium-smart-contract-engine]
-version = "2.0"
+version = "3.0"
 path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
 
 [dependencies.concordium-contracts-common]
-version = "7.0"
+version = "8.0"
 path = "../concordium-base/concordium-contracts-common/concordium-contracts-common"
 features = ["derive-serde", "std"]

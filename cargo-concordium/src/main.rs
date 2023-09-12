@@ -16,6 +16,7 @@ use concordium_smart_contract_engine::{
     v1::{self, ReturnValue},
     InterpreterEnergy,
 };
+use concordium_wasm::validate::ValidationConfig;
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use std::{
     fs::{self, File},
@@ -115,8 +116,8 @@ A schema has to be provided either as part of a smart contract module or with th
             short = "o",
             default_value = ".",
             help = "Writes the converted JSON representation of the schema to files named after \
-                    the smart contract names at the specified location. Directory path must \
-                    exist. (expected input: `./my/path/`)."
+                    the smart contract names at the specified location (expected input: \
+                    `./my/path/`)."
         )]
         out:          PathBuf,
         #[structopt(
@@ -152,10 +153,9 @@ A schema has to be provided either as part of a smart contract module or with th
     #[structopt(
         name = "schema-base64",
         about = "Convert a schema into its base64 representation and output it to a file or print \
-                 it to the console.
-A schema has to be provided either as part of a smart contract module or with the schema flag. You \
-                 need to use exactly one of the two flags(`--schema` or `--module`) with this \
-                 command."
+                 it to the console. A schema has to be provided either as part of a smart \
+                 contract module or with the schema flag. You need to use exactly one of the two \
+                 flags(`--schema` or `--module`) with this command."
     )]
     SchemaBase64 {
         #[structopt(
@@ -164,9 +164,56 @@ A schema has to be provided either as part of a smart contract module or with th
             short = "o",
             default_value = "-",
             help = "Path and filename to write the converted base64 representation to or use the \
-                    default value `-` to print the base64 schema to the console. The path has to \
-                    exist while the file will be created. (expected input: \
+                    default value `-` to print the base64 schema to the console (expected input: \
                     `./my/path/base64_schema.b64` or `-`)."
+        )]
+        out:          PathBuf,
+        #[structopt(
+            name = "schema",
+            long = "schema",
+            short = "s",
+            conflicts_with = "module",
+            required_unless = "module",
+            help = "Path and filename to a file with a schema (expected input: \
+                    `./my/path/schema.bin`)."
+        )]
+        schema_path:  Option<PathBuf>,
+        #[structopt(
+            name = "wasm-version",
+            long = "wasm-version",
+            short = "v",
+            help = "If the supplied schema or module is the unversioned one this flag should be \
+                    used to supply the version explicitly. Unversioned schemas and modules were \
+                    produced by older versions of `concordium-std` and `cargo-concordium`."
+        )]
+        wasm_version: Option<WasmVersion>,
+        #[structopt(
+            name = "module",
+            long = "module",
+            short = "m",
+            conflicts_with = "schema",
+            required_unless = "schema",
+            help = "Path and filename to a file with a smart contract module (expected input: \
+                    `./my/path/module.wasm.v1`)."
+        )]
+        module_path:  Option<PathBuf>,
+    },
+    #[structopt(
+        name = "schema-template",
+        about = "Convert a schema into its template representation and output it to a file or \
+                 print it to the console. A schema has to be provided either as part of a smart \
+                 contract module or with the schema flag. You need to use exactly one of the two \
+                 flags(`--schema` or `--module`) with this command."
+    )]
+    SchemaTemplate {
+        #[structopt(
+            name = "out",
+            long = "out",
+            short = "o",
+            default_value = "-",
+            help = "Path and filename to write the converted template representation to or use \
+                    the default value `-` to print the template schema to the console (expected \
+                    input: `./my/path/template_schema.txt` or `-`)."
         )]
         out:          PathBuf,
         #[structopt(
@@ -224,14 +271,14 @@ struct BuildOptions {
         short = "e",
         help = "Builds the contract schema and embeds it into the wasm module."
     )]
-    schema_embed:      bool,
+    schema_embed:        bool,
     #[structopt(
         name = "schema-out",
         long = "schema-out",
         short = "s",
         help = "Builds the contract schema and writes it to file at specified location."
     )]
-    schema_out:        Option<PathBuf>,
+    schema_out:          Option<PathBuf>,
     #[structopt(
         name = "schema-json-out",
         long = "schema-json-out",
@@ -239,24 +286,32 @@ struct BuildOptions {
         help = "Builds the contract schema and writes it in JSON format to the specified \
                 directory."
     )]
-    schema_json_out:   Option<PathBuf>,
+    schema_json_out:     Option<PathBuf>,
+    #[structopt(
+        name = "schema-template-out",
+        long = "schema-template-out",
+        short = "p",
+        help = "Writes the template of the schema to file at specified location or prints the \
+                template of the schema to the console if the value `-` is used (expected input: \
+                `./my/path/schema_template.txt` or `-`)."
+    )]
+    schema_template_out: Option<PathBuf>,
     #[structopt(
         name = "schema-base64-out",
         long = "schema-base64-out",
         short = "b",
         help = "Builds the contract schema and writes it in base64 format to file at specified \
-                location or prints the base64 schema to the console if the value `-` is used. The \
-                path has to exist while the file will be created. (expected input: \
-                `./my/path/base64_schema.b64` or `-`)."
+                location or prints the base64 schema to the console if the value `-` is used \
+                (expected input: `./my/path/base64_schema.b64` or `-`)."
     )]
-    schema_base64_out: Option<PathBuf>,
+    schema_base64_out:   Option<PathBuf>,
     #[structopt(
         name = "out",
         long = "out",
         short = "o",
         help = "Writes the resulting module to file at specified location."
     )]
-    out:               Option<PathBuf>,
+    out:                 Option<PathBuf>,
     #[structopt(
         name = "contract-version",
         long = "contract-version",
@@ -264,12 +319,12 @@ struct BuildOptions {
         help = "Build a module of the given version.",
         default_value = "V1"
     )]
-    version:           utils::WasmVersion,
+    version:             utils::WasmVersion,
     #[structopt(
         raw = true,
         help = "Extra arguments passed to `cargo build` when building Wasm module."
     )]
-    cargo_args:        Vec<String>,
+    cargo_args:          Vec<String>,
 }
 
 impl BuildOptions {
@@ -280,6 +335,7 @@ impl BuildOptions {
         } else if self.schema_out.is_some()
             || self.schema_json_out.is_some()
             || self.schema_base64_out.is_some()
+            || self.schema_template_out.is_some()
         {
             SchemaBuildOptions::JustBuild
         } else {
@@ -515,13 +571,6 @@ pub fn main() -> anyhow::Result<()> {
             schema_path,
             wasm_version,
         } => {
-            // A valid path needs to be provided when using the `--out` flag.
-            ensure!(
-                out.is_dir(),
-                "The `--out` value must point to an existing directory (expected input: \
-                 `./my/path/`)."
-            );
-
             let schema = get_schema(module_path, schema_path, wasm_version)
                 .context("Could not get schema.")?;
 
@@ -542,13 +591,38 @@ pub fn main() -> anyhow::Result<()> {
                 // A valid path needs to be provided when using the `--out` flag.
                 if out.file_name().is_none() || out.is_dir() {
                     anyhow::bail!(
-                        "The `--out` flag should point to an existing directory + filename \
-                         (expected input: `./my/path/base64_schema.b64`) or be `-`."
+                        "The `--out` flag should point to a directory + filename (expected input: \
+                         `./my/path/base64_schema.b64`) or be `-`."
                     );
                 }
 
                 write_schema_base64(Some(out), &schema)
                     .context("Could not write base64 schema file.")?;
+            }
+        }
+        Command::SchemaTemplate {
+            out,
+            module_path,
+            schema_path,
+            wasm_version,
+        } => {
+            let schema = get_schema(module_path, schema_path, wasm_version)
+                .context("Could not get schema.")?;
+
+            if out.as_path() == Path::new("-") {
+                write_schema_template(None, &schema)
+                    .context("Could not print the template of the schema.")?;
+            } else {
+                // A valid path needs to be provided when using the `--out` flag.
+                if out.file_name().is_none() || out.is_dir() {
+                    anyhow::bail!(
+                        "The `--out` flag should point to a directory + filename (expected input: \
+                         `./my/path/template_schema.txt`) or be `-`."
+                    );
+                }
+
+                write_schema_template(Some(out), &schema)
+                    .context("Could not write template schema files.")?;
             }
         }
         Command::Build { build_options } => handle_build(build_options, true)?,
@@ -630,6 +704,22 @@ fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Resul
             write_json_schema(&schema_json_out, module_schema)
                 .context("Could not write JSON schema files.")?;
         }
+        if let Some(schema_template_out) = options.schema_template_out {
+            if schema_template_out.as_path() == Path::new("-") {
+                write_schema_template(None, module_schema)
+                    .context("Could not print the template of the schema.")?;
+            } else {
+                if schema_template_out.file_name().is_none() || schema_template_out.is_dir() {
+                    anyhow::bail!(
+                        "The `--schema-template-out` flag should point to a directory + filename \
+                         (expected input: `./my/path/template_schema.txt`) or be `-`."
+                    );
+                }
+
+                write_schema_template(Some(schema_template_out), module_schema)
+                    .context("Could not write template schema files.")?;
+            }
+        }
         if let Some(schema_base64_out) = options.schema_base64_out {
             if schema_base64_out.as_path() == Path::new("-") {
                 write_schema_base64(None, module_schema)
@@ -637,8 +727,8 @@ fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Resul
             } else {
                 if schema_base64_out.file_name().is_none() || schema_base64_out.is_dir() {
                     anyhow::bail!(
-                        "The `--schema-base64-out` flag should point to an existing directory + \
-                         filename (expected input: `./my/path/base64_schema.b64`) or be `-`."
+                        "The `--schema-base64-out` flag should point to a directory + filename \
+                         (expected input: `./my/path/base64_schema.b64`) or be `-`."
                     );
                 }
 
@@ -1362,6 +1452,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 init_ctx,
                 &name,
                 loader,
+                ValidationConfig::V1,
                 false, /* Whether number of logs and size of return values should be limited.
                         * Limits removed in PV5. */
             )
@@ -1454,11 +1545,13 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             };
 
             let artifact = concordium_wasm::utils::instantiate_with_metering(
+                ValidationConfig::V1,
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
                 },
                 module,
-            )?;
+            )?
+            .artifact;
             let name = {
                 let chosen_name = format!("{}.{}", contract_name, entrypoint);
                 if let Err(e) = ReceiveName::is_valid_receive_name(&chosen_name) {
@@ -1499,12 +1592,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     energy:       runner.energy,
                 },
                 instance_state,
-                v1::ReceiveParams {
-                    // These are the parameters in PV5.
-                    max_parameter_size:           u16::MAX as usize,
-                    limit_logs_and_return_values: false,
-                    support_queries:              true,
-                },
+                v1::ReceiveParams::new_p6(),
             )
             .context("Calling receive failed.")?;
             match res {
@@ -1578,10 +1666,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                         ),
                         v1::Interrupt::Upgrade { module_ref } => eprintln!(
                             "Receive call requested to upgrade the contract to module reference \
-                             {}.",
-                            hex::encode(module_ref.as_ref()) /* use direct hex encoding until we
-                                                              * have a proper Display
-                                                              * implementation. */
+                             {module_ref}.",
                         ),
 
                         v1::Interrupt::QueryAccountBalance { address } => {
@@ -1594,6 +1679,16 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                         ),
                         v1::Interrupt::QueryExchangeRates => {
                             eprintln!("Receive call requested exchange rates.")
+                        }
+                        v1::Interrupt::CheckAccountSignature { address, payload } => {
+                            eprintln!(
+                                "Receive call requested account signature check for address \
+                                 {address}. The payload is {}.",
+                                hex::encode(payload)
+                            );
+                        }
+                        v1::Interrupt::QueryAccountKeys { address } => {
+                            eprintln!("Receive call requested public keys of account {address}.");
                         }
                     }
                     eprintln!(

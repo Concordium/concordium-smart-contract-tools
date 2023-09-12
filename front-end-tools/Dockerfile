@@ -1,0 +1,15 @@
+ARG build_image=node:16-slim
+
+FROM ${build_image} AS build
+
+WORKDIR /app
+COPY ./package.json ./package.json
+COPY ./tsconfig.json ./tsconfig.json
+COPY ./esbuild.config.ts ./
+COPY ./src ./src
+
+RUN yarn && yarn cache clean && yarn build
+
+
+FROM nginx
+COPY --from=build ./app/dist ./usr/share/nginx/html

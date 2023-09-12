@@ -2,7 +2,7 @@ use crate::BuildOptions;
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
-use cargo_metadata::MetadataCommand;
+use cargo_metadata::{Metadata, MetadataCommand};
 use concordium_contracts_common::{
     schema::{
         ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
@@ -19,7 +19,7 @@ use concordium_wasm::{
     parse::parse_skeleton,
     types::{CustomSection, ExportDescription, Module},
     utils::strip,
-    validate::validate_module,
+    validate::{validate_module, ValidationConfig},
 };
 use rand::{thread_rng, Rng};
 use serde_json::Value;
@@ -27,6 +27,7 @@ use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     env, fs,
+    io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -39,6 +40,38 @@ const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
 /// Used for converting crate names, which often contain `-`, to module names,
 /// which cannot have `-`.
 fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_") }
+
+/// Get the crate's metadata either by looking for the `Cargo.toml` file at the
+/// `--manifest-path` or at the ancestors of the current directory.
+fn get_crate_metadata(cargo_args: &[String]) -> anyhow::Result<Metadata> {
+    let mut args = cargo_args
+        .iter()
+        .skip_while(|val| !val.starts_with("--manifest-path"));
+    let mut cmd = MetadataCommand::new();
+    match args.next() {
+        Some(p) if *p == "--manifest-path" => {
+            // If a `--manifest-path` is provided, look for the `Cargo.toml` file there.
+            cmd.manifest_path(args.next().context(
+                "The argument '--manifest-path <manifest-path>' requires a value but none was \
+                 supplied.",
+            )?);
+        }
+        Some(p) => {
+            // If a `--manifest-path` is provided, look for the `Cargo.toml` file there.
+            cmd.manifest_path(
+                p.strip_prefix("--manifest-path=")
+                    .context("Incorrect `--manifest-path` flag.")?,
+            );
+        }
+        None => {
+            // If NO `--manifest-path` is provided, look for the `Cargo.toml`
+            // file at the ancestors of the current directory (default
+            // behavior).
+        }
+    };
+
+    cmd.exec().context("Could not access cargo metadata.")
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum SchemaBuildOptions {
@@ -115,15 +148,13 @@ pub fn build_contract(
         }
     };
 
-    let metadata = MetadataCommand::new()
-        .exec()
-        .context("Could not access cargo metadata.")?;
+    let metadata = get_crate_metadata(cargo_args)?;
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let package = metadata
         .root_package()
         .context("Unable to determine package.")?;
-
-    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let result = Command::new("cargo")
         .arg("build")
@@ -155,14 +186,19 @@ pub fn build_contract(
     strip(&mut skeleton);
     match version {
         WasmVersion::V0 => {
-            let module = validate_module(&v0::ConcordiumAllowedImports, &skeleton)
-                .context("Could not validate resulting smart contract module as a V0 contract.")?;
+            let module = validate_module(
+                ValidationConfig::V0,
+                &v0::ConcordiumAllowedImports,
+                &skeleton,
+            )
+            .context("Could not validate resulting smart contract module as a V0 contract.")?;
             check_exports(&module, WasmVersion::V0)
                 .context("Contract and entrypoint validation failed for a V0 contract.")?;
             module
         }
         WasmVersion::V1 => {
             let module = validate_module(
+                ValidationConfig::V1,
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
                 },
@@ -326,15 +362,13 @@ pub fn build_contract_schema<A>(
     cargo_args: &[String],
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let metadata = MetadataCommand::new()
-        .exec()
-        .context("Could not access cargo metadata.")?;
+    let metadata = get_crate_metadata(cargo_args)?;
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let package = metadata
         .root_package()
         .context("Unable to determine package.")?;
-
-    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let result = Command::new("cargo")
         .arg("build")
@@ -441,8 +475,48 @@ fn write_schema_json(
         fs::create_dir_all(out_dir)
             .context("Unable to create directory for the resulting JSON schemas.")?;
     }
-    std::fs::write(out_path, serde_json::to_string_pretty(&schema_json)?)
-        .context("Unable to write schema output.")?;
+    let mut out_file =
+        std::fs::File::create(out_path).context("Unable to create the output file.")?;
+    write!(
+        &mut out_file,
+        "{}",
+        serde_json::to_string_pretty(&schema_json)?
+    )
+    .context("Unable to write schema json output.")?;
+    Ok(())
+}
+
+/// Write the template of the schema to a file or print it
+/// to the console if `out` is None.
+pub fn write_schema_template(
+    out: Option<PathBuf>,
+    schema: &VersionedModuleSchema,
+) -> anyhow::Result<()> {
+    match out {
+        // writing the template of the schema to a file
+        Some(out) => {
+            println!(
+                "   Writing the template of the schema to {}.",
+                out.display()
+            );
+
+            if let Some(out_dir) = out.parent() {
+                fs::create_dir_all(out_dir).context(
+                    "Unable to create directory for the resulting template of the schema.",
+                )?;
+            }
+            // saving the template of the schema to the file
+            let mut out_file =
+                std::fs::File::create(out).context("Unable to create the output file.")?;
+            write!(&mut out_file, "{}", schema)
+                .context("Unable to write template schema output.")?;
+        }
+        // printing template of the schema to console
+        None => {
+            println!("   The template of the schema is:\n{}", schema)
+        }
+    }
+
     Ok(())
 }
 
@@ -462,8 +536,11 @@ pub fn write_schema_base64(
                 fs::create_dir_all(out_dir)
                     .context("Unable to create directory for the resulting base64 schema.")?;
             }
-            // save the schema base64 representation to the file
-            std::fs::write(out, schema_base64).context("Unable to write schema output.")?;
+            // saving the schema base64 representation to the file
+            let mut out_file =
+                std::fs::File::create(out).context("Unable to create the output file.")?;
+            write!(&mut out_file, "{}", schema_base64)
+                .context("Unable to write schema base64 output.")?;
         }
         // printing base64 schema to console
         None => {
@@ -672,14 +749,13 @@ pub(crate) fn build_and_run_integration_tests(
     build_options: BuildOptions,
     test_targets: Vec<String>,
 ) -> anyhow::Result<()> {
+    let cargo_args = &build_options.cargo_args.clone();
+
     // Build the module in the same way as `cargo concordium build`, except that
     // schema information shouldn't be printed.
     crate::handle_build(build_options, false)?;
 
-    // Construct the test command.
-    let metadata = MetadataCommand::new()
-        .exec()
-        .context("Could not access cargo metadata.")?;
+    let metadata = get_crate_metadata(cargo_args)?;
 
     let mut cargo_test_args = vec!["test"];
 
@@ -725,6 +801,7 @@ pub(crate) fn build_and_run_integration_tests(
 
     let result = Command::new("cargo")
         .args(cargo_test_args)
+        .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -749,15 +826,13 @@ pub(crate) fn build_and_run_integration_tests(
 /// The `seed` argument allows for providing the seed to instantiate a random
 /// number generator. If `None` is given, a random seed will be sampled.
 pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
-    let metadata = MetadataCommand::new()
-        .exec()
-        .context("Could not access cargo metadata.")?;
+    let metadata = get_crate_metadata(extra_args)?;
+
+    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let package = metadata
         .root_package()
         .context("Unable to determine package.")?;
-
-    let target_dir = format!("{}/concordium", metadata.target_directory);
 
     let cargo_args = [
         "build",

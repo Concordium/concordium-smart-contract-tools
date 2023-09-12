@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased changes
+
+## 3.0.0
+
+- Add support for `--manifest-path` flag.
+- Add `schema-template` command to print the template of a given schema to a file or the console.
+- Add `--schema-template-out` option to `cargo concordium build` to optionally output the schema template to a file or the console.
+- Make `cargo-concordium` compatible with protocol 6 semantics on the chain.
+  In particular cargo-concordium now does validation according to protocol 6 rules, allowing sign extension instructions, disallowing globals in initializers of data and element segments, and allows host functions for checking account signatures, and retrieving account keys.
+
 ## 2.9.0
 
 - Make `cargo concordium test` compile your smart contract module and run integration on it, if available.

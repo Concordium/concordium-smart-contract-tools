@@ -17,6 +17,7 @@ on:
       - ready_for_review
     paths:
       - cargo-concordium/**/*
+      - concordium-smart-contract-testing/**/*
       - rustfmt.toml
       - concordium-base
 

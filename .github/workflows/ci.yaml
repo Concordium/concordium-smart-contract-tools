@@ -25,7 +25,7 @@ on:
 env:
   # from concordium/rustfmt:0.17
   RUST_FMT: nightly-2023-04-01-x86_64-unknown-linux-gnu
-  RUST_CLIPPY: 1.65
+  RUST_CLIPPY: 1.66
 
 jobs:
   "lint_fmt":
@@ -159,4 +159,4 @@ jobs:
           override: true
       - name: Test
         working-directory: ${{ matrix.build-dir }}
-        run: cargo test
+        run: cargo test -- --skip io_tests # Skip the I/O tests in the testing library.

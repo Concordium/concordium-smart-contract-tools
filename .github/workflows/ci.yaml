@@ -16,10 +16,10 @@ on:
       - synchronize
       - ready_for_review
     paths:
-      - cargo-concordium/**/*
-      - concordium-smart-contract-testing/**/*
-      - rustfmt.toml
-      - concordium-base
+      - 'cargo-concordium/**/*.rs'
+      - 'cargo-concordium/**/*.toml'
+      - 'rustfmt.toml'
+      - 'concordium-base'
 
   workflow_dispatch: # allows manual trigger
 
@@ -38,7 +38,6 @@ jobs:
       matrix:
         build-dir:
           - 'cargo-concordium'
-          - 'concordium-smart-contract-testing'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -53,33 +52,6 @@ jobs:
         working-directory: ${{ matrix.build-dir }}
         run: |
           cargo fmt -- --color=always --check
-
-  "lint_clippy_libraries":
-    name: ${{ matrix.build-dir }} lint:clippy
-    # Don't run on draft pull requests
-    if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        build-dir:
-          - 'concordium-smart-contract-testing'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ env.RUST_CLIPPY }}
-          override: true
-          components: clippy
-      - name: Clippy
-        working-directory: ${{ matrix.build-dir }}
-        run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          cargo clippy --color=always --tests --benches -- -Dclippy::all
 
   # For binaries we additionally commit the lock file. And we want to ensure
   # that the file is up-to-date.
@@ -120,7 +92,6 @@ jobs:
       matrix:
         build-dir:
           - 'cargo-concordium'
-          - 'concordium-smart-contract-testing'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -146,7 +117,6 @@ jobs:
       matrix:
         build-dir:
           - 'cargo-concordium'
-          - 'concordium-smart-contract-testing'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -160,4 +130,4 @@ jobs:
           override: true
       - name: Test
         working-directory: ${{ matrix.build-dir }}
-        run: cargo test -- --skip io_tests # Skip the I/O tests in the testing library.
+        run: cargo test

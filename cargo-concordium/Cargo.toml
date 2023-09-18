@@ -29,15 +29,15 @@ rand = { version = "=0.7", features = ["small_rng"] }
 cargo_metadata = "0.15"
 
 [dependencies.concordium-wasm]
-path = "../concordium-rust-sdk/concordium-base/smart-contracts/wasm-transform"
+path = "../concordium-base/smart-contracts/wasm-transform"
 version = "3.0"
 
 [dependencies.concordium-smart-contract-engine]
 version = "3.0"
-path = "../concordium-rust-sdk/concordium-base/smart-contracts/wasm-chain-integration/"
+path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
 
 [dependencies.concordium-contracts-common]
 version = "8.0"
-path = "../concordium-rust-sdk/concordium-base/concordium-contracts-common/concordium-contracts-common"
+path = "../concordium-base/concordium-contracts-common/concordium-contracts-common"
 features = ["derive-serde", "std"]

@@ -22,6 +22,7 @@ import {
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { initialize, deploy } from './writing_to_blockchain';
+import { read } from './reading_from_blockchain';
 
 import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ARRAYS, EXAMPLE_JSON_OBJECT } from './constants';
 
@@ -87,6 +88,11 @@ export default function Main(props: ConnectionProps) {
     const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState('');
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState('');
+    const [smartContractIndexInputField, setSmartContractIndexInputFiled] = useState<bigint>(1999n);
+    const [entryPoint, setEntryPoint] = useState('');
+    const [returnValue, setReturnValue] = useState('');
+    const [readError, setReadError] = useState('');
+
     const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('');
     const [useModuleFromStep1, setUseModuleFromStep1] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
@@ -106,6 +112,7 @@ export default function Main(props: ConnectionProps) {
     const useModuleReferenceFromStep1Ref = useRef(null);
     const moduleReferenceRef = useRef(null);
     const inputParameterFieldRef = useRef(null);
+    const smartContractIndexRef = useRef(null);
 
     function arraysEqual(a: Uint8Array, b: Uint8Array) {
         if (a === b) return true;
@@ -165,6 +172,16 @@ export default function Main(props: ConnectionProps) {
     const changeCCDAmountHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setCCDAmount(target.value);
+    }, []);
+
+    const changeSmartContractHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setSmartContractIndexInputFiled(BigInt(target.value));
+    }, []);
+
+    const changeEntryPointHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setEntryPoint(target.value);
     }, []);
 
     const changeMaxExecutionEnergyHandler = useCallback((event: ChangeEvent) => {
@@ -1093,6 +1110,263 @@ export default function Main(props: ConnectionProps) {
                                         <div>{smartContractIndex}</div>
                                     </div>
                                 )}
+                            </TestBox>
+                            {/* Additional helpers: */}
+                            <TestBox header="Reading from contract">
+                                <label className="field">
+                                    Smart Contract Index:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="moduleReference"
+                                        ref={smartContractIndexRef}
+                                        disabled={useModuleFromStep1}
+                                        type="number"
+                                        placeholder="1999"
+                                        onChange={changeSmartContractHandler}
+                                    />
+                                </label>
+                                {useModuleFromStep1 &&
+                                displayContracts.length > 0 &&
+                                (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '') ? (
+                                    <label className="field">
+                                        Smart Contract Name:
+                                        <br />
+                                        <select
+                                            className="dropDownStyle"
+                                            name="contractNameDropDown"
+                                            id="contractNameDropDown"
+                                            ref={contractNameDropDownRef}
+                                            onChange={changeSmarContractDropDownHandler}
+                                        >
+                                            {displayContracts?.map((contract) => (
+                                                <option key={contract}>{contract}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                ) : (
+                                    <label className="field">
+                                        Smart Contract Name:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="contractName"
+                                            type="text"
+                                            placeholder="myContract"
+                                            onChange={changeContractNameHandler}
+                                        />
+                                    </label>
+                                )}
+                                <label className="field">
+                                    Entrypoint Name:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="entryPoint"
+                                        type="text"
+                                        placeholder="view"
+                                        onChange={changeEntryPointHandler}
+                                    />
+                                </label>
+                                <br />
+                                <br />
+                                <label className="field">
+                                    Upload Smart Contract Module Schema File (e.g. schema.bin):
+                                    <br />
+                                    <br />
+                                    <input
+                                        className="btn btn-primary"
+                                        type="file"
+                                        id="schemaFile"
+                                        ref={schemaFileRef}
+                                        accept=".bin"
+                                        onChange={async () => {
+                                            setUploadError('');
+
+                                            const hTMLInputElement =
+                                                schemaFileRef.current as unknown as HTMLInputElement;
+
+                                            if (
+                                                hTMLInputElement.files !== undefined &&
+                                                hTMLInputElement.files !== null &&
+                                                hTMLInputElement.files.length > 0
+                                            ) {
+                                                const file = hTMLInputElement.files[0];
+                                                const arrayBuffer = await file.arrayBuffer();
+
+                                                const schema = btoa(
+                                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                        return data + String.fromCharCode(byte);
+                                                    }, '')
+                                                );
+
+                                                setUploadedModuleSchemaBase64(schema);
+                                            } else {
+                                                setUploadError2('Upload schema file is undefined');
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <br />
+                                <br />
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        onChange={() => {
+                                            setParsingError('');
+                                            setInputParameter('');
+                                            setUploadedModuleSchemaBase64('');
+                                            setTransactionErrorInit('');
+                                            setDropDown('number');
+                                            setHasInputParameter(!hasInputParameter);
+                                            setInputParameterTemplate('');
+                                            setSchemaError('');
+                                        }}
+                                    />
+                                    <span>{' Has Input Parameter'}</span>
+                                </label>
+                                <br />
+                                {hasInputParameter && (
+                                    <div className="testBox">
+                                        {!useModuleFromStep1 && uploadedModuleSchemaBase64 && (
+                                            <div className="actionResultBox">
+                                                Schema in base64:
+                                                <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
+                                            </div>
+                                        )}
+                                        {uploadError2 !== '' && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {uploadError2}.
+                                            </div>
+                                        )}
+                                        {schemaError !== '' && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {schemaError}.
+                                            </div>
+                                        )}
+                                        {inputParameterTemplate && (
+                                            <div className="actionResultBox">
+                                                Input Parameter Template:
+                                                <pre>
+                                                    {JSON.stringify(JSON.parse(inputParameterTemplate), undefined, 2)}
+                                                </pre>
+                                            </div>
+                                        )}
+                                        <label className="field">
+                                            Select input parameter type:
+                                            <br />
+                                            <select
+                                                className="dropDownStyle"
+                                                name="inputParameterDropDown"
+                                                id="inputParameterDropDown"
+                                                ref={inputParameterDropDownRef}
+                                                onChange={changeInputParameterDropDownHandler}
+                                            >
+                                                <option value="number">number</option>
+                                                <option value="string">string</option>
+                                                <option value="object">JSON object</option>
+                                                <option value="array">array</option>
+                                            </select>
+                                        </label>
+                                        <br />
+                                        {(dropDown === 'object' || dropDown === 'array') && (
+                                            <label className="field">
+                                                Add your input parameter ({dropDown}):
+                                                <br />
+                                                {dropDown === 'array' && (
+                                                    <textarea
+                                                        id="inputParameterTextArea"
+                                                        ref={inputParameterTextAreaRef}
+                                                        onChange={changeInputParameterTextAreaHandler}
+                                                    >
+                                                        {getArrayExample(inputParameterTemplate)}
+                                                    </textarea>
+                                                )}
+                                                {dropDown === 'object' && (
+                                                    <textarea
+                                                        id="inputParameterTextArea"
+                                                        ref={inputParameterTextAreaRef}
+                                                        onChange={changeInputParameterTextAreaHandler}
+                                                    >
+                                                        {getObjectExample(inputParameterTemplate)}
+                                                    </textarea>
+                                                )}
+                                            </label>
+                                        )}
+                                        {(dropDown === 'string' || dropDown === 'number') && (
+                                            <label className="field">
+                                                Add your input parameter ({dropDown}):
+                                                <br />
+                                                <input
+                                                    className="inputFieldStyle"
+                                                    id="inputParameterField"
+                                                    ref={inputParameterFieldRef}
+                                                    type="text"
+                                                    placeholder={dropDown === 'string' ? 'myString' : '1000000'}
+                                                    onChange={changeInputParameterFieldHandler}
+                                                />
+                                            </label>
+                                        )}
+                                        {parsingError && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {parsingError}.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <br />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setReadError('');
+                                        setReturnValue('');
+                                        const promise = read(
+                                            client,
+                                            contractName,
+                                            smartContractIndexInputField,
+                                            entryPoint,
+                                            uploadedModuleSchemaBase64 // view_return_value_schema,
+                                        );
+
+                                        promise
+                                            .then((value) => {
+                                                setReturnValue(value);
+                                            })
+                                            .catch((err: Error) => setReadError((err as Error).message));
+                                    }}
+                                >
+                                    Read Smart Contract
+                                </button>
+                                <br />
+                                <br />
+                                {returnValue && (
+                                    <div className="actionResultBox">
+                                        Read value:
+                                        <div>{returnValue}</div>
+                                    </div>
+                                )}
+                                {readError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {readError}.
+                                    </div>
+                                )}
+                            </TestBox>
+                            <TestBox header="Writing to contract">
+                                <label className="field">
+                                    Module Reference:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="moduleReference"
+                                        ref={moduleReferenceRef}
+                                        disabled={useModuleFromStep1}
+                                        type="text"
+                                        placeholder="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
+                                        onChange={changeModuleReferenceHandler}
+                                    />
+                                </label>
                             </TestBox>
                             <br />
                             <a

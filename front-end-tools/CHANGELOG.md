@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 3.0.0
+
+- Add reading from smart contract and writing to smart contract feature
+
 ## 2.2.0
 
 - Add warning box if module references in step 1 and step 2 are not the same. Add warning box if embedded schema indicates an input parameter but no input parameter is provided.

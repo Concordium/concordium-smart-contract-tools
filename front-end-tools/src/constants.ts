@@ -16,6 +16,8 @@ export const EXAMPLE_JSON_OBJECT = {
     },
 };
 
+export const CONTRACT_SUB_INDEX = 0n;
+
 // These are the example arrays that are shown in the input parameter textarea as a placeholder when the user has no embedded schema in the module
 // or does not want to use the embedded schema (meaning if the checkbox "Use module from step 1" is unchecked).
 export const EXAMPLE_ARRAYS = 'Examples: \n\n[1,2,3] or \n\n["abc","def"] or \n\n[{"myFieldKey":"myFieldValue"}]';

@@ -108,28 +108,37 @@ pub struct BuildInfo {
     /// The metadata used for building the contract (the actual code, not the
     /// schema).
     pub metadata:          cargo_metadata::Metadata,
-    pub stored_build_info: Option<StoredBuildContext>,
+    pub stored_build_info: Option<(StoredBuildContext, Vec<PathBuf>)>,
 }
 
-// The build context that will be embedded as a custom section to
-// support reproducible builds.
+/// The build context that will be embedded as a custom section to
+/// support reproducible builds.
+/// It is embedded serialized using the smart contract serialization format.
 #[derive(Debug, concordium_contracts_common::Serialize)]
 pub struct StoredBuildContext {
     /// The SHA256 hash of the tar file used to build.
     /// Note that this is the hash of the **tar** file alone, not of any
     /// compressed version.
-    archive_hash:  [u8; 32],
+    pub archive_hash:  [u8; 32], // TODO: Use hash from base.
     /// The link to where the source code will be located.
-    source_link:   Option<String>,
+    pub source_link:   Option<String>,
     /// The build image that was used.
-    image:         String,
+    pub image:         String,
     /// The exact command invocation inside the image that was used to produce
     /// the contract.
-    build_command: Vec<String>,
+    pub build_command: Vec<String>,
+}
+
+pub struct TarArchiveData {
+    /// The archive itself.
+    tar_archive:    Vec<u8>,
+    /// The list of files in the archive, the paths are relative to the root of
+    /// the archive.
+    archived_files: Vec<PathBuf>,
 }
 
 /// Make a tarball of the package at the `package_root_path` location.
-fn create_archive(package_root_path: &Path) -> anyhow::Result<Vec<u8>> {
+fn create_archive(package_root_path: &Path) -> anyhow::Result<TarArchiveData> {
     let mut tar = tar::Builder::new(Vec::new());
     // Ignore files that are listed in the local .gitignore, but
     // not anything that is listed in a global .gitignore.
@@ -142,6 +151,7 @@ fn create_archive(package_root_path: &Path) -> anyhow::Result<Vec<u8>> {
         .sort_by_file_path(std::cmp::Ord::cmp)
         .build();
     let mut lock_file_found = false;
+    let mut archived_files = Vec::new();
     for file in files {
         let file = file?;
         if file.path() == package_root_path {
@@ -153,11 +163,7 @@ fn create_archive(package_root_path: &Path) -> anyhow::Result<Vec<u8>> {
         if relative_path == std::path::Path::new("Cargo.lock") {
             lock_file_found = true;
         }
-        println!(
-            "  - Adding {} to the package as {}.",
-            file.path().display(),
-            relative_path.display()
-        );
+        archived_files.push(relative_path.to_path_buf());
         tar.append_path_with_name(file.path(), relative_path)?;
     }
     anyhow::ensure!(
@@ -165,7 +171,10 @@ fn create_archive(package_root_path: &Path) -> anyhow::Result<Vec<u8>> {
         "Unable to proceed with a verifiable build. A Cargo.lock file must be available and up to \
          date. Run `cargo check` to generate it."
     );
-    Ok(tar.into_inner()?)
+    Ok(TarArchiveData {
+        tar_archive: tar.into_inner()?,
+        archived_files,
+    })
 }
 
 fn build_archive<'a>(
@@ -237,11 +246,11 @@ fn build_archive<'a>(
 
 struct ContainerBuildOutput {
     /// The output Wasm file containing the unprocessed contract module.
-    output_wasm:       Vec<u8>,
+    output_wasm: Vec<u8>,
     /// Information about the build so that it can be reproduced.
-    build_info:        StoredBuildContext,
+    build_info:  StoredBuildContext,
     /// The sources that were built, archived as a tar file.
-    tar_file_contents: Vec<u8>,
+    tar_archive: TarArchiveData,
 }
 
 fn build_in_container<'a>(
@@ -251,18 +260,20 @@ fn build_in_container<'a>(
     extra_args: impl Iterator<Item = &'a String>,
     container_runtime: &str,
 ) -> anyhow::Result<ContainerBuildOutput> {
-    let tar_file_contents = create_archive(package_root_path)?;
+    let tar_archive = create_archive(package_root_path)?;
+
+    // TODO: Don't rebuild if this hasn't changed compared to existing
+    // files.
+    let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
 
     let (build_command, output_wasm) = build_archive(
         &image,
         package_name,
-        &tar_file_contents,
+        &tar_archive.tar_archive,
         extra_args,
         container_runtime,
     )
     .context("Unable to build.")?;
-
-    let archive_hash = sha2::Sha256::digest(&tar_file_contents);
 
     let build_info = StoredBuildContext {
         archive_hash: archive_hash.into(),
@@ -273,7 +284,7 @@ fn build_in_container<'a>(
     Ok(ContainerBuildOutput {
         output_wasm,
         build_info,
-        tar_file_contents,
+        tar_archive,
     })
 }
 
@@ -370,7 +381,7 @@ pub fn build_contract(
         let ContainerBuildOutput {
             output_wasm,
             build_info,
-            tar_file_contents,
+            tar_archive,
         } = build_in_container(
             image,
             &package.name,
@@ -380,13 +391,13 @@ pub fn build_contract(
         )?;
         let out_filename = out.context("`--out` must be supplied when using verifiable builds.")?;
         let tar_filename: PathBuf = format!("{}.tar", out_filename.display()).into();
-        std::fs::write(tar_filename.as_path(), tar_file_contents).with_context(|| {
+        std::fs::write(tar_filename.as_path(), &tar_archive.tar_archive).with_context(|| {
             format!(
                 "Unable to write source archive to {}.",
                 tar_filename.display()
             )
         })?;
-        (out_filename, output_wasm, Some(build_info))
+        (out_filename, output_wasm, Some((build_info, tar_archive)))
     } else {
         let target_dir = metadata.target_directory.as_std_path().join("concordium");
         let output_wasm_file = target_dir
@@ -483,13 +494,13 @@ pub fn build_contract(
         None
     };
     // Embed build info section if present.
-    if let Some(build_info) = &stored_build_info {
+    if let Some((build_info, _)) = &stored_build_info {
         let cs = CustomSection {
             name:     "concordium-build-info".into(),
             contents: &to_bytes(&build_info),
         };
         write_custom_section(&mut output_bytes, &cs)?;
-    }
+    };
 
     // write the size of the actual module to conform to serialization expected on
     // the chain
@@ -501,7 +512,7 @@ pub fn build_contract(
     Ok(BuildInfo {
         total_module_len,
         schema: return_schema,
-        stored_build_info,
+        stored_build_info: stored_build_info.map(|(bi, a)| (bi, a.archived_files)),
         metadata,
     })
 }

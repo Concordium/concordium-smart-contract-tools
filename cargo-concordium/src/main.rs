@@ -660,7 +660,7 @@ pub fn main() -> anyhow::Result<()> {
 /// This behaviour is configurable via the parameter `print_schema_info`.
 fn handle_build(
     options: BuildOptions,
-    print_schema_info: bool,
+    print_extra_info: bool,
 ) -> anyhow::Result<cargo_metadata::Metadata> {
     let success_style = ansi_term::Color::Green.bold();
     let bold_style = ansi_term::Style::new().bold();
@@ -681,7 +681,7 @@ fn handle_build(
     .context("Could not build smart contract.")?;
     if let Some(module_schema) = &schema {
         let module_schema_bytes = to_bytes(module_schema);
-        if print_schema_info {
+        if print_extra_info {
             match module_schema {
                 VersionedModuleSchema::V0(module_schema) => {
                     eprintln!("\n   Module schema includes:");
@@ -767,11 +767,11 @@ fn handle_build(
                     .context("Could not write base64 schema file.")?;
             }
         }
-        if options.schema_embed && print_schema_info {
+        if options.schema_embed && print_extra_info {
             eprintln!("   Embedding schema into module.\n");
         }
     }
-    if print_schema_info {
+    if print_extra_info {
         let size = format!(
             "{}.{:03} kB",
             total_module_len / 1000,
@@ -781,7 +781,33 @@ fn handle_build(
             "    {} smart contract module {}",
             success_style.paint("Finished"),
             bold_style.paint(size)
-        )
+        );
+
+        if let Some((bi, archived_files)) = stored_build_info {
+            eprintln!(
+                "    {} embedding build information:",
+                success_style.paint("Finished")
+            );
+            eprintln!("    - Build image used: {}", bold_style.paint(bi.image));
+            eprintln!(
+                "    - Build command used: {}",
+                bold_style.paint(bi.build_command.join(" "))
+            );
+            eprintln!("    - Build command used: {:?}", bi.archive_hash); // TODO
+            if let Some(link) = bi.source_link {
+                eprintln!("    - Link to source code: {}", bold_style.paint(link));
+            } else {
+                eprintln!(
+                    "{}",
+                    WARNING_STYLE.paint("   - No link to source code embedded.")
+                );
+            }
+            eprintln!();
+            eprintln!("    - Archived source files:");
+            for file in archived_files {
+                eprintln!("        - {}", file.display());
+            }
+        }
     }
     Ok(metadata)
 }

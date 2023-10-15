@@ -309,7 +309,7 @@ struct BuildOptions {
         name = "out",
         long = "out",
         short = "o",
-        help = "Writes the resulting module to file at specified location."
+        help = "Write the resulting smart contract module to file to the specified file."
     )]
     out:                 Option<PathBuf>,
     #[structopt(
@@ -323,6 +323,7 @@ struct BuildOptions {
     #[structopt(
         name = "verifiable",
         long = "verifiable",
+        requires = "out",
         short = "r",
         help = "The image to use for a build of a contract that can be verified. If this is not \
                 supplied then the contract will be built in the context of the host, which is \
@@ -668,6 +669,7 @@ fn handle_build(
         total_module_len,
         schema,
         metadata,
+        stored_build_info,
     } = build_contract(
         options.version,
         build_schema,

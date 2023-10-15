@@ -29,6 +29,8 @@ rand = { version = "=0.7", features = ["small_rng"] }
 cargo_metadata = "0.15"
 ignore = "0.4"
 tar = "0.4"
+sha2 = "0.10"
+tempfile = "3.8"
 
 [dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"

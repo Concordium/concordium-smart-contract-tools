@@ -5,8 +5,8 @@ set -e
 export FILE=$2
 export ARCHIVE=$1
 
-mkdir /build
-cd /build
+mkdir -p /b
+cd /b
 tar xf $ARCHIVE
 shift 2
 $@

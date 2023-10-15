@@ -85,20 +85,22 @@ export default function Main(props: ConnectionProps) {
 
     const [accountBalance, setAccountBalance] = useState('');
     const [inputParameter, setInputParameter] = useState('');
-    const [contractName, setContractName] = useState('');
-    const [moduleReference, setModuleReference] = useState('');
-    const [cCDAmount, setCCDAmount] = useState('');
+    const [contractName, setContractName] = useState('myContract');
+    const [moduleReference, setModuleReference] = useState(
+        '91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693'
+    );
+    const [cCDAmount, setCCDAmount] = useState('0');
     const [base64Module, setBase64Module] = useState('');
     const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState('');
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState('');
     const [smartContractIndexInputField, setSmartContractIndexInputFiled] = useState<bigint>(1999n);
-    const [entryPoint, setEntryPoint] = useState('');
+    const [entryPoint, setEntryPoint] = useState('view');
     const [returnValue, setReturnValue] = useState('');
     const [readError, setReadError] = useState('');
     const [entryPointTemplate, setEntryPointTemplate] = useState('');
 
-    const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('');
+    const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('30000');
     const [useModuleFromStep1, setUseModuleFromStep1] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
     const [displayContracts, setDisplayContracts] = useState<string[]>([]);
@@ -106,8 +108,11 @@ export default function Main(props: ConnectionProps) {
     const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState('');
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
-    const [hasInputParameter, setHasInputParameter] = useState(false);
-    const [isPayable, setIsPayable] = useState(false);
+    const [hasInputParameterInitFunction, setHasInputParameterInitFunction] = useState(false);
+    const [hasInputParameterReadFunction, setHasInputParameterReadFunction] = useState(false);
+    const [hasInputParameterWriteFunction, setHasInputParameterWriteFunction] = useState(false);
+    const [isPayableInitFunction, setIsPayableInitFunction] = useState(false);
+    const [isPayableWriteFunction, setIsPayableWriteFunction] = useState(false);
 
     const moduleFileRef = useRef(null);
     const inputParameterDropDownRef = useRef(null);
@@ -362,12 +367,28 @@ export default function Main(props: ConnectionProps) {
     }, [moduleReference, moduleReferenceCalculated]);
 
     useEffect(() => {
-        if (inputParameterTemplate !== '' && hasInputParameter === false) {
+        if (inputParameterTemplate !== '' && hasInputParameterInitFunction === false) {
             setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
             setShouldWarnInputParameterInSchemaIgnored(false);
         }
-    }, [inputParameterTemplate, hasInputParameter]);
+    }, [inputParameterTemplate, hasInputParameterInitFunction]);
+
+    useEffect(() => {
+        if (inputParameterTemplate !== '' && hasInputParameterReadFunction === false) {
+            setShouldWarnInputParameterInSchemaIgnored(true);
+        } else {
+            setShouldWarnInputParameterInSchemaIgnored(false);
+        }
+    }, [inputParameterTemplate, hasInputParameterReadFunction]);
+
+    useEffect(() => {
+        if (inputParameterTemplate !== '' && hasInputParameterWriteFunction === false) {
+            setShouldWarnInputParameterInSchemaIgnored(true);
+        } else {
+            setShouldWarnInputParameterInSchemaIgnored(false);
+        }
+    }, [inputParameterTemplate, hasInputParameterWriteFunction]);
 
     useEffect(() => {
         setSchemaError('');
@@ -424,7 +445,16 @@ export default function Main(props: ConnectionProps) {
             const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
             element.value = getObjectExample(receiveTemplate);
         }
-    }, [entryPoint, hasInputParameter, useModuleFromStep1, contractName, uploadedModuleSchemaBase64, dropDown]);
+    }, [
+        entryPoint,
+        hasInputParameterInitFunction,
+        hasInputParameterReadFunction,
+        hasInputParameterWriteFunction,
+        useModuleFromStep1,
+        contractName,
+        uploadedModuleSchemaBase64,
+        dropDown,
+    ]);
 
     useEffect(() => {
         if (connection && client && account) {
@@ -813,7 +843,7 @@ export default function Main(props: ConnectionProps) {
                                         ref={moduleReferenceRef}
                                         disabled={useModuleFromStep1}
                                         type="text"
-                                        placeholder="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
+                                        value={moduleReference}
                                         onChange={changeModuleReferenceHandler}
                                     />
                                 </label>
@@ -824,7 +854,7 @@ export default function Main(props: ConnectionProps) {
                                         className="inputFieldStyle"
                                         id="maxContractExecutionEnergy"
                                         type="text"
-                                        placeholder="30000"
+                                        value={maxContractExecutionEnergy}
                                         onChange={changeMaxExecutionEnergyHandler}
                                     />
                                 </label>
@@ -854,7 +884,7 @@ export default function Main(props: ConnectionProps) {
                                             className="inputFieldStyle"
                                             id="contractName"
                                             type="text"
-                                            placeholder="myContract"
+                                            value={contractName}
                                             onChange={changeContractNameHandler}
                                         />
                                     </label>
@@ -871,13 +901,13 @@ export default function Main(props: ConnectionProps) {
                                         <input
                                             type="checkbox"
                                             onChange={() => {
-                                                setIsPayable(!isPayable);
+                                                setIsPayableInitFunction(!isPayableInitFunction);
                                             }}
                                         />
                                         <span>{' Is Payable'}</span>
                                     </label>
                                 </div>
-                                {isPayable && (
+                                {isPayableInitFunction && (
                                     <div className="testBox">
                                         <label className="field">
                                             CCD amount (micro):
@@ -886,7 +916,7 @@ export default function Main(props: ConnectionProps) {
                                                 className="inputFieldStyle"
                                                 id="CCDAmount"
                                                 type="text"
-                                                placeholder="1000000"
+                                                value={cCDAmount}
                                                 onChange={changeCCDAmountHandler}
                                             />
                                         </label>
@@ -903,15 +933,14 @@ export default function Main(props: ConnectionProps) {
                                             setUploadedModuleSchemaBase64('');
                                             setTransactionErrorInit('');
                                             setDropDown('number');
-                                            setHasInputParameter(!hasInputParameter);
+                                            setHasInputParameterInitFunction(!hasInputParameterInitFunction);
                                             setInputParameterTemplate('');
                                             setSchemaError('');
                                         }}
                                     />
                                     <span>{' Has Input Parameter'}</span>
                                 </label>
-                                <br />
-                                {hasInputParameter && (
+                                {hasInputParameterInitFunction && (
                                     <div className="testBox">
                                         {!useModuleFromStep1 && (
                                             <>
@@ -976,7 +1005,6 @@ export default function Main(props: ConnectionProps) {
                                                 Error: {schemaError}.
                                             </div>
                                         )}
-                                        <br />
                                         {inputParameterTemplate && (
                                             <div className="actionResultBox">
                                                 Input Parameter Template:
@@ -1064,7 +1092,7 @@ export default function Main(props: ConnectionProps) {
                                             moduleReference,
                                             inputParameter,
                                             contractName,
-                                            hasInputParameter,
+                                            hasInputParameterInitFunction,
                                             useModuleFromStep1,
                                             useModuleFromStep1
                                                 ? embeddedModuleSchemaBase64
@@ -1145,11 +1173,11 @@ export default function Main(props: ConnectionProps) {
                                     <br />
                                     <input
                                         className="inputFieldStyle"
-                                        id="moduleReference"
+                                        id="smartContractIndexRead"
                                         ref={smartContractIndexRef}
                                         disabled={useModuleFromStep1}
                                         type="number"
-                                        placeholder="1999"
+                                        value={smartContractIndexInputField.toString()}
                                         onChange={changeSmartContractHandler}
                                     />
                                 </label>
@@ -1179,7 +1207,7 @@ export default function Main(props: ConnectionProps) {
                                             className="inputFieldStyle"
                                             id="contractName"
                                             type="text"
-                                            placeholder="myContract"
+                                            value={contractName}
                                             onChange={changeContractNameHandler}
                                         />
                                     </label>
@@ -1191,7 +1219,7 @@ export default function Main(props: ConnectionProps) {
                                         className="inputFieldStyle"
                                         id="entryPoint"
                                         type="text"
-                                        placeholder="view"
+                                        value={entryPoint}
                                         onChange={changeEntryPointHandler}
                                     />
                                 </label>
@@ -1246,15 +1274,14 @@ export default function Main(props: ConnectionProps) {
                                             // setUploadedModuleSchemaBase64('');
                                             // setTransactionErrorInit('');
                                             // setDropDown('number');
-                                            setHasInputParameter(!hasInputParameter);
+                                            setHasInputParameterReadFunction(!hasInputParameterReadFunction);
                                             // setInputParameterTemplate('');
                                             // setSchemaError('');
                                         }}
                                     />
                                     <span>{' Has Input Parameter'}</span>
                                 </label>
-                                <br />
-                                {hasInputParameter && (
+                                {hasInputParameterReadFunction && (
                                     <div className="testBox">
                                         {!useModuleFromStep1 && uploadedModuleSchemaBase64 && (
                                             <div className="actionResultBox">
@@ -1262,7 +1289,6 @@ export default function Main(props: ConnectionProps) {
                                                 <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
                                             </div>
                                         )}
-                                        <br />
                                         {uploadError2 !== '' && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {uploadError2}.
@@ -1274,12 +1300,16 @@ export default function Main(props: ConnectionProps) {
                                             </div>
                                         )}
                                         {entryPointTemplate && (
-                                            <div className="actionResultBox">
-                                                Parameter Template:
-                                                <pre>
-                                                    {JSON.stringify(JSON.parse(entryPointTemplate), undefined, 2)}
-                                                </pre>
-                                            </div>
+                                            <>
+                                                <br />
+                                                <br />
+                                                <div className="actionResultBox">
+                                                    Parameter Template:
+                                                    <pre>
+                                                        {JSON.stringify(JSON.parse(entryPointTemplate), undefined, 2)}
+                                                    </pre>
+                                                </div>
+                                            </>
                                         )}
                                         <label className="field">
                                             Select input parameter type:
@@ -1359,7 +1389,7 @@ export default function Main(props: ConnectionProps) {
                                             uploadedModuleSchemaBase64,
                                             inputParameter,
                                             dropDown,
-                                            hasInputParameter,
+                                            hasInputParameterReadFunction,
                                             useModuleFromStep1
                                         );
 
@@ -1392,11 +1422,11 @@ export default function Main(props: ConnectionProps) {
                                     <br />
                                     <input
                                         className="inputFieldStyle"
-                                        id="moduleReference"
+                                        id="smartContractIndexWrite"
                                         ref={smartContractIndexRef}
                                         disabled={useModuleFromStep1}
                                         type="number"
-                                        placeholder="1999"
+                                        value={smartContractIndexInputField.toString()}
                                         onChange={changeSmartContractHandler}
                                     />
                                 </label>
@@ -1426,7 +1456,7 @@ export default function Main(props: ConnectionProps) {
                                             className="inputFieldStyle"
                                             id="contractName"
                                             type="text"
-                                            placeholder="myContract"
+                                            value={contractName}
                                             onChange={changeContractNameHandler}
                                         />
                                     </label>
@@ -1438,7 +1468,7 @@ export default function Main(props: ConnectionProps) {
                                         className="inputFieldStyle"
                                         id="entryPoint"
                                         type="text"
-                                        placeholder="set"
+                                        value={entryPoint}
                                         onChange={changeEntryPointHandler}
                                     />
                                 </label>
@@ -1449,7 +1479,7 @@ export default function Main(props: ConnectionProps) {
                                         className="inputFieldStyle"
                                         id="maxContractExecutionEnergy"
                                         type="text"
-                                        placeholder="30000"
+                                        value={maxContractExecutionEnergy}
                                         onChange={changeMaxExecutionEnergyHandler}
                                     />
                                 </label>
@@ -1460,13 +1490,13 @@ export default function Main(props: ConnectionProps) {
                                         <input
                                             type="checkbox"
                                             onChange={() => {
-                                                setIsPayable(!isPayable);
+                                                setIsPayableWriteFunction(!isPayableWriteFunction);
                                             }}
                                         />
                                         <span>{' Is Payable'}</span>
                                     </label>
                                 </div>
-                                {isPayable && (
+                                {isPayableWriteFunction && (
                                     <div className="testBox">
                                         <label className="field">
                                             CCD amount (micro):
@@ -1475,7 +1505,7 @@ export default function Main(props: ConnectionProps) {
                                                 className="inputFieldStyle"
                                                 id="CCDAmount"
                                                 type="text"
-                                                placeholder="1000000"
+                                                value={cCDAmount}
                                                 onChange={changeCCDAmountHandler}
                                             />
                                         </label>
@@ -1492,7 +1522,7 @@ export default function Main(props: ConnectionProps) {
                                             // setUploadedModuleSchemaBase64('');
                                             // setTransactionErrorInit('');
                                             // setDropDown('number');
-                                            setHasInputParameter(!hasInputParameter);
+                                            setHasInputParameterWriteFunction(!hasInputParameterWriteFunction);
                                             // setInputParameterTemplate('');
                                             // setSchemaError('');
                                         }}
@@ -1500,7 +1530,7 @@ export default function Main(props: ConnectionProps) {
                                     <span>{' Has Input Parameter'}</span>
                                 </label>
                                 <br />
-                                {hasInputParameter && (
+                                {hasInputParameterWriteFunction && (
                                     <div className="testBox">
                                         <label className="field">
                                             Upload Smart Contract Module Schema File (e.g. schema.bin):
@@ -1545,6 +1575,7 @@ export default function Main(props: ConnectionProps) {
                                             <>
                                                 <br />
                                                 <br />
+
                                                 <div className="actionResultBox">
                                                     Schema in base64:
                                                     <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
@@ -1646,7 +1677,7 @@ export default function Main(props: ConnectionProps) {
                                             inputParameter,
                                             contractName,
                                             entryPoint,
-                                            hasInputParameter,
+                                            hasInputParameterWriteFunction,
                                             useModuleFromStep1,
                                             uploadedModuleSchemaBase64,
                                             dropDown,

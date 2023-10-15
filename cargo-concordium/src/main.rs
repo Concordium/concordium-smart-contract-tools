@@ -321,6 +321,24 @@ struct BuildOptions {
     )]
     version:             utils::WasmVersion,
     #[structopt(
+        name = "verifiable",
+        long = "verifiable",
+        short = "r",
+        help = "The image to use for a build of a contract that can be verified. If this is not \
+                supplied then the contract will be built in the context of the host, which is \
+                usually not verifiable."
+    )]
+    image:               Option<String>,
+    #[structopt(
+        name = "crt",
+        long = "container-runtime",
+        help = "The container runtime (either binary name or path) used to run the image when a \
+                verifiable build is requested.",
+        default_value = "docker",
+        env = "CARGO_CONCORDIUM_CONTAINER_RUNTIME"
+    )]
+    container_runtime:   String,
+    #[structopt(
         raw = true,
         help = "Extra arguments passed to `cargo build` when building Wasm module."
     )]
@@ -625,7 +643,9 @@ pub fn main() -> anyhow::Result<()> {
                     .context("Could not write template schema files.")?;
             }
         }
-        Command::Build { build_options } => handle_build(build_options, true)?,
+        Command::Build { build_options } => {
+            handle_build(build_options, true)?;
+        }
         Command::DisplayState { state_bin_path } => display_state_from_file(state_bin_path)?,
     };
     Ok(())
@@ -637,13 +657,22 @@ pub fn main() -> anyhow::Result<()> {
 /// When building, i.e. when running `cargo concordium build`, the schema
 /// information is outputted, but that is not the case when testing.
 /// This behaviour is configurable via the parameter `print_schema_info`.
-fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Result<()> {
+fn handle_build(
+    options: BuildOptions,
+    print_schema_info: bool,
+) -> anyhow::Result<cargo_metadata::Metadata> {
     let success_style = ansi_term::Color::Green.bold();
     let bold_style = ansi_term::Style::new().bold();
     let build_schema = options.schema_build_options();
-    let (byte_len, schema) = build_contract(
+    let BuildInfo {
+        total_module_len,
+        schema,
+        metadata,
+    } = build_contract(
         options.version,
         build_schema,
+        options.image,
+        options.container_runtime,
         options.out,
         &options.cargo_args,
     )
@@ -741,14 +770,18 @@ fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Resul
         }
     }
     if print_schema_info {
-        let size = format!("{}.{:03} kB", byte_len / 1000, byte_len % 1000);
+        let size = format!(
+            "{}.{:03} kB",
+            total_module_len / 1000,
+            total_module_len % 1000
+        );
         eprintln!(
             "    {} smart contract module {}",
             success_style.paint("Finished"),
             bold_style.paint(size)
         )
     }
-    Ok(())
+    Ok(metadata)
 }
 
 /// Loads the contract state from file and displays it as a tree by printing to

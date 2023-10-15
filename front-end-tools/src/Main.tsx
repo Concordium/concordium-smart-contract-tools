@@ -22,7 +22,7 @@ import {
 } from '@concordium/web-sdk';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
-import { initialize, deploy } from './writing_to_blockchain';
+import { initialize, deploy, write } from './writing_to_blockchain';
 import { read } from './reading_from_blockchain';
 
 import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ARRAYS, EXAMPLE_JSON_OBJECT } from './constants';
@@ -60,6 +60,8 @@ export default function Main(props: ConnectionProps) {
     const [viewErrorModuleReference, setViewErrorModuleReference] = useState('');
     const [transactionErrorDeploy, setTransactionErrorDeploy] = useState('');
     const [transactionErrorInit, setTransactionErrorInit] = useState('');
+    const [transactionErrorUpdate, setTransactionErrorUpdate] = useState('');
+
     const [uploadError, setUploadError] = useState('');
     const [uploadError2, setUploadError2] = useState('');
     const [parsingError, setParsingError] = useState('');
@@ -79,6 +81,7 @@ export default function Main(props: ConnectionProps) {
 
     const [txHashDeploy, setTxHashDeploy] = useState('');
     const [txHashInit, setTxHashInit] = useState('');
+    const [txHashUpdate, setTxHashUpdate] = useState('');
 
     const [accountBalance, setAccountBalance] = useState('');
     const [inputParameter, setInputParameter] = useState('');
@@ -1385,18 +1388,309 @@ export default function Main(props: ConnectionProps) {
                             </TestBox>
                             <TestBox header="Writing to contract">
                                 <label className="field">
-                                    Module Reference:
+                                    Smart Contract Index:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
                                         id="moduleReference"
-                                        ref={moduleReferenceRef}
+                                        ref={smartContractIndexRef}
                                         disabled={useModuleFromStep1}
-                                        type="text"
-                                        placeholder="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
-                                        onChange={changeModuleReferenceHandler}
+                                        type="number"
+                                        placeholder="1999"
+                                        onChange={changeSmartContractHandler}
                                     />
                                 </label>
+                                {useModuleFromStep1 &&
+                                displayContracts.length > 0 &&
+                                (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '') ? (
+                                    <label className="field">
+                                        Smart Contract Name:
+                                        <br />
+                                        <select
+                                            className="dropDownStyle"
+                                            name="contractNameDropDown"
+                                            id="contractNameDropDown"
+                                            ref={contractNameDropDownRef}
+                                            onChange={changeSmarContractDropDownHandler}
+                                        >
+                                            {displayContracts?.map((contract) => (
+                                                <option key={contract}>{contract}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                ) : (
+                                    <label className="field">
+                                        Smart Contract Name:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="contractName"
+                                            type="text"
+                                            placeholder="myContract"
+                                            onChange={changeContractNameHandler}
+                                        />
+                                    </label>
+                                )}
+                                <label className="field">
+                                    Entrypoint Name:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="entryPoint"
+                                        type="text"
+                                        placeholder="set"
+                                        onChange={changeEntryPointHandler}
+                                    />
+                                </label>
+                                <label className="field">
+                                    Max Execution Energy:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="maxContractExecutionEnergy"
+                                        type="text"
+                                        placeholder="30000"
+                                        onChange={changeMaxExecutionEnergyHandler}
+                                    />
+                                </label>
+                                <br />
+                                <br />
+                                <div className="checkbox-wrapper">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            onChange={() => {
+                                                setIsPayable(!isPayable);
+                                            }}
+                                        />
+                                        <span>{' Is Payable'}</span>
+                                    </label>
+                                </div>
+                                {isPayable && (
+                                    <div className="testBox">
+                                        <label className="field">
+                                            CCD amount (micro):
+                                            <br />
+                                            <input
+                                                className="inputFieldStyle"
+                                                id="CCDAmount"
+                                                type="text"
+                                                placeholder="1000000"
+                                                onChange={changeCCDAmountHandler}
+                                            />
+                                        </label>
+                                    </div>
+                                )}
+                                <br />
+                                <br />
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        onChange={() => {
+                                            // setParsingError('');
+                                            // setInputParameter('');
+                                            // setUploadedModuleSchemaBase64('');
+                                            // setTransactionErrorInit('');
+                                            // setDropDown('number');
+                                            setHasInputParameter(!hasInputParameter);
+                                            // setInputParameterTemplate('');
+                                            // setSchemaError('');
+                                        }}
+                                    />
+                                    <span>{' Has Input Parameter'}</span>
+                                </label>
+                                <br />
+                                {hasInputParameter && (
+                                    <div className="testBox">
+                                        <label className="field">
+                                            Upload Smart Contract Module Schema File (e.g. schema.bin):
+                                            <br />
+                                            <br />
+                                            <input
+                                                className="btn btn-primary"
+                                                type="file"
+                                                id="schemaFile"
+                                                ref={schemaFileRef}
+                                                accept=".bin"
+                                                onChange={async () => {
+                                                    setUploadError('');
+                                                    setUploadedModuleSchemaBase64('');
+
+                                                    const hTMLInputElement =
+                                                        schemaFileRef.current as unknown as HTMLInputElement;
+
+                                                    if (
+                                                        hTMLInputElement.files !== undefined &&
+                                                        hTMLInputElement.files !== null &&
+                                                        hTMLInputElement.files.length > 0
+                                                    ) {
+                                                        const file = hTMLInputElement.files[0];
+                                                        const arrayBuffer = await file.arrayBuffer();
+
+                                                        const schema = btoa(
+                                                            new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                                return data + String.fromCharCode(byte);
+                                                            }, '')
+                                                        );
+
+                                                        setUploadedModuleSchemaBase64(schema);
+                                                    } else {
+                                                        setUploadError2('Upload schema file is undefined');
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+
+                                        {!useModuleFromStep1 && uploadedModuleSchemaBase64 && (
+                                            <>
+                                                <br />
+                                                <br />
+                                                <div className="actionResultBox">
+                                                    Schema in base64:
+                                                    <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
+                                                </div>
+                                            </>
+                                        )}
+                                        <br />
+                                        {uploadError2 !== '' && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {uploadError2}.
+                                            </div>
+                                        )}
+                                        {schemaError !== '' && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {schemaError}.
+                                            </div>
+                                        )}
+                                        {entryPointTemplate && (
+                                            <div className="actionResultBox">
+                                                Parameter Template:
+                                                <pre>
+                                                    {JSON.stringify(JSON.parse(entryPointTemplate), undefined, 2)}
+                                                </pre>
+                                            </div>
+                                        )}
+                                        <label className="field">
+                                            Select input parameter type:
+                                            <br />
+                                            <select
+                                                className="dropDownStyle"
+                                                name="inputParameterDropDown"
+                                                id="inputParameterDropDown"
+                                                ref={inputParameterDropDownRef}
+                                                onChange={changeInputParameterDropDownHandler}
+                                            >
+                                                <option value="number">number</option>
+                                                <option value="string">string</option>
+                                                <option value="object">JSON object</option>
+                                                <option value="array">array</option>
+                                            </select>
+                                        </label>
+                                        <br />
+                                        {(dropDown === 'object' || dropDown === 'array') && (
+                                            <label className="field">
+                                                Add your input parameter ({dropDown}):
+                                                <br />
+                                                {dropDown === 'array' && (
+                                                    <textarea
+                                                        id="inputParameterReadTextAreaRef1"
+                                                        ref={inputParameterReadTextAreaRef}
+                                                        onChange={changeInputParameterTextAreaHandler}
+                                                    >
+                                                        {getArrayExample(entryPointTemplate)}
+                                                    </textarea>
+                                                )}
+                                                {dropDown === 'object' && (
+                                                    <textarea
+                                                        id="inputParameterReadTextAreaRef2"
+                                                        ref={inputParameterReadTextAreaRef}
+                                                        onChange={changeInputParameterTextAreaHandler}
+                                                    >
+                                                        {getObjectExample(entryPointTemplate)}
+                                                    </textarea>
+                                                )}
+                                            </label>
+                                        )}
+                                        {(dropDown === 'string' || dropDown === 'number') && (
+                                            <label className="field">
+                                                Add your input parameter ({dropDown}):
+                                                <br />
+                                                <input
+                                                    className="inputFieldStyle"
+                                                    id="inputParameterField"
+                                                    ref={inputParameterFieldRef}
+                                                    type="text"
+                                                    placeholder={dropDown === 'string' ? 'myString' : '1000000'}
+                                                    onChange={changeInputParameterFieldHandler}
+                                                />
+                                            </label>
+                                        )}
+                                        {parsingError && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {parsingError}.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <br />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setReadError('');
+                                        setReturnValue('');
+                                        const tx = write(
+                                            connection,
+                                            account,
+                                            inputParameter,
+                                            contractName,
+                                            entryPoint,
+                                            hasInputParameter,
+                                            useModuleFromStep1,
+                                            uploadedModuleSchemaBase64,
+                                            dropDown,
+                                            maxContractExecutionEnergy,
+                                            smartContractIndexInputField,
+                                            cCDAmount
+                                        );
+
+                                        tx.then(setTxHashUpdate).catch((err: Error) =>
+                                            setTransactionErrorUpdate((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Write Smart Contract
+                                </button>
+                                <br />
+                                <br />
+                                {!txHashUpdate && transactionErrorUpdate && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {transactionErrorUpdate}.
+                                    </div>
+                                )}
+                                {txHashUpdate && (
+                                    <>
+                                        <div>
+                                            Transaction hash:{' '}
+                                            <a
+                                                className="link"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                href={`https://${
+                                                    isTestnet ? `testnet.` : ``
+                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashUpdate}`}
+                                            >
+                                                {txHashUpdate}
+                                            </a>
+                                        </div>
+                                        <br />
+                                        <div>
+                                            CCDScan will take a moment to pick up the above transaction, hence the above
+                                            link will work in a bit.
+                                        </div>
+                                    </>
+                                )}
                             </TestBox>
                             <br />
                             <a

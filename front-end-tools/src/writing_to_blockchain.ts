@@ -5,10 +5,12 @@ import {
     DeployModulePayload,
     InitContractPayload,
     ModuleReference,
+    UpdateContractPayload,
     toBuffer,
 } from '@concordium/web-sdk';
 import { WalletConnection } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
+import { CONTRACT_SUB_INDEX } from './constants';
 
 export async function deploy(connection: WalletConnection, account: string, base64Module: string) {
     if (base64Module === '') {
@@ -18,6 +20,86 @@ export async function deploy(connection: WalletConnection, account: string, base
     return connection.signAndSendTransaction(account, AccountTransactionType.DeployModule, {
         source: toBuffer(base64Module, 'base64'),
     } as DeployModulePayload);
+}
+
+export async function write(
+    connection: WalletConnection,
+    account: string,
+    inputParameter: string,
+    contractName: string,
+    entryPoint: string,
+    hasInputParameter: boolean,
+    useModuleFromStep1: boolean,
+    moduleSchema: string,
+    dropDown: string,
+    maxContractExecutionEnergy: string,
+    contractIndex: bigint,
+    amount?: string
+) {
+    if (contractName === '') {
+        throw new Error(`Set smart contract name`);
+    }
+
+    if (entryPoint === '') {
+        throw new Error(`Set entry point`);
+    }
+
+    if (maxContractExecutionEnergy === '') {
+        throw new Error(`Set max contract execution energy`);
+    }
+
+    if (hasInputParameter) {
+        if (!useModuleFromStep1 && moduleSchema === '') {
+            throw new Error(`Set schema`);
+        } else if (useModuleFromStep1 && moduleSchema === '') {
+            throw new Error(`No embedded module schema found in module`);
+        }
+    }
+
+    let schema;
+
+    if (hasInputParameter) {
+        switch (dropDown) {
+            case 'number':
+                schema = {
+                    parameters: Number(inputParameter),
+                    schema: moduleSchemaFromBase64(moduleSchema),
+                };
+                break;
+            case 'string':
+                schema = {
+                    parameters: inputParameter,
+                    schema: moduleSchemaFromBase64(moduleSchema),
+                };
+                break;
+            case 'object':
+                schema = {
+                    parameters: JSON.parse(inputParameter),
+                    schema: moduleSchemaFromBase64(moduleSchema),
+                };
+                break;
+            case 'array':
+                schema = {
+                    parameters: JSON.parse(inputParameter),
+                    schema: moduleSchemaFromBase64(moduleSchema),
+                };
+                break;
+            default:
+                throw new Error(`Dropdown option does not exist`);
+        }
+    }
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(amount ? Number(amount) : 0)),
+            address: { index: contractIndex, subindex: CONTRACT_SUB_INDEX },
+            receiveName: `${contractName}.${entryPoint}`,
+            maxContractExecutionEnergy: BigInt(maxContractExecutionEnergy),
+        } as UpdateContractPayload,
+        schema
+    );
 }
 
 export async function initialize(

@@ -95,10 +95,14 @@ export default function Main(props: ConnectionProps) {
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
     const [smartContractIndexInputField, setSmartContractIndexInputFiled] = useState<bigint>(1999n);
-    const [entryPoint, setEntryPoint] = useState('view');
+    const [entryPointReadFunction, setEntryPointReadFunction] = useState('view');
+    const [entryPointWriteFunction, setEntryPointWriteFunction] = useState('set');
     const [returnValue, setReturnValue] = useState<string | undefined>(undefined);
     const [readError, setReadError] = useState<string | undefined>(undefined);
-    const [entryPointTemplate, setEntryPointTemplate] = useState<string | undefined>(undefined);
+    const [entryPointTemplateReadFunction, setEntryPointTemplateReadFunction] = useState<string | undefined>(undefined);
+    const [entryPointTemplateWriteFunction, setEntryPointTemplateWriteFunction] = useState<string | undefined>(
+        undefined
+    );
 
     const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('30000');
     const [useModuleFromStep1, setUseModuleFromStep1] = useState(false);
@@ -124,6 +128,7 @@ export default function Main(props: ConnectionProps) {
     const inputParameterFieldRef = useRef(null);
     const smartContractIndexRef = useRef(null);
     const inputParameterReadTextAreaRef = useRef(null);
+    const inputParameterWriteTextAreaRef = useRef(null);
 
     function arraysEqual(a: Uint8Array, b: Uint8Array) {
         if (a === b) return true;
@@ -190,9 +195,14 @@ export default function Main(props: ConnectionProps) {
         setSmartContractIndexInputFiled(BigInt(target.value));
     }, []);
 
-    const changeEntryPointHandler = useCallback((event: ChangeEvent) => {
+    const changeEntryPointReadFunctionHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
-        setEntryPoint(target.value);
+        setEntryPointReadFunction(target.value);
+    }, []);
+
+    const changeEntryPointWriteFunctionHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setEntryPointWriteFunction(target.value);
     }, []);
 
     const changeMaxExecutionEnergyHandler = useCallback((event: ChangeEvent) => {
@@ -393,10 +403,12 @@ export default function Main(props: ConnectionProps) {
     useEffect(() => {
         setSchemaError(undefined);
         setInputParameterTemplate(undefined);
-        setEntryPointTemplate(undefined);
+        setEntryPointTemplateWriteFunction(undefined);
+        setEntryPointTemplateReadFunction(undefined);
 
         let initTemplate;
-        let receiveTemplate;
+        let receiveTemplateWriteFunction;
+        let receiveTemplateReadFunction;
 
         if (
             contractName !== undefined &&
@@ -411,15 +423,25 @@ export default function Main(props: ConnectionProps) {
                     schema = schemaFromModule;
                 }
 
-                const updateContractParameterSchemaBuffer = getUpdateContractParameterSchema(
+                const readFunctionTemplate = getUpdateContractParameterSchema(
                     toBuffer(schema, 'base64'),
                     contractName,
-                    entryPoint
+                    entryPointReadFunction
                 );
 
-                receiveTemplate = displayTypeSchemaTemplate(updateContractParameterSchemaBuffer);
+                receiveTemplateReadFunction = displayTypeSchemaTemplate(readFunctionTemplate);
 
-                setEntryPointTemplate(receiveTemplate);
+                setEntryPointTemplateReadFunction(receiveTemplateReadFunction);
+
+                const writeFunctionTemplate = getUpdateContractParameterSchema(
+                    toBuffer(schema, 'base64'),
+                    contractName,
+                    entryPointWriteFunction
+                );
+
+                receiveTemplateWriteFunction = displayTypeSchemaTemplate(writeFunctionTemplate);
+
+                setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
 
                 const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
                     toBuffer(schema, 'base64'),
@@ -451,13 +473,22 @@ export default function Main(props: ConnectionProps) {
 
         if (dropDown === 'array') {
             const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
-            element.value = getArrayExample(receiveTemplate);
+            element.value = getArrayExample(receiveTemplateReadFunction);
         } else if (dropDown === 'object') {
             const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
-            element.value = getObjectExample(receiveTemplate);
+            element.value = getObjectExample(receiveTemplateReadFunction);
+        }
+
+        if (dropDown === 'array') {
+            const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
+            element.value = getArrayExample(receiveTemplateWriteFunction);
+        } else if (dropDown === 'object') {
+            const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
+            element.value = getObjectExample(receiveTemplateWriteFunction);
         }
     }, [
-        entryPoint,
+        entryPointReadFunction,
+        entryPointWriteFunction,
         hasInputParameterInitFunction,
         hasInputParameterReadFunction,
         hasInputParameterWriteFunction,
@@ -1229,8 +1260,8 @@ export default function Main(props: ConnectionProps) {
                                         className="inputFieldStyle"
                                         id="entryPoint"
                                         type="text"
-                                        value={entryPoint}
-                                        onChange={changeEntryPointHandler}
+                                        value={entryPointReadFunction}
+                                        onChange={changeEntryPointReadFunctionHandler}
                                     />
                                 </label>
                                 <br />
@@ -1309,14 +1340,18 @@ export default function Main(props: ConnectionProps) {
                                                 Error: {schemaError}.
                                             </div>
                                         )}
-                                        {entryPointTemplate && (
+                                        {entryPointTemplateReadFunction && (
                                             <>
                                                 <br />
                                                 <br />
                                                 <div className="actionResultBox">
                                                     Parameter Template:
                                                     <pre>
-                                                        {JSON.stringify(JSON.parse(entryPointTemplate), undefined, 2)}
+                                                        {JSON.stringify(
+                                                            JSON.parse(entryPointTemplateReadFunction),
+                                                            undefined,
+                                                            2
+                                                        )}
                                                     </pre>
                                                 </div>
                                             </>
@@ -1348,7 +1383,7 @@ export default function Main(props: ConnectionProps) {
                                                         ref={inputParameterReadTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
-                                                        {getArrayExample(entryPointTemplate)}
+                                                        {getArrayExample(entryPointTemplateReadFunction)}
                                                     </textarea>
                                                 )}
                                                 {dropDown === 'object' && (
@@ -1357,7 +1392,7 @@ export default function Main(props: ConnectionProps) {
                                                         ref={inputParameterReadTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
-                                                        {getObjectExample(entryPointTemplate)}
+                                                        {getObjectExample(entryPointTemplateReadFunction)}
                                                     </textarea>
                                                 )}
                                             </label>
@@ -1395,7 +1430,7 @@ export default function Main(props: ConnectionProps) {
                                             client,
                                             contractName,
                                             smartContractIndexInputField,
-                                            entryPoint,
+                                            entryPointReadFunction,
                                             uploadedModuleSchemaBase64,
                                             inputParameter,
                                             dropDown,
@@ -1478,8 +1513,8 @@ export default function Main(props: ConnectionProps) {
                                         className="inputFieldStyle"
                                         id="entryPoint"
                                         type="text"
-                                        value={entryPoint}
-                                        onChange={changeEntryPointHandler}
+                                        value={entryPointWriteFunction}
+                                        onChange={changeEntryPointWriteFunctionHandler}
                                     />
                                 </label>
                                 <label className="field">
@@ -1603,11 +1638,15 @@ export default function Main(props: ConnectionProps) {
                                                 Error: {schemaError}.
                                             </div>
                                         )}
-                                        {entryPointTemplate && (
+                                        {entryPointTemplateWriteFunction && (
                                             <div className="actionResultBox">
                                                 Parameter Template:
                                                 <pre>
-                                                    {JSON.stringify(JSON.parse(entryPointTemplate), undefined, 2)}
+                                                    {JSON.stringify(
+                                                        JSON.parse(entryPointTemplateWriteFunction),
+                                                        undefined,
+                                                        2
+                                                    )}
                                                 </pre>
                                             </div>
                                         )}
@@ -1634,20 +1673,20 @@ export default function Main(props: ConnectionProps) {
                                                 <br />
                                                 {dropDown === 'array' && (
                                                     <textarea
-                                                        id="inputParameterReadTextAreaRef1"
-                                                        ref={inputParameterReadTextAreaRef}
+                                                        id="inputParameterWriteTextAreaRef1"
+                                                        ref={inputParameterWriteTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
-                                                        {getArrayExample(entryPointTemplate)}
+                                                        {getArrayExample(entryPointTemplateWriteFunction)}
                                                     </textarea>
                                                 )}
                                                 {dropDown === 'object' && (
                                                     <textarea
-                                                        id="inputParameterReadTextAreaRef2"
-                                                        ref={inputParameterReadTextAreaRef}
+                                                        id="inputParameterWriteTextAreaRef2"
+                                                        ref={inputParameterWriteTextAreaRef}
                                                         onChange={changeInputParameterTextAreaHandler}
                                                     >
-                                                        {getObjectExample(entryPointTemplate)}
+                                                        {getObjectExample(entryPointTemplateWriteFunction)}
                                                     </textarea>
                                                 )}
                                             </label>
@@ -1686,7 +1725,7 @@ export default function Main(props: ConnectionProps) {
                                             account,
                                             inputParameter,
                                             contractName,
-                                            entryPoint,
+                                            entryPointWriteFunction,
                                             hasInputParameterWriteFunction,
                                             useModuleFromStep1,
                                             uploadedModuleSchemaBase64,

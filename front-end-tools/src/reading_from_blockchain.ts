@@ -1,7 +1,6 @@
 import {
     toBuffer,
     ConcordiumGRPCClient,
-    AccountAddress,
     deserializeReceiveReturnValue,
     serializeUpdateContractParameters,
 } from '@concordium/web-sdk';
@@ -37,26 +36,26 @@ export async function read(
 
         let inputParameterFormated;
 
-            if (inputParameter === undefined) {
-                throw new Error(`Set input parameter`);
-            }
+        if (inputParameter === undefined) {
+            throw new Error(`Set input parameter`);
+        }
 
-            switch (dropDown) {
-                case 'number':
-                    inputParameterFormated = Number(inputParameter);
-                    break;
-                case 'string':
-                    inputParameterFormated = inputParameter;
-                    break;
-                case 'object':
-                    inputParameterFormated = JSON.parse(inputParameter);
-                    break;
-                case 'array':
-                    inputParameterFormated = JSON.parse(inputParameter);
-                    break;
-                default:
-                    throw new Error(`Dropdown option does not exist`);
-            }
+        switch (dropDown) {
+            case 'number':
+                inputParameterFormated = Number(inputParameter);
+                break;
+            case 'string':
+                inputParameterFormated = inputParameter;
+                break;
+            case 'object':
+                inputParameterFormated = JSON.parse(inputParameter);
+                break;
+            case 'array':
+                inputParameterFormated = JSON.parse(inputParameter);
+                break;
+            default:
+                throw new Error(`Dropdown option does not exist`);
+        }
 
         if (moduleSchema !== undefined) {
             param = serializeUpdateContractParameters(
@@ -101,11 +100,3 @@ export async function read(
         return JSON.stringify(returnValue);
     }
 }
-
-export async function accountInfo(rpcClient: ConcordiumGRPCClient, account: string) {
-    return rpcClient.getAccountInfo(new AccountAddress(account));
-}
-
-// export async function smartContractInfo(rpcClient: ConcordiumGRPCClient) {
-//     return rpcClient.getInstanceInfo({ index: CONTRACT_INDEX, subindex: CONTRACT_SUB_INDEX });
-// }

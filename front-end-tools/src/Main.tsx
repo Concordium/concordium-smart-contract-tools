@@ -7,6 +7,7 @@ import {
     useGrpcClient,
     TESTNET,
     MAINNET,
+    useWalletConnectorSelector,
 } from '@concordium/react-components';
 import { Buffer } from 'buffer';
 import {
@@ -20,7 +21,6 @@ import {
     getInitContractParameterSchema,
     getUpdateContractParameterSchema,
 } from '@concordium/web-sdk';
-import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { initialize, deploy, write } from './writing_to_blockchain';
 import { read } from './reading_from_blockchain';
@@ -48,12 +48,15 @@ interface ConnectionProps {
 
 export default function Main(props: ConnectionProps) {
     const { walletConnectionProps, isTestnet } = props;
-
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } =
         walletConnectionProps;
-
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
-    const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
+    const { isConnected, select } = useWalletConnectorSelector(BROWSER_WALLET, connection, {
+        ...walletConnectionProps,
+    });
+
+    const { connect, connectError } = useConnect(activeConnector, setConnection);
+
     const client = useGrpcClient(isTestnet ? TESTNET : MAINNET);
 
     const [viewErrorAccountInfo, setViewErrorAccountInfo] = useState<string | undefined>(undefined);
@@ -111,7 +114,6 @@ export default function Main(props: ConnectionProps) {
     const [inputParameterTemplate, setInputParameterTemplate] = useState<string | undefined>(undefined);
     const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
-    const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameterInitFunction, setHasInputParameterInitFunction] = useState(false);
     const [hasInputParameterReadFunction, setHasInputParameterReadFunction] = useState(false);
     const [hasInputParameterWriteFunction, setHasInputParameterWriteFunction] = useState(false);
@@ -519,23 +521,20 @@ export default function Main(props: ConnectionProps) {
         }
     }, [connection, account, client]);
 
+    useEffect(() => {
+        select();
+    }, []);
+
     return (
         <main className="container">
             <div className="textCenter">
                 <br />
-                <WalletConnectionTypeButton
-                    connectorType={BROWSER_WALLET}
-                    connectorName="Browser Wallet"
-                    setWaitingForUser={setWaitingForUser}
-                    connection={connection}
-                    {...walletConnectionProps}
-                />
                 {activeConnectorError && (
                     <p className="alert alert-danger" role="alert">
                         Connector Error: {activeConnectorError}.
                     </p>
                 )}
-                {!activeConnectorError && !isWaitingForTransaction && activeConnectorType && !activeConnector && (
+                {!activeConnectorError && activeConnectorType && !activeConnector && (
                     <p>
                         <i>Loading connector...</i>
                     </p>
@@ -545,13 +544,16 @@ export default function Main(props: ConnectionProps) {
                         Connect Error: {connectError}.
                     </p>
                 )}
-                {!connection && !isWaitingForTransaction && activeConnectorType && activeConnector && (
-                    <p>
-                        <button className="btn btn-primary me-1" type="button" onClick={connect}>
-                            {isConnecting && 'Connecting...'}
-                            {!isConnecting && activeConnectorType === BROWSER_WALLET && 'Connect Browser Wallet'}
-                        </button>
-                    </p>
+                {!isConnected && (
+                    <button
+                        className="btn btn-primary me-1"
+                        type="button"
+                        onClick={() => {
+                            connect();
+                        }}
+                    >
+                        Connect To Browser Wallet
+                    </button>
                 )}
                 {connection && !accountExistsOnNetwork && (
                     <>

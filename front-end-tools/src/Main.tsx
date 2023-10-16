@@ -56,56 +56,56 @@ export default function Main(props: ConnectionProps) {
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
     const client = useGrpcClient(isTestnet ? TESTNET : MAINNET);
 
-    const [viewErrorAccountInfo, setViewErrorAccountInfo] = useState('');
-    const [viewErrorModuleReference, setViewErrorModuleReference] = useState('');
-    const [transactionErrorDeploy, setTransactionErrorDeploy] = useState('');
-    const [transactionErrorInit, setTransactionErrorInit] = useState('');
-    const [transactionErrorUpdate, setTransactionErrorUpdate] = useState('');
+    const [viewErrorAccountInfo, setViewErrorAccountInfo] = useState<string | undefined>(undefined);
+    const [viewErrorModuleReference, setViewErrorModuleReference] = useState<string | undefined>(undefined);
+    const [transactionErrorDeploy, setTransactionErrorDeploy] = useState<string | undefined>(undefined);
+    const [transactionErrorInit, setTransactionErrorInit] = useState<string | undefined>(undefined);
+    const [transactionErrorUpdate, setTransactionErrorUpdate] = useState<string | undefined>(undefined);
 
-    const [uploadError, setUploadError] = useState('');
-    const [uploadError2, setUploadError2] = useState('');
-    const [parsingError, setParsingError] = useState('');
-    const [smartContractIndexError, setSmartContractIndexError] = useState('');
-    const [moduleReferenceError, setModuleReferenceError] = useState('');
-    const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState('');
-    const [schemaError, setSchemaError] = useState('');
+    const [uploadError, setUploadError] = useState<string | undefined>(undefined);
+    const [uploadError2, setUploadError2] = useState<string | undefined>(undefined);
+    const [parsingError, setParsingError] = useState<string | undefined>(undefined);
+    const [smartContractIndexError, setSmartContractIndexError] = useState<string | undefined>(undefined);
+    const [moduleReferenceError, setModuleReferenceError] = useState<string | undefined>(undefined);
+    const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState<string | undefined>(undefined);
+    const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
-    const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState('');
+    const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState<string | undefined>(undefined);
     const [isModuleReferenceAlreadyDeployedStep1, setIsModuleReferenceAlreadyDeployedStep1] = useState(false);
     const [isModuleReferenceAlreadyDeployedStep2, setIsModuleReferenceAlreadyDeployedStep2] = useState(false);
-    const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState('');
+    const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState<string | undefined>(undefined);
 
     const [shouldWarnDifferenceModuleReferences, setShouldWarnDifferenceModuleReferences] = useState(false);
     const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
 
-    const [txHashDeploy, setTxHashDeploy] = useState('');
-    const [txHashInit, setTxHashInit] = useState('');
-    const [txHashUpdate, setTxHashUpdate] = useState('');
+    const [txHashDeploy, setTxHashDeploy] = useState<string | undefined>(undefined);
+    const [txHashInit, setTxHashInit] = useState<string | undefined>(undefined);
+    const [txHashUpdate, setTxHashUpdate] = useState<string | undefined>(undefined);
 
-    const [accountBalance, setAccountBalance] = useState('');
-    const [inputParameter, setInputParameter] = useState('');
-    const [contractName, setContractName] = useState('myContract');
-    const [moduleReference, setModuleReference] = useState(
+    const [accountBalance, setAccountBalance] = useState<string | undefined>(undefined);
+    const [inputParameter, setInputParameter] = useState<string | undefined>(undefined);
+    const [contractName, setContractName] = useState<string | undefined>('myContract');
+    const [moduleReference, setModuleReference] = useState<string | undefined>(
         '91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693'
     );
     const [cCDAmount, setCCDAmount] = useState('0');
-    const [base64Module, setBase64Module] = useState('');
-    const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState('');
+    const [base64Module, setBase64Module] = useState<string | undefined>(undefined);
+    const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState<string | undefined>(undefined);
     const [dropDown, setDropDown] = useState('number');
-    const [smartContractIndex, setSmartContractIndex] = useState('');
+    const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
     const [smartContractIndexInputField, setSmartContractIndexInputFiled] = useState<bigint>(1999n);
     const [entryPoint, setEntryPoint] = useState('view');
-    const [returnValue, setReturnValue] = useState('');
-    const [readError, setReadError] = useState('');
-    const [entryPointTemplate, setEntryPointTemplate] = useState('');
+    const [returnValue, setReturnValue] = useState<string | undefined>(undefined);
+    const [readError, setReadError] = useState<string | undefined>(undefined);
+    const [entryPointTemplate, setEntryPointTemplate] = useState<string | undefined>(undefined);
 
     const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('30000');
     const [useModuleFromStep1, setUseModuleFromStep1] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
     const [displayContracts, setDisplayContracts] = useState<string[]>([]);
-    const [inputParameterTemplate, setInputParameterTemplate] = useState('');
-    const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState('');
+    const [inputParameterTemplate, setInputParameterTemplate] = useState<string | undefined>(undefined);
+    const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
     const [hasInputParameterInitFunction, setHasInputParameterInitFunction] = useState(false);
@@ -136,20 +136,20 @@ export default function Main(props: ConnectionProps) {
         return true;
     }
 
-    function getObjectExample(template: string) {
-        return template !== ''
+    function getObjectExample(template: string | undefined) {
+        return template !== undefined
             ? JSON.stringify(JSON.parse(template), undefined, 2)
             : JSON.stringify(EXAMPLE_JSON_OBJECT, undefined, 2);
     }
 
-    function getArrayExample(template: string) {
-        return template !== '' ? JSON.stringify(JSON.parse(template), undefined, 2) : EXAMPLE_ARRAYS;
+    function getArrayExample(template: string | undefined) {
+        return template !== undefined ? JSON.stringify(JSON.parse(template), undefined, 2) : EXAMPLE_ARRAYS;
     }
 
     const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
-        setTransactionErrorInit('');
-        setModuleReferenceLengthError('');
-        setModuleReference('');
+        setTransactionErrorInit(undefined);
+        setModuleReferenceLengthError(undefined);
+        setModuleReference(undefined);
 
         const target = event.target as HTMLTextAreaElement;
 
@@ -163,9 +163,9 @@ export default function Main(props: ConnectionProps) {
     }, []);
 
     const changeInputParameterDropDownHandler = useCallback(() => {
-        setParsingError('');
-        setInputParameter('');
-        setTransactionErrorInit('');
+        setParsingError(undefined);
+        setInputParameter(undefined);
+        setTransactionErrorInit(undefined);
         const e = inputParameterDropDownRef.current as unknown as HTMLSelectElement;
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
@@ -173,7 +173,7 @@ export default function Main(props: ConnectionProps) {
     }, []);
 
     const changeSmarContractDropDownHandler = useCallback(() => {
-        setTransactionErrorInit('');
+        setTransactionErrorInit(undefined);
         const e = contractNameDropDownRef.current as unknown as HTMLSelectElement;
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
@@ -201,21 +201,21 @@ export default function Main(props: ConnectionProps) {
     }, []);
 
     const changeContractNameHandler = useCallback((event: ChangeEvent) => {
-        setTransactionErrorInit('');
+        setTransactionErrorInit(undefined);
         const target = event.target as HTMLTextAreaElement;
         setContractName(target.value);
     }, []);
 
     const changeInputParameterFieldHandler = useCallback((event: ChangeEvent) => {
-        setParsingError('');
-        setTransactionErrorInit('');
+        setParsingError(undefined);
+        setTransactionErrorInit(undefined);
         const target = event.target as HTMLTextAreaElement;
         setInputParameter(target.value);
     }, []);
 
     const changeInputParameterTextAreaHandler = useCallback((event: ChangeEvent) => {
-        setParsingError('');
-        setTransactionErrorInit('');
+        setParsingError(undefined);
+        setTransactionErrorInit(undefined);
         const inputTextArea = inputParameterTextAreaRef.current as unknown as HTMLTextAreaElement;
         inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
         const target = event.target as HTMLTextAreaElement;
@@ -245,10 +245,10 @@ export default function Main(props: ConnectionProps) {
                         } else {
                             setAccountExistsOnNetwork(false);
                         }
-                        setViewErrorAccountInfo('');
+                        setViewErrorAccountInfo(undefined);
                     })
                     .catch((e) => {
-                        setAccountBalance('');
+                        setAccountBalance(undefined);
                         setViewErrorAccountInfo((e as Error).message.replaceAll('%20', ' '));
                         setAccountExistsOnNetwork(false);
                     });
@@ -260,14 +260,14 @@ export default function Main(props: ConnectionProps) {
     // Refresh moduleReference periodically.
     // eslint-disable-next-line consistent-return
     useEffect(() => {
-        if (connection && client && account && txHashDeploy !== '') {
+        if (connection && client && account && txHashDeploy !== undefined) {
             const interval = setInterval(() => {
                 console.log('refreshing_moduleReference');
                 client
                     .getBlockItemStatus(txHashDeploy)
                     .then((report) => {
                         if (report !== undefined) {
-                            setViewErrorModuleReference('');
+                            setViewErrorModuleReference(undefined);
                             if (
                                 report.status === 'finalized' &&
                                 report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
@@ -278,7 +278,7 @@ export default function Main(props: ConnectionProps) {
                         }
                     })
                     .catch((e) => {
-                        setModuleReferenceDeployed('');
+                        setModuleReferenceDeployed(undefined);
                         setViewErrorModuleReference((e as Error).message);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
@@ -289,14 +289,14 @@ export default function Main(props: ConnectionProps) {
     // Refresh smartContractIndex periodically.
     // eslint-disable-next-line consistent-return
     useEffect(() => {
-        if (connection && client && account && txHashInit !== '') {
+        if (connection && client && account && txHashInit !== undefined) {
             const interval = setInterval(() => {
                 console.log('refreshing_smartContractIndex');
                 client
                     .getBlockItemStatus(txHashInit)
                     .then((report) => {
                         if (report !== undefined) {
-                            setViewErrorModuleReference('');
+                            setViewErrorModuleReference(undefined);
                             if (report.status === 'finalized') {
                                 if (
                                     report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
@@ -312,7 +312,7 @@ export default function Main(props: ConnectionProps) {
                         }
                     })
                     .catch((e) => {
-                        setModuleReferenceDeployed('');
+                        setModuleReferenceDeployed(undefined);
                         setViewErrorModuleReference((e as Error).message);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
@@ -356,8 +356,8 @@ export default function Main(props: ConnectionProps) {
 
     useEffect(() => {
         if (
-            moduleReference !== '' &&
-            moduleReferenceCalculated !== '' &&
+            moduleReference !== undefined &&
+            moduleReferenceCalculated !== undefined &&
             moduleReferenceCalculated !== moduleReference
         ) {
             setShouldWarnDifferenceModuleReferences(true);
@@ -367,7 +367,7 @@ export default function Main(props: ConnectionProps) {
     }, [moduleReference, moduleReferenceCalculated]);
 
     useEffect(() => {
-        if (inputParameterTemplate !== '' && hasInputParameterInitFunction === false) {
+        if (inputParameterTemplate !== undefined && hasInputParameterInitFunction === false) {
             setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
             setShouldWarnInputParameterInSchemaIgnored(false);
@@ -375,7 +375,7 @@ export default function Main(props: ConnectionProps) {
     }, [inputParameterTemplate, hasInputParameterInitFunction]);
 
     useEffect(() => {
-        if (inputParameterTemplate !== '' && hasInputParameterReadFunction === false) {
+        if (inputParameterTemplate !== undefined && hasInputParameterReadFunction === false) {
             setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
             setShouldWarnInputParameterInSchemaIgnored(false);
@@ -383,7 +383,7 @@ export default function Main(props: ConnectionProps) {
     }, [inputParameterTemplate, hasInputParameterReadFunction]);
 
     useEffect(() => {
-        if (inputParameterTemplate !== '' && hasInputParameterWriteFunction === false) {
+        if (inputParameterTemplate !== undefined && hasInputParameterWriteFunction === false) {
             setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
             setShouldWarnInputParameterInSchemaIgnored(false);
@@ -391,17 +391,28 @@ export default function Main(props: ConnectionProps) {
     }, [inputParameterTemplate, hasInputParameterWriteFunction]);
 
     useEffect(() => {
-        setSchemaError('');
-        setInputParameterTemplate('');
-        setEntryPointTemplate('');
+        setSchemaError(undefined);
+        setInputParameterTemplate(undefined);
+        setEntryPointTemplate(undefined);
 
-        let initTemplate = '';
-        let receiveTemplate = '';
+        let initTemplate;
+        let receiveTemplate;
 
-        if (contractName !== '' && (useModuleFromStep1 || uploadedModuleSchemaBase64 !== '')) {
+        if (
+            contractName !== undefined &&
+            (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64 !== undefined)
+        ) {
             try {
+                let schema = '';
+
+                const schemaFromModule = useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
+
+                if (schemaFromModule !== undefined) {
+                    schema = schemaFromModule;
+                }
+
                 const updateContractParameterSchemaBuffer = getUpdateContractParameterSchema(
-                    toBuffer(useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64, 'base64'),
+                    toBuffer(schema, 'base64'),
                     contractName,
                     entryPoint
                 );
@@ -411,7 +422,7 @@ export default function Main(props: ConnectionProps) {
                 setEntryPointTemplate(receiveTemplate);
 
                 const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
-                    toBuffer(useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64, 'base64'),
+                    toBuffer(schema, 'base64'),
                     contractName,
                     2
                 );
@@ -467,11 +478,11 @@ export default function Main(props: ConnectionProps) {
                     } else {
                         setAccountExistsOnNetwork(false);
                     }
-                    setViewErrorAccountInfo('');
+                    setViewErrorAccountInfo(undefined);
                 })
                 .catch((e) => {
                     setViewErrorAccountInfo((e as Error).message.replaceAll('%20', ' '));
-                    setAccountBalance('');
+                    setAccountBalance(undefined);
                     setAccountExistsOnNetwork(false);
                 });
         }
@@ -554,8 +565,12 @@ export default function Main(props: ConnectionProps) {
                                 </a>
                             </div>
                             <br />
-                            <div className="label">Your account balance:</div>
-                            <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
+                            {accountBalance && (
+                                <>
+                                    <div className="label">Your account balance:</div>
+                                    <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
+                                </>
+                            )}
                             <TestBox header="Step 1: Deploy Smart Contract Module">
                                 <label className="field">
                                     Upload Smart Contract Module File (e.g. myContract.wasm.v1):
@@ -568,10 +583,10 @@ export default function Main(props: ConnectionProps) {
                                         ref={moduleFileRef}
                                         accept=".wasm,.wasm.v0,.wasm.v1"
                                         onChange={async () => {
-                                            setUploadError('');
-                                            setModuleReferenceDeployed('');
-                                            setTransactionErrorDeploy('');
-                                            setTxHashDeploy('');
+                                            setUploadError(undefined);
+                                            setModuleReferenceDeployed(undefined);
+                                            setTransactionErrorDeploy(undefined);
+                                            setTxHashDeploy(undefined);
 
                                             const hTMLInputElement =
                                                 moduleFileRef.current as unknown as HTMLInputElement;
@@ -662,7 +677,7 @@ export default function Main(props: ConnectionProps) {
                                     <br />
                                     <br />
                                 </label>
-                                {uploadError !== '' && (
+                                {uploadError !== undefined && (
                                     <div className="alert alert-danger" role="alert">
                                         Error: {uploadError}.
                                     </div>
@@ -689,11 +704,11 @@ export default function Main(props: ConnectionProps) {
                                                 className="btn btn-primary"
                                                 type="button"
                                                 onClick={() => {
-                                                    setTxHashDeploy('');
-                                                    setTransactionErrorDeploy('');
+                                                    setTxHashDeploy(undefined);
+                                                    setTransactionErrorDeploy(undefined);
                                                     const tx = deploy(connection, account, base64Module);
                                                     tx.then((txHash) => {
-                                                        setModuleReferenceDeployed('');
+                                                        setModuleReferenceDeployed(undefined);
                                                         setTxHashDeploy(txHash);
                                                     }).catch((err: Error) =>
                                                         setTransactionErrorDeploy((err as Error).message)
@@ -759,10 +774,10 @@ export default function Main(props: ConnectionProps) {
                                             id="useModuleReferenceFromStep1"
                                             ref={useModuleReferenceFromStep1Ref}
                                             onChange={() => {
-                                                setModuleReferenceError('');
-                                                setModuleReference('');
-                                                setContractName('');
-                                                setUploadedModuleSchemaBase64('');
+                                                setModuleReferenceError(undefined);
+                                                setModuleReference(undefined);
+                                                setContractName(undefined);
+                                                setUploadedModuleSchemaBase64(undefined);
 
                                                 const checkboxElement =
                                                     useModuleReferenceFromStep1Ref.current as unknown as HTMLInputElement;
@@ -776,26 +791,21 @@ export default function Main(props: ConnectionProps) {
 
                                                 if (
                                                     checkboxElement.checked &&
-                                                    moduleReferenceDeployed === '' &&
-                                                    moduleReferenceCalculated === ''
+                                                    moduleReferenceDeployed === undefined &&
+                                                    moduleReferenceCalculated === undefined
                                                 ) {
                                                     setModuleReferenceError('Module reference is not set in step 1');
                                                 }
 
-                                                if (
-                                                    checkboxElement.checked &&
-                                                    (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '')
-                                                ) {
-                                                    element.value =
-                                                        moduleReferenceDeployed !== ''
-                                                            ? moduleReferenceDeployed
-                                                            : moduleReferenceCalculated;
+                                                const newModuleReference =
+                                                    moduleReferenceDeployed !== undefined
+                                                        ? moduleReferenceDeployed
+                                                        : moduleReferenceCalculated;
 
-                                                    setModuleReference(
-                                                        moduleReferenceDeployed !== ''
-                                                            ? moduleReferenceDeployed
-                                                            : moduleReferenceCalculated
-                                                    );
+                                                if (checkboxElement.checked && newModuleReference !== undefined) {
+                                                    element.value = newModuleReference;
+
+                                                    setModuleReference(newModuleReference);
 
                                                     setDisplayContracts(contracts);
                                                     setContractName(contracts[0]);
@@ -860,7 +870,7 @@ export default function Main(props: ConnectionProps) {
                                 </label>
                                 {useModuleFromStep1 &&
                                 displayContracts.length > 0 &&
-                                (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '') ? (
+                                (moduleReferenceDeployed !== undefined || moduleReferenceCalculated !== undefined) ? (
                                     <label className="field">
                                         Smart Contract Name:
                                         <br />
@@ -928,14 +938,14 @@ export default function Main(props: ConnectionProps) {
                                     <input
                                         type="checkbox"
                                         onChange={() => {
-                                            setParsingError('');
-                                            setInputParameter('');
-                                            setUploadedModuleSchemaBase64('');
-                                            setTransactionErrorInit('');
+                                            setParsingError(undefined);
+                                            setInputParameter(undefined);
+                                            setUploadedModuleSchemaBase64(undefined);
+                                            setTransactionErrorInit(undefined);
                                             setDropDown('number');
                                             setHasInputParameterInitFunction(!hasInputParameterInitFunction);
-                                            setInputParameterTemplate('');
-                                            setSchemaError('');
+                                            setInputParameterTemplate(undefined);
+                                            setSchemaError(undefined);
                                         }}
                                     />
                                     <span>{' Has Input Parameter'}</span>
@@ -955,8 +965,8 @@ export default function Main(props: ConnectionProps) {
                                                         ref={schemaFileRef}
                                                         accept=".bin"
                                                         onChange={async () => {
-                                                            setUploadError('');
-                                                            setUploadedModuleSchemaBase64('');
+                                                            setUploadError2(undefined);
+                                                            setUploadedModuleSchemaBase64(undefined);
 
                                                             const hTMLInputElement =
                                                                 schemaFileRef.current as unknown as HTMLInputElement;
@@ -995,12 +1005,12 @@ export default function Main(props: ConnectionProps) {
                                                 )}
                                             </>
                                         )}
-                                        {uploadError2 !== '' && (
+                                        {uploadError2 !== undefined && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {uploadError2}.
                                             </div>
                                         )}
-                                        {schemaError !== '' && (
+                                        {schemaError !== undefined && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {schemaError}.
                                             </div>
@@ -1081,10 +1091,10 @@ export default function Main(props: ConnectionProps) {
                                     className="btn btn-primary"
                                     type="button"
                                     onClick={() => {
-                                        setTxHashInit('');
-                                        setSmartContractIndexError('');
-                                        setSmartContractIndex('');
-                                        setTransactionErrorInit('');
+                                        setTxHashInit(undefined);
+                                        setSmartContractIndexError(undefined);
+                                        setSmartContractIndex(undefined);
+                                        setTransactionErrorInit(undefined);
                                         const tx = initialize(
                                             connection,
                                             account,
@@ -1154,12 +1164,12 @@ export default function Main(props: ConnectionProps) {
                                 )}
                                 <br />
                                 <br />
-                                {smartContractIndexError !== '' && (
+                                {smartContractIndexError !== undefined && (
                                     <div className="alert alert-danger" role="alert">
                                         Error: {smartContractIndexError}.
                                     </div>
                                 )}
-                                {smartContractIndex !== '' && (
+                                {smartContractIndex !== undefined && (
                                     <div className="actionResultBox">
                                         Smart Contract Inedex:
                                         <div>{smartContractIndex}</div>
@@ -1183,7 +1193,7 @@ export default function Main(props: ConnectionProps) {
                                 </label>
                                 {useModuleFromStep1 &&
                                 displayContracts.length > 0 &&
-                                (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '') ? (
+                                (moduleReferenceDeployed !== undefined || moduleReferenceCalculated !== undefined) ? (
                                     <label className="field">
                                         Smart Contract Name:
                                         <br />
@@ -1236,8 +1246,8 @@ export default function Main(props: ConnectionProps) {
                                         ref={schemaFileRef}
                                         accept=".bin"
                                         onChange={async () => {
-                                            setUploadError('');
-                                            setUploadedModuleSchemaBase64('');
+                                            setUploadError2(undefined);
+                                            setUploadedModuleSchemaBase64(undefined);
 
                                             const hTMLInputElement =
                                                 schemaFileRef.current as unknown as HTMLInputElement;
@@ -1289,12 +1299,12 @@ export default function Main(props: ConnectionProps) {
                                                 <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
                                             </div>
                                         )}
-                                        {uploadError2 !== '' && (
+                                        {uploadError2 !== undefined && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {uploadError2}.
                                             </div>
                                         )}
-                                        {schemaError !== '' && (
+                                        {schemaError !== undefined && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {schemaError}.
                                             </div>
@@ -1379,8 +1389,8 @@ export default function Main(props: ConnectionProps) {
                                     className="btn btn-primary"
                                     type="button"
                                     onClick={() => {
-                                        setReadError('');
-                                        setReturnValue('');
+                                        setReadError(undefined);
+                                        setReturnValue(undefined);
                                         const promise = read(
                                             client,
                                             contractName,
@@ -1432,7 +1442,7 @@ export default function Main(props: ConnectionProps) {
                                 </label>
                                 {useModuleFromStep1 &&
                                 displayContracts.length > 0 &&
-                                (moduleReferenceDeployed !== '' || moduleReferenceCalculated !== '') ? (
+                                (moduleReferenceDeployed !== undefined || moduleReferenceCalculated !== undefined) ? (
                                     <label className="field">
                                         Smart Contract Name:
                                         <br />
@@ -1543,8 +1553,8 @@ export default function Main(props: ConnectionProps) {
                                                 ref={schemaFileRef}
                                                 accept=".bin"
                                                 onChange={async () => {
-                                                    setUploadError('');
-                                                    setUploadedModuleSchemaBase64('');
+                                                    setUploadError2(undefined);
+                                                    setUploadedModuleSchemaBase64(undefined);
 
                                                     const hTMLInputElement =
                                                         schemaFileRef.current as unknown as HTMLInputElement;
@@ -1583,12 +1593,12 @@ export default function Main(props: ConnectionProps) {
                                             </>
                                         )}
                                         <br />
-                                        {uploadError2 !== '' && (
+                                        {uploadError2 !== undefined && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {uploadError2}.
                                             </div>
                                         )}
-                                        {schemaError !== '' && (
+                                        {schemaError !== undefined && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {schemaError}.
                                             </div>
@@ -1669,8 +1679,8 @@ export default function Main(props: ConnectionProps) {
                                     className="btn btn-primary"
                                     type="button"
                                     onClick={() => {
-                                        setReadError('');
-                                        setReturnValue('');
+                                        setTxHashUpdate(undefined);
+                                        setTransactionErrorUpdate(undefined);
                                         const tx = write(
                                             connection,
                                             account,

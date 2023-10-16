@@ -10,17 +10,20 @@ import { CONTRACT_SUB_INDEX } from './constants';
 
 export async function read(
     rpcClient: ConcordiumGRPCClient | undefined,
-    contractName: string,
+    contractName: string | undefined,
     contractIndex: bigint,
     entryPoint: string,
     moduleSchema: string | undefined,
-    inputParameter: string,
+    inputParameter: string | undefined,
     dropDown: string,
     hasInputParameter: boolean,
     useModuleFromStep1: boolean
 ) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
+    }
+    if (contractName === undefined) {
+        throw new Error(`Set contract name`);
     }
 
     let param = toBuffer('', 'hex');
@@ -34,7 +37,10 @@ export async function read(
 
         let inputParameterFormated;
 
-        if (hasInputParameter) {
+            if (inputParameter === undefined) {
+                throw new Error(`Set input parameter`);
+            }
+
             switch (dropDown) {
                 case 'number':
                     inputParameterFormated = Number(inputParameter);
@@ -51,7 +57,6 @@ export async function read(
                 default:
                     throw new Error(`Dropdown option does not exist`);
             }
-        }
 
         if (moduleSchema !== undefined) {
             param = serializeUpdateContractParameters(
@@ -75,7 +80,7 @@ export async function read(
         );
     }
 
-    if (moduleSchema === undefined || moduleSchema === '') {
+    if (moduleSchema === undefined) {
         // If no schema is provided return the raw bytes
         return JSON.stringify(res.returnValue);
     }

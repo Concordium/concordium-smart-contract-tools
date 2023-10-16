@@ -13,7 +13,7 @@ import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
 import { CONTRACT_SUB_INDEX } from './constants';
 
 export async function deploy(connection: WalletConnection, account: string, base64Module: string) {
-    if (base64Module === '') {
+    if (base64Module === undefined) {
         throw new Error(`Upload a smart contract module first`);
     }
 
@@ -25,67 +25,67 @@ export async function deploy(connection: WalletConnection, account: string, base
 export async function write(
     connection: WalletConnection,
     account: string,
-    inputParameter: string,
-    contractName: string,
+    inputParameter: string | undefined,
+    contractName: string | undefined,
     entryPoint: string,
     hasInputParameter: boolean,
     useModuleFromStep1: boolean,
-    moduleSchema: string,
+    moduleSchema: string | undefined,
     dropDown: string,
-    maxContractExecutionEnergy: string,
+    maxContractExecutionEnergy: string | undefined,
     contractIndex: bigint,
     amount?: string
 ) {
-    if (contractName === '') {
+    if (contractName === undefined) {
         throw new Error(`Set smart contract name`);
     }
 
-    if (entryPoint === '') {
-        throw new Error(`Set entry point`);
-    }
-
-    if (maxContractExecutionEnergy === '') {
+    if (maxContractExecutionEnergy === undefined) {
         throw new Error(`Set max contract execution energy`);
-    }
-
-    if (hasInputParameter) {
-        if (!useModuleFromStep1 && moduleSchema === '') {
-            throw new Error(`Set schema`);
-        } else if (useModuleFromStep1 && moduleSchema === '') {
-            throw new Error(`No embedded module schema found in module`);
-        }
     }
 
     let schema;
 
     if (hasInputParameter) {
-        switch (dropDown) {
-            case 'number':
-                schema = {
-                    parameters: Number(inputParameter),
-                    schema: moduleSchemaFromBase64(moduleSchema),
-                };
-                break;
-            case 'string':
-                schema = {
-                    parameters: inputParameter,
-                    schema: moduleSchemaFromBase64(moduleSchema),
-                };
-                break;
-            case 'object':
-                schema = {
-                    parameters: JSON.parse(inputParameter),
-                    schema: moduleSchemaFromBase64(moduleSchema),
-                };
-                break;
-            case 'array':
-                schema = {
-                    parameters: JSON.parse(inputParameter),
-                    schema: moduleSchemaFromBase64(moduleSchema),
-                };
-                break;
-            default:
-                throw new Error(`Dropdown option does not exist`);
+        if (!useModuleFromStep1 && moduleSchema === undefined) {
+            throw new Error(`Set schema`);
+        } else if (useModuleFromStep1 && moduleSchema === undefined) {
+            throw new Error(`No embedded module schema found in module`);
+        }
+
+        if (moduleSchema !== undefined) {
+            if (inputParameter === undefined) {
+                throw new Error(`Set input parameter`);
+            }
+
+            switch (dropDown) {
+                case 'number':
+                    schema = {
+                        parameters: Number(inputParameter),
+                        schema: moduleSchemaFromBase64(moduleSchema),
+                    };
+                    break;
+                case 'string':
+                    schema = {
+                        parameters: inputParameter,
+                        schema: moduleSchemaFromBase64(moduleSchema),
+                    };
+                    break;
+                case 'object':
+                    schema = {
+                        parameters: JSON.parse(inputParameter),
+                        schema: moduleSchemaFromBase64(moduleSchema),
+                    };
+                    break;
+                case 'array':
+                    schema = {
+                        parameters: JSON.parse(inputParameter),
+                        schema: moduleSchemaFromBase64(moduleSchema),
+                    };
+                    break;
+                default:
+                    throw new Error(`Dropdown option does not exist`);
+            }
         }
     }
 
@@ -106,70 +106,74 @@ export async function initialize(
     connection: WalletConnection,
     account: string,
     moduleReferenceAlreadyDeployed: boolean,
-    moduleReference: string,
-    inputParameter: string,
-    contractName: string,
+    moduleReference: string | undefined,
+    inputParameter: string | undefined,
+    contractName: string | undefined,
     hasInputParameter: boolean,
     useModuleFromStep1: boolean,
-    moduleSchema: string,
+    moduleSchema: string | undefined,
     dropDown: string,
-    maxContractExecutionEnergy: string,
+    maxContractExecutionEnergy: string | undefined,
     amount?: string
 ) {
     if (moduleReferenceAlreadyDeployed === false) {
         throw new Error(`Module reference does not exist on chain. First, deploy your module in step 1.`);
     }
 
-    if (moduleReference === '') {
+    if (moduleReference === undefined) {
         throw new Error(`Set module reference`);
     }
 
-    if (contractName === '') {
+    if (contractName === undefined) {
         throw new Error(`Set smart contract name`);
     }
 
-    if (maxContractExecutionEnergy === '') {
+    if (maxContractExecutionEnergy === undefined) {
         throw new Error(`Set max contract execution energy`);
-    }
-
-    if (hasInputParameter) {
-        if (!useModuleFromStep1 && moduleSchema === '') {
-            throw new Error(`Set schema`);
-        } else if (useModuleFromStep1 && moduleSchema === '') {
-            throw new Error(`No embedded module schema found in module`);
-        }
     }
 
     let schema;
 
     if (hasInputParameter) {
-        switch (dropDown) {
-            case 'number':
-                schema = {
-                    parameters: Number(inputParameter),
-                    schema: moduleSchemaFromBase64(moduleSchema),
-                };
-                break;
-            case 'string':
-                schema = {
-                    parameters: inputParameter,
-                    schema: moduleSchemaFromBase64(moduleSchema),
-                };
-                break;
-            case 'object':
-                schema = {
-                    parameters: JSON.parse(inputParameter),
-                    schema: moduleSchemaFromBase64(moduleSchema),
-                };
-                break;
-            case 'array':
-                schema = {
-                    parameters: JSON.parse(inputParameter),
-                    schema: moduleSchemaFromBase64(moduleSchema),
-                };
-                break;
-            default:
-                throw new Error(`Dropdown option does not exist`);
+        if (!useModuleFromStep1 && moduleSchema === undefined) {
+            throw new Error(`Set schema`);
+        } else if (useModuleFromStep1 && moduleSchema === undefined) {
+            throw new Error(`No embedded module schema found in module`);
+        }
+
+        if (moduleSchema !== undefined) {
+            if (inputParameter === undefined) {
+                throw new Error(`Set input parameter`);
+            }
+
+            switch (dropDown) {
+                case 'number':
+                    schema = {
+                        parameters: Number(inputParameter),
+                        schema: moduleSchemaFromBase64(moduleSchema),
+                    };
+                    break;
+                case 'string':
+                    schema = {
+                        parameters: inputParameter,
+                        schema: moduleSchemaFromBase64(moduleSchema),
+                    };
+                    break;
+                case 'object':
+                    schema = {
+                        parameters: JSON.parse(inputParameter),
+                        schema: moduleSchemaFromBase64(moduleSchema),
+                    };
+                    break;
+                case 'array':
+                    schema = {
+                        parameters: JSON.parse(inputParameter),
+                        schema: moduleSchemaFromBase64(moduleSchema),
+                    };
+                    break;
+                default:
+                    throw new Error(`Dropdown option does not exist`);
+            }
         }
     }
 

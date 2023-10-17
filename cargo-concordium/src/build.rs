@@ -409,9 +409,12 @@ pub fn build_contract(
         // The archive will be named after the `--out` parameter, by appending `.tar` to
         // it.
         let tar_filename: PathBuf = {
-            let mut tar_filename = out_filename.clone();
-            tar_filename.as_mut_os_string().push(".tar");
-            tar_filename
+            // Rust 1.70 has as_mut_os_string, but to support older versions we don't use it
+            // here for now, and instead convert from and to OsString to append an
+            // extension.
+            let mut tar_filename = out_filename.clone().into_os_string();
+            tar_filename.push(".tar");
+            tar_filename.into()
         };
         let ContainerBuildOutput {
             output_wasm,

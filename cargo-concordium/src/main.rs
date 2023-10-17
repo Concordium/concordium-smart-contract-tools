@@ -783,7 +783,7 @@ fn handle_build(
             bold_style.paint(size)
         );
 
-        if let Some((bi, archived_files)) = stored_build_info {
+        if let Some((utils::VersionedBuildInfo::V0(bi), archived_files)) = stored_build_info {
             eprintln!(
                 "    {} embedding build information:",
                 success_style.paint("Finished")
@@ -793,7 +793,7 @@ fn handle_build(
                 "    - Build command used: {}",
                 bold_style.paint(bi.build_command.join(" "))
             );
-            eprintln!("    - Build command used: {:?}", bi.archive_hash); // TODO
+            eprintln!("    - Hash of the archive: {}", bi.archive_hash);
             if let Some(link) = bi.source_link {
                 eprintln!("    - Link to source code: {}", bold_style.paint(link));
             } else {

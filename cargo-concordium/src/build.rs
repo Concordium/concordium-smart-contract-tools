@@ -3,7 +3,6 @@ use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
 use cargo_metadata::{Metadata, MetadataCommand};
-use concordium_contracts_common as concordium_std;
 use concordium_contracts_common::{
     schema::{
         ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
@@ -12,7 +11,7 @@ use concordium_contracts_common::{
     *,
 };
 use concordium_smart_contract_engine::{
-    utils::{self, WasmVersion},
+    utils::{self, WasmVersion, BUILD_INFO_SECTION_NAME},
     v0, v1, ExecResult,
 };
 use concordium_wasm::{
@@ -108,25 +107,7 @@ pub struct BuildInfo {
     /// The metadata used for building the contract (the actual code, not the
     /// schema).
     pub metadata:          cargo_metadata::Metadata,
-    pub stored_build_info: Option<(StoredBuildContext, Vec<PathBuf>)>,
-}
-
-/// The build context that will be embedded as a custom section to
-/// support reproducible builds.
-/// It is embedded serialized using the smart contract serialization format.
-#[derive(Debug, concordium_contracts_common::Serialize)]
-pub struct StoredBuildContext {
-    /// The SHA256 hash of the tar file used to build.
-    /// Note that this is the hash of the **tar** file alone, not of any
-    /// compressed version.
-    pub archive_hash:  [u8; 32], // TODO: Use hash from base.
-    /// The link to where the source code will be located.
-    pub source_link:   Option<String>,
-    /// The build image that was used.
-    pub image:         String,
-    /// The exact command invocation inside the image that was used to produce
-    /// the contract.
-    pub build_command: Vec<String>,
+    pub stored_build_info: Option<(utils::VersionedBuildInfo, Vec<PathBuf>)>,
 }
 
 pub struct TarArchiveData {
@@ -138,12 +119,19 @@ pub struct TarArchiveData {
 }
 
 /// Make a tarball of the package at the `package_root_path` location.
-fn create_archive(package_root_path: &Path) -> anyhow::Result<TarArchiveData> {
+/// This takes an additional `omit_files` list that is the list of files that
+/// will not be included in the archive.
+/// All those paths are expected to be relative to the same root as the
+/// `package_root_path`.
+fn create_archive(
+    package_root_path: &Path,
+    omit_files: &[&Path],
+) -> anyhow::Result<TarArchiveData> {
     let mut tar = tar::Builder::new(Vec::new());
     // Ignore files that are listed in the local .gitignore, but
     // not anything that is listed in a global .gitignore.
     // This is to make the behaviour more local.
-    let files = ignore::WalkBuilder::new(&package_root_path)
+    let files = ignore::WalkBuilder::new(package_root_path)
         .git_global(false)
         .git_ignore(true)
         .parents(false)
@@ -154,7 +142,8 @@ fn create_archive(package_root_path: &Path) -> anyhow::Result<TarArchiveData> {
     let mut archived_files = Vec::new();
     for file in files {
         let file = file?;
-        if file.path() == package_root_path {
+        let file_path = file.path();
+        if file_path == package_root_path || omit_files.contains(&file_path) {
             // We don't want to add the root path since we are adding all
             // relative paths under it.
             continue;
@@ -177,13 +166,14 @@ fn create_archive(package_root_path: &Path) -> anyhow::Result<TarArchiveData> {
     })
 }
 
-fn build_archive<'a>(
+/// Build an archive and return the Wasm source that was built.
+fn build_archive(
     image: &str,
     package_name: &str,
     tar_contents: &[u8],
-    extra_args: impl Iterator<Item = &'a String>,
     container_runtime: &str,
-) -> anyhow::Result<(Vec<String>, Vec<u8>)> {
+    build_command: &[String],
+) -> anyhow::Result<Vec<u8>> {
     let artifact_dir =
         tempfile::tempdir().context("Unable to create temporary build directory.")?;
     // Construct the mapping of the host's build directory
@@ -203,6 +193,55 @@ fn build_archive<'a>(
     let wasm_file_name = format!("{}.wasm", to_snake_case(package_name));
     let container_output_file = format!("/b/t/wasm32-unknown-unknown/release/{}", wasm_file_name);
     let mut cmd = Command::new(container_runtime);
+
+    cmd.arg("run")
+        .arg("-v")
+        .arg(mapping.as_os_str())
+        .arg("--rm")
+        .args(["--workdir", "/b"])
+        .arg(image)
+        .arg("/run-copy.sh")
+        .arg(format!("/artifacts/{tar_file_name}"))
+        .arg(container_output_file)
+        .args(build_command);
+
+    let result = cmd
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .context("Could not use cargo build.")?;
+
+    if !result.status.success() {
+        anyhow::bail!("Compilation failed.")
+    }
+
+    let filename = artifact_dir.path().join(wasm_file_name);
+    let wasm = std::fs::read(filename).context("Unable to read generated Wasm artifact.")?;
+    Ok(wasm)
+}
+
+struct ContainerBuildOutput {
+    /// The output Wasm file containing the unprocessed contract module.
+    output_wasm: Vec<u8>,
+    /// Information about the build so that it can be reproduced.
+    build_info:  utils::VersionedBuildInfo,
+    /// The sources that were built, archived as a tar file.
+    tar_archive: TarArchiveData,
+}
+
+fn build_in_container<'a>(
+    image: String,
+    package_name: &str,
+    package_root_path: &Path,
+    extra_args: impl Iterator<Item = &'a String>,
+    container_runtime: &str,
+    out_path: &Path, // canonical, fully expanded path
+    tar_path: &Path, // canonical, fully expanded path
+) -> anyhow::Result<ContainerBuildOutput> {
+    let tar_archive = create_archive(package_root_path, &[out_path, tar_path])?;
+
+    let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
+
     let build_command = [
         "cargo",
         "--locked",
@@ -218,69 +257,55 @@ fn build_archive<'a>(
     .chain(extra_args.cloned())
     .collect::<Vec<String>>();
 
-    cmd.arg("run")
-        .arg("-v")
-        .arg(mapping.as_os_str())
-        .arg("--rm")
-        .args(["--workdir", "/b"])
-        .arg(image)
-        .arg("/run-copy.sh")
-        .arg(format!("/artifacts/{tar_file_name}"))
-        .arg(container_output_file)
-        .args(&build_command);
+    // If both the potential output files exist check if there is no point
+    // rebuilding.
+    let mut output_wasm = Vec::new();
+    let mut built_alread = false;
 
-    let result = cmd
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-        .context("Could not use cargo build.")?;
-
-    if !result.status.success() {
-        anyhow::bail!("Compilation failed.")
+    // Check if we have to rebuild.
+    'skip: {
+        if out_path.try_exists()? && tar_path.try_exists()? {
+            let stored_tar_archive = std::fs::read(tar_path).context("Unable to read archive")?;
+            if tar_archive.tar_archive != stored_tar_archive {
+                break 'skip;
+            }
+            let stored_source = std::fs::read(out_path).context("Unable to read output file.")?;
+            let mut skeleton =
+                parse_skeleton(&stored_source).context("Unable to parse stored output file.")?;
+            let Ok(build_info) = utils::get_build_info_from_skeleton(&skeleton) else {
+                break 'skip;
+            };
+            let utils::VersionedBuildInfo::V0(build_info) = build_info;
+            // If the sources are the same, and those sources were built with the same
+            // command in the same image then we don't need to rebuild.
+            if build_info.archive_hash.as_ref() == &archive_hash[..]
+                && build_info.build_command == build_command
+                && build_info.image == image
+            {
+                strip(&mut skeleton);
+                skeleton.output(&mut output_wasm)?;
+                built_alread = true;
+            }
+        }
     }
 
-    let filename = artifact_dir.path().join(wasm_file_name);
-    let wasm = std::fs::read(filename).context("Unable to read generated Wasm artifact.")?;
-    Ok((build_command, wasm))
-}
+    if !built_alread {
+        output_wasm = build_archive(
+            &image,
+            package_name,
+            &tar_archive.tar_archive,
+            container_runtime,
+            &build_command,
+        )
+        .context("Unable to build.")?;
+    }
 
-struct ContainerBuildOutput {
-    /// The output Wasm file containing the unprocessed contract module.
-    output_wasm: Vec<u8>,
-    /// Information about the build so that it can be reproduced.
-    build_info:  StoredBuildContext,
-    /// The sources that were built, archived as a tar file.
-    tar_archive: TarArchiveData,
-}
-
-fn build_in_container<'a>(
-    image: String,
-    package_name: &str,
-    package_root_path: &Path,
-    extra_args: impl Iterator<Item = &'a String>,
-    container_runtime: &str,
-) -> anyhow::Result<ContainerBuildOutput> {
-    let tar_archive = create_archive(package_root_path)?;
-
-    // TODO: Don't rebuild if this hasn't changed compared to existing
-    // files.
-    let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
-
-    let (build_command, output_wasm) = build_archive(
-        &image,
-        package_name,
-        &tar_archive.tar_archive,
-        extra_args,
-        container_runtime,
-    )
-    .context("Unable to build.")?;
-
-    let build_info = StoredBuildContext {
-        archive_hash: archive_hash.into(),
+    let build_info = utils::VersionedBuildInfo::V0(utils::BuildInfo {
+        archive_hash: <[u8; 32]>::from(archive_hash).into(),
         source_link: None, // TODO
         image,
         build_command,
-    };
+    });
     Ok(ContainerBuildOutput {
         output_wasm,
         build_info,
@@ -378,6 +403,16 @@ pub fn build_contract(
     let package_root_path = package_root.canonicalize()?;
 
     let (out_filename, wasm, stored_build_info) = if let Some(image) = image {
+        let out_filename = out
+            .context("`--out` must be supplied when using verifiable builds.")?
+            .canonicalize()?;
+        // The archive will be named after the `--out` parameter, by appending `.tar` to
+        // it.
+        let tar_filename: PathBuf = {
+            let mut tar_filename = out_filename.clone();
+            tar_filename.as_mut_os_string().push(".tar");
+            tar_filename
+        };
         let ContainerBuildOutput {
             output_wasm,
             build_info,
@@ -385,12 +420,12 @@ pub fn build_contract(
         } = build_in_container(
             image,
             &package.name,
-            &package_root_path.as_path(),
+            package_root_path.as_path(),
             args_without_manifest,
             &container_runtime,
+            &out_filename,
+            &tar_filename,
         )?;
-        let out_filename = out.context("`--out` must be supplied when using verifiable builds.")?;
-        let tar_filename: PathBuf = format!("{}.tar", out_filename.display()).into();
         std::fs::write(tar_filename.as_path(), &tar_archive.tar_archive).with_context(|| {
             format!(
                 "Unable to write source archive to {}.",
@@ -496,7 +531,7 @@ pub fn build_contract(
     // Embed build info section if present.
     if let Some((build_info, _)) = &stored_build_info {
         let cs = CustomSection {
-            name:     "concordium-build-info".into(),
+            name:     BUILD_INFO_SECTION_NAME.into(),
             contents: &to_bytes(&build_info),
         };
         write_custom_section(&mut output_bytes, &cs)?;

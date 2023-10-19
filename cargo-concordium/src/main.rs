@@ -5,10 +5,13 @@ use crate::{
 use ansi_term::Color;
 use anyhow::{bail, ensure, Context};
 use clap::AppSettings;
-use concordium_contracts_common::{
-    from_bytes,
-    schema::{Type, VersionedModuleSchema},
-    to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName,
+use concordium_base::{
+    contracts_common::{
+        self, from_bytes,
+        schema::{Type, VersionedModuleSchema},
+        to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName,
+    },
+    smart_contracts::WasmModule,
 };
 use concordium_smart_contract_engine::{
     utils::{self, WasmVersion},
@@ -16,8 +19,9 @@ use concordium_smart_contract_engine::{
     v1::{self, ReturnValue},
     InterpreterEnergy,
 };
-use concordium_wasm::validate::ValidationConfig;
+use concordium_wasm::{output::Output, parse::parse_skeleton, validate::ValidationConfig};
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
+use sha2::Digest;
 use std::{
     fs::{self, File},
     io::Read,
@@ -254,6 +258,71 @@ A schema has to be provided either as part of a smart contract module or with th
         #[structopt(flatten)]
         build_options: BuildOptions,
     },
+    #[structopt(
+        name = "edit-build-info",
+        about = "Edit build information in a module."
+    )]
+    EditBuildInfo {
+        #[structopt(flatten)]
+        edit_options: EditOptions,
+    },
+    #[structopt(name = "verify-build", about = "Verify a build.")]
+    Verify {
+        #[structopt(flatten)]
+        verify_options: VerifyOptions,
+    },
+}
+
+// Verify a build.
+//
+// This is *not* a doc comment on purpose, as that has the effect of overriding
+// the `about` message in the help menu for the command.
+// The issue is known (https://github.com/TeXitoi/structopt/issues/391) but won't
+// be fixed in `structopt` as it is in maintenance mode and is now integrated
+// in `clap` v3+. Once we migrate to `clap` v3+, this can become a doc comment.
+#[derive(Debug, StructOpt)]
+struct VerifyOptions {
+    #[structopt(
+        name = "source",
+        long = "source",
+        help = "Path to the sources. If not present then the sources will be downloaded from an \
+                embedded link."
+    )]
+    source_path:       Option<PathBuf>,
+    #[structopt(name = "module", long = "module", help = "Module to verify.")]
+    source:            PathBuf,
+    #[structopt(
+        name = "crt",
+        long = "container-runtime",
+        help = "The container runtime (either binary name or path) used to run the image to \
+                verify the build.",
+        default_value = "docker",
+        env = "CARGO_CONCORDIUM_CONTAINER_RUNTIME"
+    )]
+    container_runtime: String,
+}
+
+// Edit a build section by adding a source link.
+//
+// This is *not* a doc comment on purpose, as that has the effect of overriding
+// the `about` message in the help menu for the command.
+// The issue is known (https://github.com/TeXitoi/structopt/issues/391) but won't
+// be fixed in `structopt` as it is in maintenance mode and is now integrated
+// in `clap` v3+. Once we migrate to `clap` v3+, this can become a doc comment.
+#[derive(Debug, StructOpt)]
+struct EditOptions {
+    #[structopt(
+        name = "source-link",
+        long = "source-link",
+        help = "URL pointing to the sources. If not set the link is removed."
+    )]
+    source_link: Option<String>,
+    #[structopt(
+        name = "module",
+        long = "module",
+        help = "Module to add the URL to. This will be overwritten."
+    )]
+    source:      PathBuf,
 }
 
 // The build options used in the build and test command.
@@ -647,8 +716,107 @@ pub fn main() -> anyhow::Result<()> {
         Command::Build { build_options } => {
             handle_build(build_options, true)?;
         }
+        Command::EditBuildInfo { edit_options } => {
+            handle_edit(edit_options)?;
+        }
+        Command::Verify { verify_options } => {
+            handle_verify(verify_options)?;
+        }
         Command::DisplayState { state_bin_path } => display_state_from_file(state_bin_path)?,
     };
+    Ok(())
+}
+
+fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
+    let module = WasmModule::from_file(&options.source)?;
+    let mut skeleton = parse_skeleton(module.source.as_ref())
+        .context("The supplied module is not a valid Wasm module")?;
+
+    let utils::VersionedBuildInfo::V0(build_info) =
+        utils::get_build_info_from_skeleton(&skeleton).context("Unable to extract build info.")?;
+
+    let tar_file_contents = if let Some(path) = options.source_path {
+        std::fs::read(path).context("Unable to read the supplied source path.")?
+    } else {
+        todo!()
+    };
+
+    eprintln!("Building source and checking ...");
+    let rebuilt_source = build::build_archive(
+        &build_info.image,
+        &tar_file_contents,
+        &options.container_runtime,
+        &build_info.build_command,
+    )
+    .context("Unable to build sources.")?;
+
+    concordium_wasm::utils::strip(&mut skeleton);
+    let mut rebuilt_skeleton =
+        parse_skeleton(&rebuilt_source).context("Unable to parse rebuilt module.")?;
+    concordium_wasm::utils::strip(&mut rebuilt_skeleton);
+
+    let mut sha_origin = sha2::Sha256::new();
+    let mut sha_new = sha2::Sha256::new();
+    skeleton.output(&mut sha_origin)?;
+    rebuilt_skeleton.output(&mut sha_new)?;
+    let error_style = ansi_term::Color::Red.bold();
+    if sha_origin.finalize() != sha_new.finalize() {
+        anyhow::bail!(
+            "\n{}",
+            error_style.paint("The source does not correspond to the module.")
+        );
+    } else {
+        let success_style = ansi_term::Color::Green.bold();
+        eprintln!("\n{}", success_style.paint("Source and module match."));
+        Ok(())
+    }
+}
+
+fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
+    let module = WasmModule::from_file(&options.source)?;
+    let mut skeleton = parse_skeleton(module.source.as_ref())
+        .context("The supplied module is not a valid Wasm module")?;
+
+    let mut build_context_section = None;
+    for ucs in skeleton.custom.iter_mut() {
+        let cs = concordium_wasm::parse::parse_custom(ucs)?;
+        if cs.name.as_ref() == utils::BUILD_INFO_SECTION_NAME
+            && build_context_section.replace(cs).is_some()
+        {
+            anyhow::bail!(
+                "Multiple sections {}. The module is malformed.",
+                utils::BUILD_INFO_SECTION_NAME
+            );
+        }
+    }
+    let Some(ref mut cs) = build_context_section else {
+        anyhow::bail!("No embedded build information found.");
+    };
+    let mut info: utils::VersionedBuildInfo =
+        from_bytes(cs.contents).context("Failed parsing build info")?;
+    let utils::VersionedBuildInfo::V0(ref mut inner) = info;
+    if let Some(ref link) = options.source_link {
+        eprintln!("Setting source link to {link}.")
+    } else {
+        eprintln!("Unsetting source link.")
+    }
+    inner.source_link = options.source_link;
+    cs.contents = &to_bytes(&info);
+    let mut out_buf = Vec::new();
+    skeleton
+        .output(&mut out_buf)
+        .context("Failed to write output module.")?;
+
+    let out_module = WasmModule {
+        version: module.version,
+        source:  out_buf.into(),
+    };
+    std::fs::write(
+        options.source,
+        concordium_base::common::to_bytes(&out_module),
+    )
+    .context("Unable to replace module source.")?;
+
     Ok(())
 }
 
@@ -856,7 +1024,7 @@ fn get_colon_position<'a>(iter: impl Iterator<Item = &'a str>) -> usize {
 /// Print the contract name and its entrypoints
 fn print_contract_schema_v0(
     contract_name: &str,
-    contract_schema: &concordium_contracts_common::schema::ContractV0,
+    contract_schema: &contracts_common::schema::ContractV0,
 ) {
     let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
@@ -886,7 +1054,7 @@ fn print_contract_schema_v0(
 /// Print the contract name and its entrypoints.
 fn print_contract_schema_v1(
     contract_name: &str,
-    contract_schema: &concordium_contracts_common::schema::ContractV1,
+    contract_schema: &contracts_common::schema::ContractV1,
 ) {
     let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
@@ -913,7 +1081,7 @@ fn print_contract_schema_v1(
 /// Print the contract name and its entrypoints.
 fn print_contract_schema_v2(
     contract_name: &str,
-    contract_schema: &concordium_contracts_common::schema::ContractV2,
+    contract_schema: &contracts_common::schema::ContractV2,
 ) {
     let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
@@ -940,7 +1108,7 @@ fn print_contract_schema_v2(
 /// Print the contract name and its entrypoints.
 fn print_contract_schema_v3(
     contract_name: &str,
-    contract_schema: &concordium_contracts_common::schema::ContractV3,
+    contract_schema: &contracts_common::schema::ContractV3,
 ) {
     let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
@@ -1151,8 +1319,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             // if the balance is set in the flag it overrides any balance that is set in the
             // context.
             if let Some(balance) = balance {
-                receive_ctx.self_balance =
-                    Some(concordium_contracts_common::Amount::from_micro_ccd(balance));
+                receive_ctx.self_balance = Some(contracts_common::Amount::from_micro_ccd(balance));
             }
 
             // initial state of the smart contract, read from either a binary or json file.
@@ -1583,7 +1750,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             // context.
             if let Some(balance) = balance {
                 receive_ctx.common.self_balance =
-                    Some(concordium_contracts_common::Amount::from_micro_ccd(balance));
+                    Some(contracts_common::Amount::from_micro_ccd(balance));
             }
 
             // initial state of the smart contract, read from either a binary or json file.

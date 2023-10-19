@@ -3,7 +3,7 @@ use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
 use cargo_metadata::{Metadata, MetadataCommand};
-use concordium_contracts_common::{
+use concordium_base::contracts_common::{
     schema::{
         ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
         VersionedModuleSchema,
@@ -143,7 +143,7 @@ fn create_archive(
     for file in files {
         let file = file?;
         let file_path = file.path();
-        if file_path == package_root_path || omit_files.contains(&file_path) {
+        if file_path == package_root_path || omit_files.iter().any(|f| file_path.starts_with(f)) {
             // We don't want to add the root path since we are adding all
             // relative paths under it.
             continue;
@@ -167,9 +167,8 @@ fn create_archive(
 }
 
 /// Build an archive and return the Wasm source that was built.
-fn build_archive(
+pub fn build_archive(
     image: &str,
-    package_name: &str,
     tar_contents: &[u8],
     container_runtime: &str,
     build_command: &[String],
@@ -190,8 +189,7 @@ fn build_archive(
     std::fs::write(artifact_dir.path().join(tar_file_name), tar_contents)
         .context("Unable to write archive.")?;
 
-    let wasm_file_name = format!("{}.wasm", to_snake_case(package_name));
-    let container_output_file = format!("/b/t/wasm32-unknown-unknown/release/{}", wasm_file_name);
+    let container_output_dir = "/b/t/wasm32-unknown-unknown/release";
     let mut cmd = Command::new(container_runtime);
 
     cmd.arg("run")
@@ -202,7 +200,7 @@ fn build_archive(
         .arg(image)
         .arg("/run-copy.sh")
         .arg(format!("/artifacts/{tar_file_name}"))
-        .arg(container_output_file)
+        .arg(container_output_dir)
         .args(build_command);
 
     let result = cmd
@@ -215,7 +213,7 @@ fn build_archive(
         anyhow::bail!("Compilation failed.")
     }
 
-    let filename = artifact_dir.path().join(wasm_file_name);
+    let filename = artifact_dir.path().join("out.wasm");
     let wasm = std::fs::read(filename).context("Unable to read generated Wasm artifact.")?;
     Ok(wasm)
 }
@@ -231,14 +229,14 @@ struct ContainerBuildOutput {
 
 fn build_in_container<'a>(
     image: String,
-    package_name: &str,
+    package_target_dir: &Path,
     package_root_path: &Path,
     extra_args: impl Iterator<Item = &'a String>,
     container_runtime: &str,
     out_path: &Path, // canonical, fully expanded path
     tar_path: &Path, // canonical, fully expanded path
 ) -> anyhow::Result<ContainerBuildOutput> {
-    let tar_archive = create_archive(package_root_path, &[out_path, tar_path])?;
+    let tar_archive = create_archive(package_root_path, &[out_path, tar_path, package_target_dir])?;
 
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
 
@@ -292,7 +290,6 @@ fn build_in_container<'a>(
     if !built_alread {
         output_wasm = build_archive(
             &image,
-            package_name,
             &tar_archive.tar_archive,
             container_runtime,
             &build_command,
@@ -403,9 +400,11 @@ pub fn build_contract(
     let package_root_path = package_root.canonicalize()?;
 
     let (out_filename, wasm, stored_build_info) = if let Some(image) = image {
-        let out_filename = out
-            .context("`--out` must be supplied when using verifiable builds.")?
+        let cwd = env::current_dir()
+            .context("Unable to get working directory. Does it exist?")?
             .canonicalize()?;
+        let out_filename =
+            cwd.join(out.context("`--out` must be supplied when using verifiable builds.")?);
         // The archive will be named after the `--out` parameter, by appending `.tar` to
         // it.
         let tar_filename: PathBuf = {
@@ -422,7 +421,7 @@ pub fn build_contract(
             tar_archive,
         } = build_in_container(
             image,
-            &package.name,
+            metadata.target_directory.as_std_path(),
             package_root_path.as_path(),
             args_without_manifest,
             &container_runtime,
@@ -729,7 +728,7 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
         "Could not use the template to initialize the project."
     );
 
-    println!("Created the smart contract template.");
+    eprintln!("Created the smart contract template.");
     Ok(())
 }
 
@@ -757,7 +756,7 @@ fn write_schema_json(
     // save the schema JSON representation into the file
     let out_path = root.join(file_name);
 
-    println!(
+    eprintln!(
         "   Writing JSON schema for {} to {}.",
         contract_name,
         out_path.display()

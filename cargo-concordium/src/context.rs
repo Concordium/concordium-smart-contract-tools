@@ -1,6 +1,6 @@
 use anyhow::anyhow;
-use concordium_contracts_common::{
-    AccountAddress, Address, Amount, ContractAddress, EntrypointName, OwnedEntrypointName,
+use concordium_base::contracts_common::{
+    self, AccountAddress, Address, Amount, ContractAddress, EntrypointName, OwnedEntrypointName,
     OwnedPolicy, Serial, SlotTime,
 };
 use concordium_smart_contract_engine::{v0, v1, ExecResult};
@@ -206,7 +206,7 @@ fn deserialize_policy_bytes_from_json<'de, D: serde::de::Deserializer<'de>>(
         let len = policies.len() as u16;
         len.serial(&mut out).expect("Cannot fail writing to vec.");
         for policy in policies.iter() {
-            let bytes = concordium_contracts_common::to_bytes(policy);
+            let bytes = contracts_common::to_bytes(policy);
             let internal_len = bytes.len() as u16;
             internal_len
                 .serial(&mut out)

@@ -2,7 +2,7 @@
 
 set -e
 
-export FILE=$2
+export BUILD_DIR=$2
 export ARCHIVE=$1
 
 mkdir -p /b
@@ -10,4 +10,4 @@ cd /b
 tar xf $ARCHIVE
 shift 2
 $@
-mv $FILE /artifacts/
+mv $BUILD_DIR/*.wasm /artifacts/out.wasm

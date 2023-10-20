@@ -12,7 +12,7 @@ use concordium_base::{
         to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName,
     },
     hashes,
-    smart_contracts::WasmModule,
+    smart_contracts::{self, WasmModule},
 };
 use concordium_smart_contract_engine::{
     utils::{self, WasmVersion},
@@ -616,29 +616,13 @@ pub fn main() -> anyhow::Result<()> {
                 RunCommand::Init { ref runner, .. } => runner,
                 RunCommand::Receive { ref runner, .. } => runner,
             };
-            // Expect a versioned module. The first 4 bytes are the WasmVersion.
-            let versioned_module =
-                fs::read(&runner.module).context("Could not read module file.")?;
-            let mut cursor = std::io::Cursor::new(&versioned_module[..]);
-            let wasm_version = utils::WasmVersion::read(&mut cursor)
-                .context("Could not read module version from the supplied module file.")?;
-
-            let len = {
-                let mut buf = [0u8; 4];
-                cursor
-                    .read_exact(&mut buf)
-                    .context("Could not parse supplied module.")?;
-                u32::from_be_bytes(buf)
-            };
-            let module = &cursor.into_inner()[8..];
-            ensure!(
-                module.len() == len as usize,
-                "Could not parse the supplied module. The specified length does not match the \
-                 size of the provided data."
-            );
-            match wasm_version {
-                utils::WasmVersion::V0 => handle_run_v0(*run_cmd, module)?,
-                utils::WasmVersion::V1 => handle_run_v1(*run_cmd, module)?,
+            let versioned_module = WasmModule::from_file(&runner.module).with_context(|| {
+                format!("Could not read module file {}", runner.module.display())
+            })?;
+            let module = versioned_module.source.as_ref();
+            match versioned_module.version {
+                smart_contracts::WasmVersion::V0 => handle_run_v0(*run_cmd, module)?,
+                smart_contracts::WasmVersion::V1 => handle_run_v1(*run_cmd, module)?,
             }
         }
         Command::Test {

@@ -3,12 +3,15 @@ use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
 use cargo_metadata::{Metadata, MetadataCommand};
-use concordium_base::contracts_common::{
-    schema::{
-        ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
-        VersionedModuleSchema,
+use concordium_base::{
+    contracts_common::{
+        schema::{
+            ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
+            VersionedModuleSchema,
+        },
+        *,
     },
-    *,
+    smart_contracts::WasmModule,
 };
 use concordium_smart_contract_engine::{
     utils::{self, WasmVersion, BUILD_INFO_SECTION_NAME},
@@ -267,9 +270,10 @@ fn build_in_container<'a>(
             if tar_archive.tar_archive != stored_tar_archive {
                 break 'skip;
             }
-            let stored_source = std::fs::read(out_path).context("Unable to read output file.")?;
-            let mut skeleton =
-                parse_skeleton(&stored_source).context("Unable to parse stored output file.")?;
+            let stored_source =
+                WasmModule::from_file(out_path).context("Unable to read output file.")?;
+            let mut skeleton = parse_skeleton(stored_source.source.as_ref())
+                .context("Unable to parse stored output file.")?;
             let Ok(build_info) = utils::get_build_info_from_skeleton(&skeleton) else {
                 break 'skip;
             };

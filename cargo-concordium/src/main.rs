@@ -264,6 +264,14 @@ A schema has to be provided either as part of a smart contract module or with th
         build_options: BuildOptions,
     },
     #[structopt(
+        name = "print-build-info",
+        about = "Print any embedded build information in a module."
+    )]
+    PrintBuildInfo {
+        #[structopt(name = "module", long = "module", help = "Path to the source module.")]
+        source: PathBuf,
+    },
+    #[structopt(
         name = "edit-build-info",
         about = "Edit build information in a module."
     )]
@@ -715,6 +723,9 @@ pub fn main() -> anyhow::Result<()> {
         Command::EditBuildInfo { edit_options } => {
             handle_edit(edit_options)?;
         }
+        Command::PrintBuildInfo { source } => {
+            handle_print_build_info(source)?;
+        }
         Command::Verify { verify_options } => {
             handle_verify(verify_options)?;
         }
@@ -862,6 +873,34 @@ fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
     let success_style = ansi_term::Color::Green.bold();
     eprintln!("{}", success_style.paint("Finished."));
     eprintln!("\nNew build information embedded in the module.");
+    print_build_info(&info);
+
+    Ok(())
+}
+
+fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
+    let module = WasmModule::from_file(&source)?;
+    let mut skeleton = parse_skeleton(module.source.as_ref())
+        .context("The supplied module is not a valid Wasm module")?;
+
+    let mut build_context_section = None;
+    for ucs in skeleton.custom.iter_mut() {
+        let cs = concordium_wasm::parse::parse_custom(ucs)?;
+        if cs.name.as_ref() == utils::BUILD_INFO_SECTION_NAME
+            && build_context_section.replace(cs).is_some()
+        {
+            anyhow::bail!(
+                "Multiple sections {}. The module is malformed.",
+                utils::BUILD_INFO_SECTION_NAME
+            );
+        }
+    }
+    let Some(cs) = build_context_section else {
+        anyhow::bail!("No embedded build information found.");
+    };
+
+    let info: utils::VersionedBuildInfo =
+        from_bytes(cs.contents).context("Failed parsing build info")?;
     print_build_info(&info);
 
     Ok(())

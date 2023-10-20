@@ -137,7 +137,7 @@ fn create_archive(
     let files = ignore::WalkBuilder::new(package_root_path)
         .git_global(false)
         .git_ignore(true)
-        .parents(false)
+        .parents(true)
         .hidden(false)
         .sort_by_file_path(std::cmp::Ord::cmp)
         .build();

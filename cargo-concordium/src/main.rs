@@ -11,6 +11,7 @@ use concordium_base::{
         schema::{Type, VersionedModuleSchema},
         to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName,
     },
+    hashes,
     smart_contracts::WasmModule,
 };
 use concordium_smart_contract_engine::{
@@ -19,7 +20,11 @@ use concordium_smart_contract_engine::{
     v1::{self, ReturnValue},
     InterpreterEnergy,
 };
-use concordium_wasm::{output::Output, parse::parse_skeleton, validate::ValidationConfig};
+use concordium_wasm::{
+    output::{write_custom_section, Output},
+    parse::parse_skeleton,
+    validate::ValidationConfig,
+};
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use sha2::Digest;
 use std::{
@@ -323,6 +328,13 @@ struct EditOptions {
         help = "Module to add the URL to. This will be overwritten."
     )]
     source:      PathBuf,
+    #[structopt(
+        name = "verify",
+        long = "verify",
+        help = "If a source link is supplied, verify that the data at the URL matches the \
+                embedded archive hash."
+    )]
+    verify:      bool,
 }
 
 // The build options used in the build and test command.
@@ -727,6 +739,33 @@ pub fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Download the file into the provided writer and return the amount of data
+/// that was downloaded.
+fn download_file_into(url: &str, out: &mut impl std::io::Write) -> anyhow::Result<usize> {
+    let mut response = reqwest::blocking::get(url)
+        .with_context(|| format!("Unable to retrieve source from {}.", url))?;
+    ensure!(
+        response.status().is_success(),
+        "Unable to retrieve source. Received {} status code response.",
+        response.status()
+    );
+    // Download at most 11MB of data.
+    let max_data_size = 10 * 1024 * 1024;
+    let mut pos: usize = 0;
+    // Read in terms of 1MB chunks.
+    let mut buf = [0u8; 1024];
+    while pos < max_data_size {
+        let bytes_read = response.read(&mut buf)?;
+        if bytes_read == 0 {
+            break;
+        }
+        out.write_all(&buf[0..bytes_read])?;
+        pos += bytes_read;
+    }
+    anyhow::ensure!(pos < max_data_size, "The source archive is too large.");
+    Ok(pos)
+}
+
 fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
     let module = WasmModule::from_file(&options.source)?;
     let mut skeleton = parse_skeleton(module.source.as_ref())
@@ -737,8 +776,13 @@ fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
 
     let tar_file_contents = if let Some(path) = options.source_path {
         std::fs::read(path).context("Unable to read the supplied source path.")?
+    } else if let Some(url) = build_info.source_link {
+        eprintln!("Downloading source from {url}");
+        let mut out = Vec::new();
+        download_file_into(&url, &mut out)?;
+        out
     } else {
-        todo!()
+        anyhow::bail!("No source provided, and no source link embedded.");
     };
 
     eprintln!("Building source and checking ...");
@@ -778,10 +822,10 @@ fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
         .context("The supplied module is not a valid Wasm module")?;
 
     let mut build_context_section = None;
-    for ucs in skeleton.custom.iter_mut() {
+    for (i, ucs) in skeleton.custom.iter_mut().enumerate() {
         let cs = concordium_wasm::parse::parse_custom(ucs)?;
         if cs.name.as_ref() == utils::BUILD_INFO_SECTION_NAME
-            && build_context_section.replace(cs).is_some()
+            && build_context_section.replace((i, cs)).is_some()
         {
             anyhow::bail!(
                 "Multiple sections {}. The module is malformed.",
@@ -789,23 +833,37 @@ fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
             );
         }
     }
-    let Some(ref mut cs) = build_context_section else {
+    let Some((i, mut cs)) = build_context_section else {
         anyhow::bail!("No embedded build information found.");
     };
+    skeleton.custom.remove(i);
     let mut info: utils::VersionedBuildInfo =
         from_bytes(cs.contents).context("Failed parsing build info")?;
     let utils::VersionedBuildInfo::V0(ref mut inner) = info;
     if let Some(ref link) = options.source_link {
-        eprintln!("Setting source link to {link}.")
+        if options.verify {
+            eprintln!("Verifying data consistency.");
+            let mut hasher = sha2::Sha256::new();
+            download_file_into(link, &mut hasher)?;
+            anyhow::ensure!(
+                hashes::Hash::from(<[u8; 32]>::from(hasher.finalize())) == inner.archive_hash,
+                "The embedded archive hash does not match the file at the supplied URL."
+            );
+            eprintln!("The archive at the supplied URL matches the stored archive checksum.");
+        }
+        eprintln!("Setting source link to {link}.");
     } else {
         eprintln!("Unsetting source link.")
     }
     inner.source_link = options.source_link;
-    cs.contents = &to_bytes(&info);
     let mut out_buf = Vec::new();
     skeleton
         .output(&mut out_buf)
         .context("Failed to write output module.")?;
+
+    let new_section_content = to_bytes(&info);
+    cs.contents = &new_section_content;
+    write_custom_section(&mut out_buf, &cs)?;
 
     let out_module = WasmModule {
         version: module.version,
@@ -816,6 +874,11 @@ fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
         concordium_base::common::to_bytes(&out_module),
     )
     .context("Unable to replace module source.")?;
+
+    let success_style = ansi_term::Color::Green.bold();
+    eprintln!("{}", success_style.paint("Finished."));
+    eprintln!("\nNew build information embedded in the module.");
+    print_build_info(&info);
 
     Ok(())
 }
@@ -951,25 +1014,12 @@ fn handle_build(
             bold_style.paint(size)
         );
 
-        if let Some((utils::VersionedBuildInfo::V0(bi), archived_files)) = stored_build_info {
+        if let Some((bi, archived_files)) = stored_build_info {
             eprintln!(
                 "    {} embedding build information:",
                 success_style.paint("Finished")
             );
-            eprintln!("    - Build image used: {}", bold_style.paint(bi.image));
-            eprintln!(
-                "    - Build command used: {}",
-                bold_style.paint(bi.build_command.join(" "))
-            );
-            eprintln!("    - Hash of the archive: {}", bi.archive_hash);
-            if let Some(link) = bi.source_link {
-                eprintln!("    - Link to source code: {}", bold_style.paint(link));
-            } else {
-                eprintln!(
-                    "{}",
-                    WARNING_STYLE.paint("   - No link to source code embedded.")
-                );
-            }
+            print_build_info(&bi);
             eprintln!();
             eprintln!("    - Archived source files:");
             for file in archived_files {
@@ -2066,4 +2116,22 @@ fn write_json_schema(out: &Path, schema: &VersionedModuleSchema) -> anyhow::Resu
         }
     }
     Ok(())
+}
+
+fn print_build_info(utils::VersionedBuildInfo::V0(bi): &utils::VersionedBuildInfo) {
+    let bold_style = ansi_term::Style::new().bold();
+    eprintln!("    - Build image used: {}", bold_style.paint(&bi.image));
+    eprintln!(
+        "    - Build command used: {}",
+        bold_style.paint(bi.build_command.join(" "))
+    );
+    eprintln!("    - Hash of the archive: {}", bi.archive_hash);
+    if let Some(link) = &bi.source_link {
+        eprintln!("    - Link to source code: {}", bold_style.paint(link));
+    } else {
+        eprintln!(
+            "{}",
+            WARNING_STYLE.paint("   - No link to source code embedded.")
+        );
+    }
 }

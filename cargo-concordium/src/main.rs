@@ -987,6 +987,16 @@ fn handle_build(
         }
     }
     if print_extra_info {
+        if let Some((bi, archived_files)) = stored_build_info {
+            eprintln!("  Embedded build information information:\n",);
+            print_build_info(&bi);
+            eprintln!();
+            eprintln!("    - Archived source files:");
+            for file in archived_files {
+                eprintln!("        - {}", file.display());
+            }
+        }
+
         let size = format!(
             "{}.{:03} kB",
             total_module_len / 1000,
@@ -997,19 +1007,6 @@ fn handle_build(
             success_style.paint("Finished"),
             bold_style.paint(size)
         );
-
-        if let Some((bi, archived_files)) = stored_build_info {
-            eprintln!(
-                "    {} embedding build information:",
-                success_style.paint("Finished")
-            );
-            print_build_info(&bi);
-            eprintln!();
-            eprintln!("    - Archived source files:");
-            for file in archived_files {
-                eprintln!("        - {}", file.display());
-            }
-        }
     }
     Ok(metadata)
 }
@@ -2115,7 +2112,7 @@ fn print_build_info(utils::VersionedBuildInfo::V0(bi): &utils::VersionedBuildInf
     } else {
         eprintln!(
             "{}",
-            WARNING_STYLE.paint("   - No link to source code embedded.")
+            WARNING_STYLE.paint("    - No link to source code embedded.")
         );
     }
 }

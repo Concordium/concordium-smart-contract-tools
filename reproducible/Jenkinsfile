@@ -1,0 +1,41 @@
+pipeline {
+    agent { label 'jenkins-worker' }
+    environment {
+        image_name: "concordium/verifiable-sc:${image_tag}"
+    }
+    stages {
+        stage('dockerhub-login') {
+            environment {
+                // Defines 'CRED_USR' and 'CRED_PSW'
+                // (see 'https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#handling-credentials').
+                CRED = credentials('jenkins-dockerhub')
+            }
+            steps {
+                sh 'echo "${CRED_PSW}" | docker login --username "${CRED_USR}" --password-stdin'
+            }
+        }
+        stage('push') {
+            // Check that the tag does not yet exist.
+            steps {
+                sh '! docker manifest inspect "${image_name}"'
+            }
+        }
+        stage('build') {
+            steps {
+                sh '''\
+                    docker build \
+                      -t "${image_name}" \
+                      --build-arg source_image="${source_image_tag}" \
+                      --label source_image="${source_image_tag}" \
+                      .
+                '''
+            }
+        }
+
+        stage('push') {
+            steps {
+                sh 'docker push "${image_name}"'
+            }
+        }
+    }
+}

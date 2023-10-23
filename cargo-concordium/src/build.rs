@@ -5,13 +5,14 @@ use base64::{engine::general_purpose, Engine as _};
 use cargo_metadata::{Metadata, MetadataCommand};
 use concordium_base::{
     contracts_common::{
+        self,
         schema::{
-            ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
+            self, ContractV0, ContractV1, ContractV2, ContractV3, FunctionV1, FunctionV2,
             VersionedModuleSchema,
         },
-        *,
+        OwnedEntrypointName,
     },
-    smart_contracts::WasmModule,
+    smart_contracts::{ContractName, ReceiveName, WasmModule},
 };
 use concordium_smart_contract_engine::{
     utils::{self, WasmVersion, BUILD_INFO_SECTION_NAME},
@@ -364,7 +365,7 @@ pub fn build_contract(
                 let schema = build_contract_schema(cargo_args, utils::generate_contract_schema_v0)
                     .context("Could not build module schema.")?;
                 if build_schema.embed() {
-                    schema_bytes = to_bytes(&schema);
+                    schema_bytes = contracts_common::to_bytes(&schema);
                     let custom_section = CustomSection {
                         name:     "concordium-schema".into(),
                         contents: &schema_bytes,
@@ -382,7 +383,7 @@ pub fn build_contract(
                 let schema = build_contract_schema(cargo_args, utils::generate_contract_schema_v3)
                     .context("Could not build module schema.")?;
                 if build_schema.embed() {
-                    schema_bytes = to_bytes(&schema);
+                    schema_bytes = contracts_common::to_bytes(&schema);
                     let custom_section = CustomSection {
                         name:     "concordium-schema".into(),
                         contents: &schema_bytes,
@@ -548,7 +549,7 @@ pub fn build_contract(
     if let Some((build_info, _)) = &stored_build_info {
         let cs = CustomSection {
             name:     BUILD_INFO_SECTION_NAME.into(),
-            contents: &to_bytes(&build_info),
+            contents: &contracts_common::to_bytes(&build_info),
         };
         write_custom_section(&mut output_bytes, &cs)?;
     };
@@ -830,7 +831,7 @@ pub fn write_schema_base64(
     out: Option<PathBuf>,
     schema: &VersionedModuleSchema,
 ) -> anyhow::Result<()> {
-    let schema_base64 = ENCODER.encode(to_bytes(schema));
+    let schema_base64 = ENCODER.encode(contracts_common::to_bytes(schema));
 
     match out {
         // writing base64 schema to file
@@ -948,7 +949,9 @@ pub fn write_json_schema_to_file_v1(
 }
 
 /// Convert a [schema type](schema::Type) to a base64 string.
-fn type_to_json(ty: &schema::Type) -> Value { ENCODER.encode(to_bytes(ty)).into() }
+fn type_to_json(ty: &schema::Type) -> Value {
+    ENCODER.encode(contracts_common::to_bytes(ty)).into()
+}
 
 /// Convert a [`FunctionV2`] schema to a JSON representation.
 fn function_v2_schema(schema: &FunctionV2) -> Value {

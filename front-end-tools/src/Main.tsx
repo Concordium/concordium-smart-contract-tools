@@ -102,7 +102,9 @@ export default function Main(props: ConnectionProps) {
 
     const [accountBalance, setAccountBalance] = useState<string | undefined>(undefined);
     const [inputParameter, setInputParameter] = useState<string | undefined>(undefined);
-    const [contractName, setContractName] = useState<string | undefined>('myContract');
+    const [contractNameInit, setContractNameInit] = useState<string | undefined>('myContract');
+    const [contractNameRead, setContractNameRead] = useState<string | undefined>('myContract');
+    const [contractNameWrite, setContractNameWrite] = useState<string | undefined>('myContract');
     const [moduleReference, setModuleReference] = useState<string | undefined>(
         '91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693'
     );
@@ -202,7 +204,7 @@ export default function Main(props: ConnectionProps) {
         setDropDown(value);
     }, []);
 
-    const changeSmarContractDropDownHandler = useCallback(() => {
+    const changeSmarContractDropDownHandler = useCallback((setContractName: (arg0: string) => void) => {
         setTransactionErrorInit(undefined);
         const e = contractNameDropDownRef.current as unknown as HTMLSelectElement;
         const sel = e.selectedIndex;
@@ -235,7 +237,7 @@ export default function Main(props: ConnectionProps) {
         setMaxContractExecutionEnergy(target.value);
     }, []);
 
-    const changeContractNameHandler = useCallback((event: ChangeEvent) => {
+    const changeContractNameHandler = useCallback((event: ChangeEvent, setContractName: (arg0: string) => void) => {
         setTransactionErrorInit(undefined);
         const target = event.target as HTMLTextAreaElement;
         setContractName(target.value);
@@ -488,7 +490,7 @@ export default function Main(props: ConnectionProps) {
         let receiveTemplateWriteFunction;
 
         if (
-            contractName !== undefined &&
+            contractNameWrite !== undefined &&
             (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64Write !== undefined)
         ) {
             try {
@@ -504,7 +506,7 @@ export default function Main(props: ConnectionProps) {
 
                 const writeFunctionTemplate = getUpdateContractParameterSchema(
                     toBuffer(schema, 'base64'),
-                    contractName,
+                    contractNameWrite,
                     entryPointWriteFunction
                 );
 
@@ -539,7 +541,7 @@ export default function Main(props: ConnectionProps) {
         entryPointWriteFunction,
         hasInputParameterWriteFunction,
         useModuleFromStep1,
-        contractName,
+        contractNameWrite,
         uploadedModuleSchemaBase64Write,
         dropDown,
     ]);
@@ -551,7 +553,7 @@ export default function Main(props: ConnectionProps) {
         let initTemplate;
 
         if (
-            contractName !== undefined &&
+            contractNameInit !== undefined &&
             (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64Initialization !== undefined)
         ) {
             try {
@@ -567,7 +569,7 @@ export default function Main(props: ConnectionProps) {
 
                 const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
                     toBuffer(schema, 'base64'),
-                    contractName,
+                    contractNameInit,
                     2
                 );
 
@@ -601,7 +603,7 @@ export default function Main(props: ConnectionProps) {
     }, [
         hasInputParameterInitFunction,
         useModuleFromStep1,
-        contractName,
+        contractNameInit,
         uploadedModuleSchemaBase64Initialization,
         dropDown,
     ]);
@@ -613,7 +615,7 @@ export default function Main(props: ConnectionProps) {
         let receiveTemplateReadFunction;
 
         if (
-            contractName !== undefined &&
+            contractNameRead !== undefined &&
             (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64Read !== undefined)
         ) {
             try {
@@ -629,7 +631,7 @@ export default function Main(props: ConnectionProps) {
 
                 const readFunctionTemplate = getUpdateContractParameterSchema(
                     toBuffer(schema, 'base64'),
-                    contractName,
+                    contractNameRead,
                     entryPointReadFunction
                 );
 
@@ -663,7 +665,7 @@ export default function Main(props: ConnectionProps) {
         entryPointReadFunction,
         hasInputParameterReadFunction,
         useModuleFromStep1,
-        contractName,
+        contractNameRead,
         uploadedModuleSchemaBase64Read,
         dropDown,
     ]);
@@ -977,7 +979,7 @@ export default function Main(props: ConnectionProps) {
                                             onChange={() => {
                                                 setModuleReferenceError(undefined);
                                                 setModuleReference(undefined);
-                                                setContractName(undefined);
+                                                setContractNameInit(undefined);
                                                 setUploadedModuleSchemaBase64Initialization(undefined);
 
                                                 const checkboxElement =
@@ -1009,7 +1011,7 @@ export default function Main(props: ConnectionProps) {
                                                     setModuleReference(newModuleReference);
 
                                                     setDisplayContracts(contracts);
-                                                    setContractName(contracts[0]);
+                                                    setContractNameInit(contracts[0]);
                                                 }
                                             }}
                                         />
@@ -1080,7 +1082,9 @@ export default function Main(props: ConnectionProps) {
                                             name="contractNameDropDown"
                                             id="contractNameDropDown"
                                             ref={contractNameDropDownRef}
-                                            onChange={changeSmarContractDropDownHandler}
+                                            onChange={() => {
+                                                changeSmarContractDropDownHandler(setContractNameInit);
+                                            }}
                                         >
                                             {displayContracts?.map((contract) => (
                                                 <option key={contract}>{contract}</option>
@@ -1095,8 +1099,10 @@ export default function Main(props: ConnectionProps) {
                                             className="inputFieldStyle"
                                             id="contractName"
                                             type="text"
-                                            value={contractName}
-                                            onChange={changeContractNameHandler}
+                                            value={contractNameInit}
+                                            onChange={(event) => {
+                                                changeContractNameHandler(event, setContractNameInit);
+                                            }}
                                         />
                                     </label>
                                 )}
@@ -1220,12 +1226,19 @@ export default function Main(props: ConnectionProps) {
                                             </div>
                                         )}
                                         {inputParameterTemplate && (
-                                            <div className="actionResultBox">
-                                                Input Parameter Template:
-                                                <pre>
-                                                    {JSON.stringify(JSON.parse(inputParameterTemplate), undefined, 2)}
-                                                </pre>
-                                            </div>
+                                            <>
+                                                <br />
+                                                <div className="actionResultBox">
+                                                    Input Parameter Template:
+                                                    <pre>
+                                                        {JSON.stringify(
+                                                            JSON.parse(inputParameterTemplate),
+                                                            undefined,
+                                                            2
+                                                        )}
+                                                    </pre>
+                                                </div>
+                                            </>
                                         )}
                                         <label className="field">
                                             Select input parameter type:
@@ -1315,7 +1328,7 @@ export default function Main(props: ConnectionProps) {
                                             isModuleReferenceAlreadyDeployedStep2,
                                             moduleReference,
                                             inputParameter,
-                                            contractName,
+                                            contractNameInit,
                                             hasInputParameterInitFunction,
                                             useModuleFromStep1,
                                             useModuleFromStep1
@@ -1415,7 +1428,9 @@ export default function Main(props: ConnectionProps) {
                                             name="contractNameDropDown"
                                             id="contractNameDropDown"
                                             ref={contractNameDropDownRef}
-                                            onChange={changeSmarContractDropDownHandler}
+                                            onChange={() => {
+                                                changeSmarContractDropDownHandler(setContractNameRead);
+                                            }}
                                         >
                                             {displayContracts?.map((contract) => (
                                                 <option key={contract}>{contract}</option>
@@ -1430,8 +1445,10 @@ export default function Main(props: ConnectionProps) {
                                             className="inputFieldStyle"
                                             id="contractName"
                                             type="text"
-                                            value={contractName}
-                                            onChange={changeContractNameHandler}
+                                            value={contractNameRead}
+                                            onChange={(event) => {
+                                                changeContractNameHandler(event, setContractNameRead);
+                                            }}
                                         />
                                     </label>
                                 )}
@@ -1619,7 +1636,7 @@ export default function Main(props: ConnectionProps) {
                                         setReturnValue(undefined);
                                         const promise = read(
                                             client,
-                                            contractName,
+                                            contractNameRead,
                                             smartContractIndexInputField,
                                             entryPointReadFunction,
                                             uploadedModuleSchemaBase64Read,
@@ -1683,7 +1700,9 @@ export default function Main(props: ConnectionProps) {
                                             name="contractNameDropDown"
                                             id="contractNameDropDown"
                                             ref={contractNameDropDownRef}
-                                            onChange={changeSmarContractDropDownHandler}
+                                            onChange={() => {
+                                                changeSmarContractDropDownHandler(setContractNameWrite);
+                                            }}
                                         >
                                             {displayContracts?.map((contract) => (
                                                 <option key={contract}>{contract}</option>
@@ -1698,8 +1717,10 @@ export default function Main(props: ConnectionProps) {
                                             className="inputFieldStyle"
                                             id="contractName"
                                             type="text"
-                                            value={contractName}
-                                            onChange={changeContractNameHandler}
+                                            value={contractNameWrite}
+                                            onChange={(event) => {
+                                                changeContractNameHandler(event, setContractNameWrite);
+                                            }}
                                         />
                                     </label>
                                 )}
@@ -1936,7 +1957,7 @@ export default function Main(props: ConnectionProps) {
                                             connection,
                                             account,
                                             inputParameter,
-                                            contractName,
+                                            contractNameWrite,
                                             entryPointWriteFunction,
                                             hasInputParameterWriteFunction,
                                             useModuleFromStep1,

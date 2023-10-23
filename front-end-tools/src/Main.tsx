@@ -133,6 +133,7 @@ export default function Main(props: ConnectionProps) {
     const [useModuleFromStep1, setUseModuleFromStep1] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
     const [displayContracts, setDisplayContracts] = useState<string[]>([]);
+    const [writeTransactionOutcome, setWriteTransactionOutcome] = useState<string | undefined>(undefined);
 
     const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
@@ -333,7 +334,7 @@ export default function Main(props: ConnectionProps) {
                     .getBlockItemStatus(txHashInit)
                     .then((report) => {
                         if (report !== undefined) {
-                            setViewErrorModuleReference(undefined);
+                            setSmartContractIndex(undefined);
                             if (report.status === 'finalized') {
                                 if (
                                     report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
@@ -349,13 +350,45 @@ export default function Main(props: ConnectionProps) {
                         }
                     })
                     .catch((e) => {
-                        setModuleReferenceDeployed(undefined);
-                        setViewErrorModuleReference((e as Error).message);
+                        setSmartContractIndex(undefined);
+                        setSmartContractIndexError((e as Error).message);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
             return () => clearInterval(interval);
         }
     }, [connection, account, client, txHashInit]);
+
+    // Refresh writeTransactionOutcome periodically.
+    // eslint-disable-next-line consistent-return
+    useEffect(() => {
+        if (connection && client && account && txHashUpdate !== undefined) {
+            const interval = setInterval(() => {
+                console.log('refreshing_writeTransactionOutcome');
+                client
+                    .getBlockItemStatus(txHashUpdate)
+                    .then((report) => {
+                        if (report !== undefined) {
+                            // setViewErrorModuleReference(undefined);
+                            if (report.status === 'finalized') {
+                                if (
+                                    report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
+                                    report.outcome.summary.transactionType === TransactionKindString.Update
+                                ) {
+                                    setWriteTransactionOutcome('Success');
+                                } else {
+                                    setWriteTransactionOutcome('Fail');
+                                }
+                            }
+                        }
+                    })
+                    .catch((e) => {
+                        setWriteTransactionOutcome(`Fail: ${(e as Error).message}`);
+                        // setViewErrorModuleReference((e as Error).message);
+                    });
+            }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
+        }
+    }, [connection, account, client, txHashUpdate]);
 
     useEffect(() => {
         if (connection && client && account && moduleReferenceCalculated) {
@@ -446,7 +479,10 @@ export default function Main(props: ConnectionProps) {
     }, [entryPointTemplateWriteFunction, hasInputParameterWriteFunction]);
 
     useEffect(() => {
-        setSchemaError({ ...schemaError, writeFunction: undefined });
+        setSchemaError({
+            ...schemaError,
+            writeFunction: undefined,
+        });
         setEntryPointTemplateWriteFunction(undefined);
 
         let receiveTemplateWriteFunction;
@@ -1425,7 +1461,7 @@ export default function Main(props: ConnectionProps) {
                                         onChange={async () => {
                                             setUploadError2(undefined);
                                             setUploadedModuleSchemaBase64Read(undefined);
-                                            
+
                                             const hTMLInputElement =
                                                 schemaFileRef.current as unknown as HTMLInputElement;
 
@@ -1895,6 +1931,7 @@ export default function Main(props: ConnectionProps) {
                                     onClick={() => {
                                         setTxHashUpdate(undefined);
                                         setTransactionErrorUpdate(undefined);
+                                        setWriteTransactionOutcome(undefined);
                                         const tx = write(
                                             connection,
                                             account,
@@ -1917,14 +1954,14 @@ export default function Main(props: ConnectionProps) {
                                 >
                                     Write Smart Contract
                                 </button>
+                                <br />
+                                <br />
                                 {shouldWarnInputParameterInSchemaIgnored.writeFunction && (
                                     <div className="alert alert-warning" role="alert">
                                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
                                         checkbox is unchecked.
                                     </div>
                                 )}
-                                <br />
-                                <br />
                                 {!txHashUpdate && transactionErrorUpdate && (
                                     <div className="alert alert-danger" role="alert">
                                         Error: {transactionErrorUpdate}.
@@ -1948,7 +1985,25 @@ export default function Main(props: ConnectionProps) {
                                         <br />
                                         <div>
                                             CCDScan will take a moment to pick up the above transaction, hence the above
-                                            link will work in a bit.
+                                            link will work in a bit. The outcome of the transaction will be displayed
+                                            below.
+                                        </div>
+                                    </>
+                                )}
+                                {writeTransactionOutcome === 'Success' && (
+                                    <>
+                                        <br />
+                                        <div className="actionResultBox">
+                                            Outcome of transaction:
+                                            <div>{writeTransactionOutcome}</div>
+                                        </div>
+                                    </>
+                                )}
+                                {writeTransactionOutcome !== undefined && writeTransactionOutcome !== 'Success' && (
+                                    <>
+                                        <br />
+                                        <div className="alert alert-danger" role="alert">
+                                            Error: {writeTransactionOutcome}.
                                         </div>
                                     </>
                                 )}

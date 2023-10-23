@@ -323,6 +323,18 @@ pub fn build_contract(
     out: Option<PathBuf>,
     cargo_args: &[String],
 ) -> anyhow::Result<BuildInfo> {
+    // Check immediately if reproducible build is requested that we can execute the
+    // container runtime.
+    if let Some(image) = &image {
+        if let Err(which::Error::CannotFindBinaryPath) = which::which(&container_runtime) {
+            anyhow::bail!(
+                "cargo concordium build --verifiable {image}` requires `{container_runtime}` \
+                 which does not appear to be installed. Either install `{container_runtime}` or \
+                 choose another container runtime by setting `CARGO_CONCORDIUM_CONTAINER_RUNTIME`."
+            );
+        }
+    }
+
     // If the output path is supplied make sure up-front before building anything
     // that it points to a sensible location
     if let Some(out) = &out {

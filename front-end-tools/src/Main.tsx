@@ -46,6 +46,12 @@ interface ConnectionProps {
     isTestnet: boolean;
 }
 
+interface FunctionState {
+    initFunction: undefined | string;
+    readFunction: undefined | string;
+    writeFunction: undefined | string;
+}
+
 export default function Main(props: ConnectionProps) {
     const { walletConnectionProps, isTestnet } = props;
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } =
@@ -71,7 +77,11 @@ export default function Main(props: ConnectionProps) {
     const [smartContractIndexError, setSmartContractIndexError] = useState<string | undefined>(undefined);
     const [moduleReferenceError, setModuleReferenceError] = useState<string | undefined>(undefined);
     const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState<string | undefined>(undefined);
-    const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
+    const [schemaError, setSchemaError] = useState<FunctionState>({
+        initFunction: undefined,
+        readFunction: undefined,
+        writeFunction: undefined,
+    });
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
     const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState<string | undefined>(undefined);
@@ -80,7 +90,11 @@ export default function Main(props: ConnectionProps) {
     const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState<string | undefined>(undefined);
 
     const [shouldWarnDifferenceModuleReferences, setShouldWarnDifferenceModuleReferences] = useState(false);
-    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
+    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState({
+        initFunction: false,
+        readFunction: false,
+        writeFunction: false,
+    });
 
     const [txHashDeploy, setTxHashDeploy] = useState<string | undefined>(undefined);
     const [txHashInit, setTxHashInit] = useState<string | undefined>(undefined);
@@ -94,7 +108,13 @@ export default function Main(props: ConnectionProps) {
     );
     const [cCDAmount, setCCDAmount] = useState('0');
     const [base64Module, setBase64Module] = useState<string | undefined>(undefined);
-    const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState<string | undefined>(undefined);
+    const [uploadedModuleSchemaBase64Initialization, setUploadedModuleSchemaBase64Initialization] = useState<
+        string | undefined
+    >(undefined);
+    const [uploadedModuleSchemaBase64Read, setUploadedModuleSchemaBase64Read] = useState<string | undefined>(undefined);
+    const [uploadedModuleSchemaBase64Write, setUploadedModuleSchemaBase64Write] = useState<string | undefined>(
+        undefined
+    );
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
     const [smartContractIndexInputField, setSmartContractIndexInputFiled] = useState<bigint>(1999n);
@@ -102,6 +122,8 @@ export default function Main(props: ConnectionProps) {
     const [entryPointWriteFunction, setEntryPointWriteFunction] = useState('set');
     const [returnValue, setReturnValue] = useState<string | undefined>(undefined);
     const [readError, setReadError] = useState<string | undefined>(undefined);
+
+    const [inputParameterTemplate, setInputParameterTemplate] = useState<string | undefined>(undefined);
     const [entryPointTemplateReadFunction, setEntryPointTemplateReadFunction] = useState<string | undefined>(undefined);
     const [entryPointTemplateWriteFunction, setEntryPointTemplateWriteFunction] = useState<string | undefined>(
         undefined
@@ -111,7 +133,7 @@ export default function Main(props: ConnectionProps) {
     const [useModuleFromStep1, setUseModuleFromStep1] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
     const [displayContracts, setDisplayContracts] = useState<string[]>([]);
-    const [inputParameterTemplate, setInputParameterTemplate] = useState<string | undefined>(undefined);
+
     const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
     const [hasInputParameterInitFunction, setHasInputParameterInitFunction] = useState(false);
@@ -225,22 +247,25 @@ export default function Main(props: ConnectionProps) {
         setInputParameter(target.value);
     }, []);
 
-    const changeInputParameterTextAreaHandler = useCallback((event: ChangeEvent) => {
-        setParsingError(undefined);
-        setTransactionErrorInit(undefined);
-        const inputTextArea = inputParameterTextAreaRef.current as unknown as HTMLTextAreaElement;
-        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
-        const target = event.target as HTMLTextAreaElement;
+    const changeInputParameterTextAreaHandler = useCallback(
+        (event: ChangeEvent, textAreaRef: React.MutableRefObject<null>) => {
+            setParsingError(undefined);
+            setTransactionErrorInit(undefined);
+            const inputTextArea = textAreaRef.current as unknown as HTMLTextAreaElement;
+            inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+            const target = event.target as HTMLTextAreaElement;
 
-        try {
-            JSON.parse(target.value);
-        } catch (e) {
-            setParsingError((e as Error).message);
-            return;
-        }
+            try {
+                JSON.parse(target.value);
+            } catch (e) {
+                setParsingError((e as Error).message);
+                return;
+            }
 
-        setInputParameter(JSON.stringify(JSON.parse(target.value)));
-    }, []);
+            setInputParameter(JSON.stringify(JSON.parse(target.value)));
+        },
+        []
+    );
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -380,46 +405,187 @@ export default function Main(props: ConnectionProps) {
 
     useEffect(() => {
         if (inputParameterTemplate !== undefined && hasInputParameterInitFunction === false) {
-            setShouldWarnInputParameterInSchemaIgnored(true);
+            setShouldWarnInputParameterInSchemaIgnored({
+                ...shouldWarnInputParameterInSchemaIgnored,
+                initFunction: true,
+            });
         } else {
-            setShouldWarnInputParameterInSchemaIgnored(false);
+            setShouldWarnInputParameterInSchemaIgnored({
+                ...shouldWarnInputParameterInSchemaIgnored,
+                initFunction: false,
+            });
         }
     }, [inputParameterTemplate, hasInputParameterInitFunction]);
 
     useEffect(() => {
-        if (inputParameterTemplate !== undefined && hasInputParameterReadFunction === false) {
-            setShouldWarnInputParameterInSchemaIgnored(true);
+        if (entryPointTemplateReadFunction !== undefined && hasInputParameterReadFunction === false) {
+            setShouldWarnInputParameterInSchemaIgnored({
+                ...shouldWarnInputParameterInSchemaIgnored,
+                readFunction: true,
+            });
         } else {
-            setShouldWarnInputParameterInSchemaIgnored(false);
+            setShouldWarnInputParameterInSchemaIgnored({
+                ...shouldWarnInputParameterInSchemaIgnored,
+                readFunction: false,
+            });
         }
-    }, [inputParameterTemplate, hasInputParameterReadFunction]);
+    }, [entryPointTemplateReadFunction, hasInputParameterReadFunction]);
 
     useEffect(() => {
-        if (inputParameterTemplate !== undefined && hasInputParameterWriteFunction === false) {
-            setShouldWarnInputParameterInSchemaIgnored(true);
+        if (entryPointTemplateWriteFunction !== undefined && hasInputParameterWriteFunction === false) {
+            setShouldWarnInputParameterInSchemaIgnored({
+                ...shouldWarnInputParameterInSchemaIgnored,
+                writeFunction: true,
+            });
         } else {
-            setShouldWarnInputParameterInSchemaIgnored(false);
+            setShouldWarnInputParameterInSchemaIgnored({
+                ...shouldWarnInputParameterInSchemaIgnored,
+                writeFunction: false,
+            });
         }
-    }, [inputParameterTemplate, hasInputParameterWriteFunction]);
+    }, [entryPointTemplateWriteFunction, hasInputParameterWriteFunction]);
 
     useEffect(() => {
-        setSchemaError(undefined);
-        setInputParameterTemplate(undefined);
+        setSchemaError({ ...schemaError, writeFunction: undefined });
         setEntryPointTemplateWriteFunction(undefined);
-        setEntryPointTemplateReadFunction(undefined);
 
-        let initTemplate;
         let receiveTemplateWriteFunction;
-        let receiveTemplateReadFunction;
 
         if (
             contractName !== undefined &&
-            (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64 !== undefined)
+            (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64Write !== undefined)
         ) {
             try {
                 let schema = '';
 
-                const schemaFromModule = useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
+                const schemaFromModule = useModuleFromStep1
+                    ? embeddedModuleSchemaBase64
+                    : uploadedModuleSchemaBase64Write;
+
+                if (schemaFromModule !== undefined) {
+                    schema = schemaFromModule;
+                }
+
+                const writeFunctionTemplate = getUpdateContractParameterSchema(
+                    toBuffer(schema, 'base64'),
+                    contractName,
+                    entryPointWriteFunction
+                );
+
+                receiveTemplateWriteFunction = displayTypeSchemaTemplate(writeFunctionTemplate);
+
+                setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
+            } catch (e) {
+                if (useModuleFromStep1) {
+                    setSchemaError({
+                        ...schemaError,
+                        writeFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                    });
+                } else {
+                    setSchemaError({
+                        ...schemaError,
+                        writeFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                    });
+                }
+            }
+        }
+
+        if (receiveTemplateWriteFunction) {
+            if (dropDown === 'array') {
+                const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
+                element.value = getArrayExample(receiveTemplateWriteFunction);
+            } else if (dropDown === 'object') {
+                const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
+                element.value = getObjectExample(receiveTemplateWriteFunction);
+            }
+        }
+    }, [
+        entryPointWriteFunction,
+        hasInputParameterWriteFunction,
+        useModuleFromStep1,
+        contractName,
+        uploadedModuleSchemaBase64Write,
+        dropDown,
+    ]);
+
+    useEffect(() => {
+        setSchemaError({ ...schemaError, initFunction: undefined });
+        setInputParameterTemplate(undefined);
+
+        let initTemplate;
+
+        if (
+            contractName !== undefined &&
+            (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64Initialization !== undefined)
+        ) {
+            try {
+                let schema = '';
+
+                const schemaFromModule = useModuleFromStep1
+                    ? embeddedModuleSchemaBase64
+                    : uploadedModuleSchemaBase64Initialization;
+
+                if (schemaFromModule !== undefined) {
+                    schema = schemaFromModule;
+                }
+
+                const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
+                    toBuffer(schema, 'base64'),
+                    contractName,
+                    2
+                );
+
+                initTemplate = displayTypeSchemaTemplate(inputParamterTypeSchemaBuffer);
+
+                setInputParameterTemplate(initTemplate);
+            } catch (e) {
+                if (useModuleFromStep1) {
+                    setSchemaError({
+                        ...schemaError,
+                        initFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                    });
+                } else {
+                    setSchemaError({
+                        ...schemaError,
+                        initFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                    });
+                }
+            }
+        }
+
+        if (initTemplate) {
+            if (dropDown === 'array') {
+                const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
+                element.value = getArrayExample(initTemplate);
+            } else if (dropDown === 'object') {
+                const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
+                element.value = getObjectExample(initTemplate);
+            }
+        }
+    }, [
+        hasInputParameterInitFunction,
+        useModuleFromStep1,
+        contractName,
+        uploadedModuleSchemaBase64Initialization,
+        dropDown,
+    ]);
+
+    useEffect(() => {
+        setSchemaError({ ...schemaError, readFunction: undefined });
+        setEntryPointTemplateReadFunction(undefined);
+
+        let receiveTemplateReadFunction;
+
+        if (
+            contractName !== undefined &&
+            (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64Read !== undefined)
+        ) {
+            try {
+                let schema = '';
+
+                const schemaFromModule = useModuleFromStep1
+                    ? embeddedModuleSchemaBase64
+                    : uploadedModuleSchemaBase64Read;
 
                 if (schemaFromModule !== undefined) {
                     schema = schemaFromModule;
@@ -434,69 +600,35 @@ export default function Main(props: ConnectionProps) {
                 receiveTemplateReadFunction = displayTypeSchemaTemplate(readFunctionTemplate);
 
                 setEntryPointTemplateReadFunction(receiveTemplateReadFunction);
-
-                const writeFunctionTemplate = getUpdateContractParameterSchema(
-                    toBuffer(schema, 'base64'),
-                    contractName,
-                    entryPointWriteFunction
-                );
-
-                receiveTemplateWriteFunction = displayTypeSchemaTemplate(writeFunctionTemplate);
-
-                setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
-
-                const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
-                    toBuffer(schema, 'base64'),
-                    contractName,
-                    2
-                );
-
-                initTemplate = displayTypeSchemaTemplate(inputParamterTypeSchemaBuffer);
-
-                setInputParameterTemplate(initTemplate);
             } catch (e) {
                 if (useModuleFromStep1) {
-                    setSchemaError(
-                        `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`
-                    );
+                    setSchemaError({
+                        ...schemaError,
+                        readFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                    });
                 } else {
-                    setSchemaError(`Could not get schema from uploaded schema. Original error: ${e}`);
+                    setSchemaError({
+                        ...schemaError,
+                        readFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                    });
                 }
             }
         }
-
-        if (dropDown === 'array') {
-            const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
-            element.value = getArrayExample(initTemplate);
-        } else if (dropDown === 'object') {
-            const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
-            element.value = getObjectExample(initTemplate);
-        }
-
-        if (dropDown === 'array') {
-            const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
-            element.value = getArrayExample(receiveTemplateReadFunction);
-        } else if (dropDown === 'object') {
-            const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
-            element.value = getObjectExample(receiveTemplateReadFunction);
-        }
-
-        if (dropDown === 'array') {
-            const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
-            element.value = getArrayExample(receiveTemplateWriteFunction);
-        } else if (dropDown === 'object') {
-            const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
-            element.value = getObjectExample(receiveTemplateWriteFunction);
+        if (receiveTemplateReadFunction) {
+            if (dropDown === 'array') {
+                const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
+                element.value = getArrayExample(receiveTemplateReadFunction);
+            } else if (dropDown === 'object') {
+                const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
+                element.value = getObjectExample(receiveTemplateReadFunction);
+            }
         }
     }, [
         entryPointReadFunction,
-        entryPointWriteFunction,
-        hasInputParameterInitFunction,
         hasInputParameterReadFunction,
-        hasInputParameterWriteFunction,
         useModuleFromStep1,
         contractName,
-        uploadedModuleSchemaBase64,
+        uploadedModuleSchemaBase64Read,
         dropDown,
     ]);
 
@@ -810,7 +942,7 @@ export default function Main(props: ConnectionProps) {
                                                 setModuleReferenceError(undefined);
                                                 setModuleReference(undefined);
                                                 setContractName(undefined);
-                                                setUploadedModuleSchemaBase64(undefined);
+                                                setUploadedModuleSchemaBase64Initialization(undefined);
 
                                                 const checkboxElement =
                                                     useModuleReferenceFromStep1Ref.current as unknown as HTMLInputElement;
@@ -973,12 +1105,12 @@ export default function Main(props: ConnectionProps) {
                                         onChange={() => {
                                             setParsingError(undefined);
                                             setInputParameter(undefined);
-                                            setUploadedModuleSchemaBase64(undefined);
+                                            setUploadedModuleSchemaBase64Initialization(undefined);
                                             setTransactionErrorInit(undefined);
                                             setDropDown('number');
                                             setHasInputParameterInitFunction(!hasInputParameterInitFunction);
                                             setInputParameterTemplate(undefined);
-                                            setSchemaError(undefined);
+                                            setSchemaError({ ...schemaError, initFunction: undefined });
                                         }}
                                     />
                                     <span>{' Has Input Parameter'}</span>
@@ -999,7 +1131,7 @@ export default function Main(props: ConnectionProps) {
                                                         accept=".bin"
                                                         onChange={async () => {
                                                             setUploadError2(undefined);
-                                                            setUploadedModuleSchemaBase64(undefined);
+                                                            setUploadedModuleSchemaBase64Initialization(undefined);
 
                                                             const hTMLInputElement =
                                                                 schemaFileRef.current as unknown as HTMLInputElement;
@@ -1018,7 +1150,7 @@ export default function Main(props: ConnectionProps) {
                                                                     }, '')
                                                                 );
 
-                                                                setUploadedModuleSchemaBase64(schema);
+                                                                setUploadedModuleSchemaBase64Initialization(schema);
                                                             } else {
                                                                 setUploadError2('Upload schema file is undefined');
                                                             }
@@ -1028,11 +1160,14 @@ export default function Main(props: ConnectionProps) {
                                                     <br />
                                                 </label>
                                                 <br />
-                                                {uploadedModuleSchemaBase64 && (
+                                                {uploadedModuleSchemaBase64Initialization && (
                                                     <div className="actionResultBox">
                                                         Schema in base64:
                                                         <div>
-                                                            {uploadedModuleSchemaBase64.toString().slice(0, 30)} ...
+                                                            {uploadedModuleSchemaBase64Initialization
+                                                                .toString()
+                                                                .slice(0, 30)}{' '}
+                                                            ...
                                                         </div>
                                                     </div>
                                                 )}
@@ -1043,9 +1178,9 @@ export default function Main(props: ConnectionProps) {
                                                 Error: {uploadError2}.
                                             </div>
                                         )}
-                                        {schemaError !== undefined && (
+                                        {schemaError.initFunction !== undefined && (
                                             <div className="alert alert-danger" role="alert">
-                                                Error: {schemaError}.
+                                                Error: {schemaError.initFunction}.
                                             </div>
                                         )}
                                         {inputParameterTemplate && (
@@ -1081,7 +1216,12 @@ export default function Main(props: ConnectionProps) {
                                                     <textarea
                                                         id="inputParameterTextArea"
                                                         ref={inputParameterTextAreaRef}
-                                                        onChange={changeInputParameterTextAreaHandler}
+                                                        onChange={(event) =>
+                                                            changeInputParameterTextAreaHandler(
+                                                                event,
+                                                                inputParameterTextAreaRef
+                                                            )
+                                                        }
                                                     >
                                                         {getArrayExample(inputParameterTemplate)}
                                                     </textarea>
@@ -1090,7 +1230,12 @@ export default function Main(props: ConnectionProps) {
                                                     <textarea
                                                         id="inputParameterTextArea"
                                                         ref={inputParameterTextAreaRef}
-                                                        onChange={changeInputParameterTextAreaHandler}
+                                                        onChange={(event) =>
+                                                            changeInputParameterTextAreaHandler(
+                                                                event,
+                                                                inputParameterTextAreaRef
+                                                            )
+                                                        }
                                                     >
                                                         {getObjectExample(inputParameterTemplate)}
                                                     </textarea>
@@ -1139,7 +1284,7 @@ export default function Main(props: ConnectionProps) {
                                             useModuleFromStep1,
                                             useModuleFromStep1
                                                 ? embeddedModuleSchemaBase64
-                                                : uploadedModuleSchemaBase64,
+                                                : uploadedModuleSchemaBase64Initialization,
                                             dropDown,
                                             maxContractExecutionEnergy,
                                             cCDAmount
@@ -1158,7 +1303,7 @@ export default function Main(props: ConnectionProps) {
                                         Warning: Module references in step 1 and step 2 are different.
                                     </div>
                                 )}
-                                {shouldWarnInputParameterInSchemaIgnored && (
+                                {shouldWarnInputParameterInSchemaIgnored.initFunction && (
                                     <div className="alert alert-warning" role="alert">
                                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
                                         checkbox is unchecked.
@@ -1195,7 +1340,6 @@ export default function Main(props: ConnectionProps) {
                                         </div>
                                     </>
                                 )}
-                                <br />
                                 <br />
                                 {smartContractIndexError !== undefined && (
                                     <div className="alert alert-danger" role="alert">
@@ -1280,8 +1424,8 @@ export default function Main(props: ConnectionProps) {
                                         accept=".bin"
                                         onChange={async () => {
                                             setUploadError2(undefined);
-                                            setUploadedModuleSchemaBase64(undefined);
-
+                                            setUploadedModuleSchemaBase64Read(undefined);
+                                            
                                             const hTMLInputElement =
                                                 schemaFileRef.current as unknown as HTMLInputElement;
 
@@ -1298,8 +1442,7 @@ export default function Main(props: ConnectionProps) {
                                                         return data + String.fromCharCode(byte);
                                                     }, '')
                                                 );
-
-                                                setUploadedModuleSchemaBase64(schema);
+                                                setUploadedModuleSchemaBase64Read(schema);
                                             } else {
                                                 setUploadError2('Upload schema file is undefined');
                                             }
@@ -1326,10 +1469,10 @@ export default function Main(props: ConnectionProps) {
                                 </label>
                                 {hasInputParameterReadFunction && (
                                     <div className="testBox">
-                                        {!useModuleFromStep1 && uploadedModuleSchemaBase64 && (
+                                        {!useModuleFromStep1 && uploadedModuleSchemaBase64Read && (
                                             <div className="actionResultBox">
                                                 Schema in base64:
-                                                <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
+                                                <div>{uploadedModuleSchemaBase64Read.toString().slice(0, 30)} ...</div>
                                             </div>
                                         )}
                                         {uploadError2 !== undefined && (
@@ -1337,9 +1480,9 @@ export default function Main(props: ConnectionProps) {
                                                 Error: {uploadError2}.
                                             </div>
                                         )}
-                                        {schemaError !== undefined && (
+                                        {schemaError.readFunction !== undefined && (
                                             <div className="alert alert-danger" role="alert">
-                                                Error: {schemaError}.
+                                                Error: {schemaError.readFunction}.
                                             </div>
                                         )}
                                         {entryPointTemplateReadFunction && (
@@ -1383,7 +1526,12 @@ export default function Main(props: ConnectionProps) {
                                                     <textarea
                                                         id="inputParameterReadTextAreaRef1"
                                                         ref={inputParameterReadTextAreaRef}
-                                                        onChange={changeInputParameterTextAreaHandler}
+                                                        onChange={(event) =>
+                                                            changeInputParameterTextAreaHandler(
+                                                                event,
+                                                                inputParameterReadTextAreaRef
+                                                            )
+                                                        }
                                                     >
                                                         {getArrayExample(entryPointTemplateReadFunction)}
                                                     </textarea>
@@ -1392,7 +1540,12 @@ export default function Main(props: ConnectionProps) {
                                                     <textarea
                                                         id="inputParameterReadTextAreaRef2"
                                                         ref={inputParameterReadTextAreaRef}
-                                                        onChange={changeInputParameterTextAreaHandler}
+                                                        onChange={(event) =>
+                                                            changeInputParameterTextAreaHandler(
+                                                                event,
+                                                                inputParameterReadTextAreaRef
+                                                            )
+                                                        }
                                                     >
                                                         {getObjectExample(entryPointTemplateReadFunction)}
                                                     </textarea>
@@ -1433,7 +1586,7 @@ export default function Main(props: ConnectionProps) {
                                             contractName,
                                             smartContractIndexInputField,
                                             entryPointReadFunction,
-                                            uploadedModuleSchemaBase64,
+                                            uploadedModuleSchemaBase64Read,
                                             inputParameter,
                                             dropDown,
                                             hasInputParameterReadFunction,
@@ -1449,6 +1602,12 @@ export default function Main(props: ConnectionProps) {
                                 >
                                     Read Smart Contract
                                 </button>
+                                {shouldWarnInputParameterInSchemaIgnored.readFunction && (
+                                    <div className="alert alert-warning" role="alert">
+                                        Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
+                                        checkbox is unchecked.
+                                    </div>
+                                )}
                                 <br />
                                 <br />
                                 {returnValue && (
@@ -1591,7 +1750,7 @@ export default function Main(props: ConnectionProps) {
                                                 accept=".bin"
                                                 onChange={async () => {
                                                     setUploadError2(undefined);
-                                                    setUploadedModuleSchemaBase64(undefined);
+                                                    setUploadedModuleSchemaBase64Write(undefined);
 
                                                     const hTMLInputElement =
                                                         schemaFileRef.current as unknown as HTMLInputElement;
@@ -1610,7 +1769,7 @@ export default function Main(props: ConnectionProps) {
                                                             }, '')
                                                         );
 
-                                                        setUploadedModuleSchemaBase64(schema);
+                                                        setUploadedModuleSchemaBase64Write(schema);
                                                     } else {
                                                         setUploadError2('Upload schema file is undefined');
                                                     }
@@ -1618,26 +1777,31 @@ export default function Main(props: ConnectionProps) {
                                             />
                                         </label>
 
-                                        {!useModuleFromStep1 && uploadedModuleSchemaBase64 && (
+                                        {!useModuleFromStep1 && uploadedModuleSchemaBase64Write && (
                                             <>
                                                 <br />
                                                 <br />
 
                                                 <div className="actionResultBox">
                                                     Schema in base64:
-                                                    <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
+                                                    <div>
+                                                        {uploadedModuleSchemaBase64Write.toString().slice(0, 30)} ...
+                                                    </div>
                                                 </div>
                                             </>
                                         )}
                                         <br />
                                         {uploadError2 !== undefined && (
-                                            <div className="alert alert-danger" role="alert">
-                                                Error: {uploadError2}.
-                                            </div>
+                                            <>
+                                                <br />
+                                                <div className="alert alert-danger" role="alert">
+                                                    Error: {uploadError2}.
+                                                </div>
+                                            </>
                                         )}
-                                        {schemaError !== undefined && (
+                                        {schemaError.writeFunction !== undefined && (
                                             <div className="alert alert-danger" role="alert">
-                                                Error: {schemaError}.
+                                                Error: {schemaError.writeFunction}.
                                             </div>
                                         )}
                                         {entryPointTemplateWriteFunction && (
@@ -1677,7 +1841,12 @@ export default function Main(props: ConnectionProps) {
                                                     <textarea
                                                         id="inputParameterWriteTextAreaRef1"
                                                         ref={inputParameterWriteTextAreaRef}
-                                                        onChange={changeInputParameterTextAreaHandler}
+                                                        onChange={(event) =>
+                                                            changeInputParameterTextAreaHandler(
+                                                                event,
+                                                                inputParameterWriteTextAreaRef
+                                                            )
+                                                        }
                                                     >
                                                         {getArrayExample(entryPointTemplateWriteFunction)}
                                                     </textarea>
@@ -1686,7 +1855,12 @@ export default function Main(props: ConnectionProps) {
                                                     <textarea
                                                         id="inputParameterWriteTextAreaRef2"
                                                         ref={inputParameterWriteTextAreaRef}
-                                                        onChange={changeInputParameterTextAreaHandler}
+                                                        onChange={(event) =>
+                                                            changeInputParameterTextAreaHandler(
+                                                                event,
+                                                                inputParameterWriteTextAreaRef
+                                                            )
+                                                        }
                                                     >
                                                         {getObjectExample(entryPointTemplateWriteFunction)}
                                                     </textarea>
@@ -1715,7 +1889,6 @@ export default function Main(props: ConnectionProps) {
                                     </div>
                                 )}
                                 <br />
-                                <br />
                                 <button
                                     className="btn btn-primary"
                                     type="button"
@@ -1730,7 +1903,7 @@ export default function Main(props: ConnectionProps) {
                                             entryPointWriteFunction,
                                             hasInputParameterWriteFunction,
                                             useModuleFromStep1,
-                                            uploadedModuleSchemaBase64,
+                                            uploadedModuleSchemaBase64Write,
                                             dropDown,
                                             maxContractExecutionEnergy,
                                             smartContractIndexInputField,
@@ -1744,6 +1917,12 @@ export default function Main(props: ConnectionProps) {
                                 >
                                     Write Smart Contract
                                 </button>
+                                {shouldWarnInputParameterInSchemaIgnored.writeFunction && (
+                                    <div className="alert alert-warning" role="alert">
+                                        Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
+                                        checkbox is unchecked.
+                                    </div>
+                                )}
                                 <br />
                                 <br />
                                 {!txHashUpdate && transactionErrorUpdate && (

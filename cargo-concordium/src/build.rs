@@ -131,11 +131,9 @@ fn create_archive(
     omit_files: &[&Path],
 ) -> anyhow::Result<TarArchiveData> {
     let mut tar = tar::Builder::new(Vec::new());
-    // Ignore files that are listed in the local .gitignore, but
-    // not anything that is listed in a global .gitignore.
-    // This is to make the behaviour more local.
+    // Ignore files that are ignored by Git.
     let files = ignore::WalkBuilder::new(package_root_path)
-        .git_global(false)
+        .git_global(true)
         .git_ignore(true)
         .parents(true)
         .hidden(false)

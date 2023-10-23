@@ -78,7 +78,7 @@ command. The value of this option should be a docker image listed above. For exa
 ```
 cargo concordium build --verifiable concordium/verifable-sc:1.70 -o contract.wasm.v1 -e
 ```
-This will build the smart contract, embed the schema (`-e`) and output it to
+This will build the smart contract, embed the schema (`-e`) and output it to a
 `contract.wasm.v1` file. In addition to this `cargo concordium` will also
 produce a file `contract.wasm.v1.tar` that contains the exact sources that were
 used to build the contract.
@@ -88,7 +88,7 @@ of the package root subject to the following
 - files listed in `.gitignore` are ignored (both `.gitignore` in the package
   directory and parent directories)
 - the package build directory (typically `target`) will be ignored
-- additionally files listed in any `.ignore` files will be ignored. The format
+- additional files listed in any `.ignore` files will be ignored. The format
   of this file should be the same as a `.gitignore` file.
 
 Information about the sources and the build will be embedded into

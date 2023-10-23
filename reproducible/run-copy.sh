@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 # This script is used as an entrypoint by cargo-concordium and the corresponding
-# docker image
+# docker image.
 # The script takes two arguments for itself `archive` and `build_dir` and
-# a script to execute. It then
+# a command to execute. It then
 #
 # - copies the tar archive into the running container
 # - executes the supplied command

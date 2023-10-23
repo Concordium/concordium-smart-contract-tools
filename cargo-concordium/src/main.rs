@@ -299,7 +299,7 @@ struct VerifyOptions {
         name = "source",
         long = "source",
         help = "Path to the sources. If not present then the sources will be downloaded from an \
-                embedded link."
+                embedded link in the build info."
     )]
     source_path:       Option<PathBuf>,
     #[structopt(name = "module", long = "module", help = "Module to verify.")]
@@ -398,7 +398,7 @@ struct BuildOptions {
         name = "out",
         long = "out",
         short = "o",
-        help = "Write the resulting smart contract module to file to the specified file."
+        help = "Write the resulting smart contract module to the specified file."
     )]
     out:                 Option<PathBuf>,
     #[structopt(

@@ -101,7 +101,7 @@ impl SchemaBuildOptions {
     pub fn embed(self) -> bool { matches!(self, SchemaBuildOptions::BuildAndEmbed) }
 }
 
-/// Build informatio returned by the [`build_contract`] function.
+/// Build information returned by the [`build_contract`] function.
 pub struct BuildInfo {
     /// Size of the module that was built, including custom section.
     pub total_module_len:  usize,

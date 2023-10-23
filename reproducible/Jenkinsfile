@@ -14,7 +14,7 @@ pipeline {
                 sh 'echo "${CRED_PSW}" | docker login --username "${CRED_USR}" --password-stdin'
             }
         }
-        stage('push') {
+        stage('check-duplicate') {
             // Check that the tag does not yet exist.
             steps {
                 sh '! docker manifest inspect "${image_name}"'

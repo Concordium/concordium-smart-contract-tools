@@ -148,7 +148,9 @@ export default function Main(props: ConnectionProps) {
     const moduleFileRef = useRef(null);
     const inputParameterDropDownRef = useRef(null);
     const contractNameDropDownRef = useRef(null);
-    const schemaFileRef = useRef(null);
+    const schemaFileRefInit = useRef(null);
+    const schemaFileRefRead = useRef(null);
+    const schemaFileRefWrite = useRef(null);
     const inputParameterTextAreaRef = useRef(null);
     const useModuleReferenceFromStep1Ref = useRef(null);
     const moduleReferenceRef = useRef(null);
@@ -1169,14 +1171,14 @@ export default function Main(props: ConnectionProps) {
                                                         className="btn btn-primary"
                                                         type="file"
                                                         id="schemaFile"
-                                                        ref={schemaFileRef}
+                                                        ref={schemaFileRefInit}
                                                         accept=".bin"
                                                         onChange={async () => {
                                                             setUploadError2(undefined);
                                                             setUploadedModuleSchemaBase64Initialization(undefined);
 
                                                             const hTMLInputElement =
-                                                                schemaFileRef.current as unknown as HTMLInputElement;
+                                                                schemaFileRefInit.current as unknown as HTMLInputElement;
 
                                                             if (
                                                                 hTMLInputElement.files !== undefined &&
@@ -1473,14 +1475,14 @@ export default function Main(props: ConnectionProps) {
                                         className="btn btn-primary"
                                         type="file"
                                         id="schemaFile"
-                                        ref={schemaFileRef}
+                                        ref={schemaFileRefRead}
                                         accept=".bin"
                                         onChange={async () => {
                                             setUploadError2(undefined);
                                             setUploadedModuleSchemaBase64Read(undefined);
 
                                             const hTMLInputElement =
-                                                schemaFileRef.current as unknown as HTMLInputElement;
+                                                schemaFileRefRead.current as unknown as HTMLInputElement;
 
                                             if (
                                                 hTMLInputElement.files !== undefined &&
@@ -1803,14 +1805,14 @@ export default function Main(props: ConnectionProps) {
                                                 className="btn btn-primary"
                                                 type="file"
                                                 id="schemaFile"
-                                                ref={schemaFileRef}
+                                                ref={schemaFileRefWrite}
                                                 accept=".bin"
                                                 onChange={async () => {
                                                     setUploadError2(undefined);
                                                     setUploadedModuleSchemaBase64Write(undefined);
 
                                                     const hTMLInputElement =
-                                                        schemaFileRef.current as unknown as HTMLInputElement;
+                                                        schemaFileRefWrite.current as unknown as HTMLInputElement;
 
                                                     if (
                                                         hTMLInputElement.files !== undefined &&

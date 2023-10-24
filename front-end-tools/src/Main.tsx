@@ -485,73 +485,6 @@ export default function Main(props: ConnectionProps) {
     }, [entryPointTemplateWriteFunction, hasInputParameterWriteFunction]);
 
     useEffect(() => {
-        setSchemaError({
-            ...schemaError,
-            writeFunction: undefined,
-        });
-        setEntryPointTemplateWriteFunction(undefined);
-
-        let receiveTemplateWriteFunction;
-
-        try {
-            if (entryPointWriteFunction === undefined) {
-                throw new Error('Set entry point name');
-            }
-
-            if (contractNameWrite === undefined) {
-                throw new Error('Set smart contract name');
-            }
-
-            let schema = '';
-
-            const schemaFromModule = useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64Write;
-
-            if (schemaFromModule !== undefined) {
-                schema = schemaFromModule;
-            }
-
-            const writeFunctionTemplate = getUpdateContractParameterSchema(
-                toBuffer(schema, 'base64'),
-                contractNameWrite,
-                entryPointWriteFunction
-            );
-
-            receiveTemplateWriteFunction = displayTypeSchemaTemplate(writeFunctionTemplate);
-
-            setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
-        } catch (e) {
-            if (useModuleFromStep1) {
-                setSchemaError({
-                    ...schemaError,
-                    writeFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
-                });
-            } else {
-                setSchemaError({
-                    ...schemaError,
-                    writeFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
-                });
-            }
-        }
-
-        if (receiveTemplateWriteFunction) {
-            if (dropDown === 'array') {
-                const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
-                element.value = getArrayExample(receiveTemplateWriteFunction);
-            } else if (dropDown === 'object') {
-                const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
-                element.value = getObjectExample(receiveTemplateWriteFunction);
-            }
-        }
-    }, [
-        entryPointWriteFunction,
-        hasInputParameterWriteFunction,
-        useModuleFromStep1,
-        contractNameWrite,
-        uploadedModuleSchemaBase64Write,
-        dropDown,
-    ]);
-
-    useEffect(() => {
         setSchemaError({ ...schemaError, initFunction: undefined });
         setInputParameterTemplate(undefined);
 
@@ -673,6 +606,73 @@ export default function Main(props: ConnectionProps) {
         useModuleFromStep1,
         contractNameRead,
         uploadedModuleSchemaBase64Read,
+        dropDown,
+    ]);
+
+    useEffect(() => {
+        setSchemaError({
+            ...schemaError,
+            writeFunction: undefined,
+        });
+        setEntryPointTemplateWriteFunction(undefined);
+
+        let receiveTemplateWriteFunction;
+
+        try {
+            if (entryPointWriteFunction === undefined) {
+                throw new Error('Set entry point name');
+            }
+
+            if (contractNameWrite === undefined) {
+                throw new Error('Set smart contract name');
+            }
+
+            let schema = '';
+
+            const schemaFromModule = useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64Write;
+
+            if (schemaFromModule !== undefined) {
+                schema = schemaFromModule;
+            }
+
+            const writeFunctionTemplate = getUpdateContractParameterSchema(
+                toBuffer(schema, 'base64'),
+                contractNameWrite,
+                entryPointWriteFunction
+            );
+
+            receiveTemplateWriteFunction = displayTypeSchemaTemplate(writeFunctionTemplate);
+
+            setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
+        } catch (e) {
+            if (useModuleFromStep1) {
+                setSchemaError({
+                    ...schemaError,
+                    writeFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                });
+            } else {
+                setSchemaError({
+                    ...schemaError,
+                    writeFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                });
+            }
+        }
+
+        if (receiveTemplateWriteFunction) {
+            if (dropDown === 'array') {
+                const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
+                element.value = getArrayExample(receiveTemplateWriteFunction);
+            } else if (dropDown === 'object') {
+                const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
+                element.value = getObjectExample(receiveTemplateWriteFunction);
+            }
+        }
+    }, [
+        entryPointWriteFunction,
+        hasInputParameterWriteFunction,
+        useModuleFromStep1,
+        contractNameWrite,
+        uploadedModuleSchemaBase64Write,
         dropDown,
     ]);
 

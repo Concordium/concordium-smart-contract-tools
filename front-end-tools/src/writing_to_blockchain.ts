@@ -27,7 +27,7 @@ export async function write(
     account: string,
     inputParameter: string | undefined,
     contractName: string | undefined,
-    entryPoint: string,
+    entryPoint: string | undefined,
     hasInputParameter: boolean,
     useModuleFromStep1: boolean,
     moduleSchema: string | undefined,
@@ -42,6 +42,10 @@ export async function write(
 
     if (maxContractExecutionEnergy === undefined) {
         throw new Error(`Set max contract execution energy`);
+    }
+
+    if (entryPoint === undefined) {
+        throw new Error(`Set entry point name`);
     }
 
     let schema;

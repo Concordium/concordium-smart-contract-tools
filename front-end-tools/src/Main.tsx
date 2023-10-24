@@ -23,7 +23,7 @@ import {
 } from '@concordium/web-sdk';
 
 import { initialize, deploy, write } from './writing_to_blockchain';
-import { read } from './reading_from_blockchain';
+import { read, getEmbeddedSchema } from './reading_from_blockchain';
 
 import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ARRAYS, EXAMPLE_JSON_OBJECT } from './constants';
 
@@ -120,8 +120,8 @@ export default function Main(props: ConnectionProps) {
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
     const [smartContractIndexInputField, setSmartContractIndexInputFiled] = useState<bigint>(1999n);
-    const [entryPointReadFunction, setEntryPointReadFunction] = useState('view');
-    const [entryPointWriteFunction, setEntryPointWriteFunction] = useState('set');
+    const [entryPointReadFunction, setEntryPointReadFunction] = useState<string | undefined>('view');
+    const [entryPointWriteFunction, setEntryPointWriteFunction] = useState<string | undefined>('set');
     const [returnValue, setReturnValue] = useState<string | undefined>(undefined);
     const [readError, setReadError] = useState<string | undefined>(undefined);
 
@@ -139,6 +139,7 @@ export default function Main(props: ConnectionProps) {
 
     const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
+    const [deriveFromSmartContractIndex, setDeriveFromSmartContractIndex] = useState(false);
     const [hasInputParameterInitFunction, setHasInputParameterInitFunction] = useState(false);
     const [hasInputParameterReadFunction, setHasInputParameterReadFunction] = useState(false);
     const [hasInputParameterWriteFunction, setHasInputParameterWriteFunction] = useState(false);
@@ -158,6 +159,7 @@ export default function Main(props: ConnectionProps) {
     const smartContractIndexRef = useRef(null);
     const inputParameterReadTextAreaRef = useRef(null);
     const inputParameterWriteTextAreaRef = useRef(null);
+    const deriveFromSmartContractIndexRef = useRef(null);
 
     function arraysEqual(a: Uint8Array, b: Uint8Array) {
         if (a === b) return true;
@@ -491,42 +493,43 @@ export default function Main(props: ConnectionProps) {
 
         let receiveTemplateWriteFunction;
 
-        if (
-            contractNameWrite !== undefined &&
-            (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64Write !== undefined)
-        ) {
-            try {
-                let schema = '';
+        try {
+            if (entryPointWriteFunction === undefined) {
+                throw new Error('Set entry point name');
+            }
 
-                const schemaFromModule = useModuleFromStep1
-                    ? embeddedModuleSchemaBase64
-                    : uploadedModuleSchemaBase64Write;
+            if (contractNameWrite === undefined) {
+                throw new Error('Set smart contract name');
+            }
 
-                if (schemaFromModule !== undefined) {
-                    schema = schemaFromModule;
-                }
+            let schema = '';
 
-                const writeFunctionTemplate = getUpdateContractParameterSchema(
-                    toBuffer(schema, 'base64'),
-                    contractNameWrite,
-                    entryPointWriteFunction
-                );
+            const schemaFromModule = useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64Write;
 
-                receiveTemplateWriteFunction = displayTypeSchemaTemplate(writeFunctionTemplate);
+            if (schemaFromModule !== undefined) {
+                schema = schemaFromModule;
+            }
 
-                setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
-            } catch (e) {
-                if (useModuleFromStep1) {
-                    setSchemaError({
-                        ...schemaError,
-                        writeFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
-                    });
-                } else {
-                    setSchemaError({
-                        ...schemaError,
-                        writeFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
-                    });
-                }
+            const writeFunctionTemplate = getUpdateContractParameterSchema(
+                toBuffer(schema, 'base64'),
+                contractNameWrite,
+                entryPointWriteFunction
+            );
+
+            receiveTemplateWriteFunction = displayTypeSchemaTemplate(writeFunctionTemplate);
+
+            setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
+        } catch (e) {
+            if (useModuleFromStep1) {
+                setSchemaError({
+                    ...schemaError,
+                    writeFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                });
+            } else {
+                setSchemaError({
+                    ...schemaError,
+                    writeFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                });
             }
         }
 
@@ -554,42 +557,41 @@ export default function Main(props: ConnectionProps) {
 
         let initTemplate;
 
-        if (
-            contractNameInit !== undefined &&
-            (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64Initialization !== undefined)
-        ) {
-            try {
-                let schema = '';
+        try {
+            if (contractNameInit === undefined) {
+                throw new Error('Set smart contract name');
+            }
 
-                const schemaFromModule = useModuleFromStep1
-                    ? embeddedModuleSchemaBase64
-                    : uploadedModuleSchemaBase64Initialization;
+            let schema = '';
 
-                if (schemaFromModule !== undefined) {
-                    schema = schemaFromModule;
-                }
+            const schemaFromModule = useModuleFromStep1
+                ? embeddedModuleSchemaBase64
+                : uploadedModuleSchemaBase64Initialization;
 
-                const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
-                    toBuffer(schema, 'base64'),
-                    contractNameInit,
-                    2
-                );
+            if (schemaFromModule !== undefined) {
+                schema = schemaFromModule;
+            }
 
-                initTemplate = displayTypeSchemaTemplate(inputParamterTypeSchemaBuffer);
+            const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
+                toBuffer(schema, 'base64'),
+                contractNameInit,
+                2
+            );
 
-                setInputParameterTemplate(initTemplate);
-            } catch (e) {
-                if (useModuleFromStep1) {
-                    setSchemaError({
-                        ...schemaError,
-                        initFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
-                    });
-                } else {
-                    setSchemaError({
-                        ...schemaError,
-                        initFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
-                    });
-                }
+            initTemplate = displayTypeSchemaTemplate(inputParamterTypeSchemaBuffer);
+
+            setInputParameterTemplate(initTemplate);
+        } catch (e) {
+            if (useModuleFromStep1) {
+                setSchemaError({
+                    ...schemaError,
+                    initFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                });
+            } else {
+                setSchemaError({
+                    ...schemaError,
+                    initFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                });
             }
         }
 
@@ -616,44 +618,46 @@ export default function Main(props: ConnectionProps) {
 
         let receiveTemplateReadFunction;
 
-        if (
-            contractNameRead !== undefined &&
-            (useModuleFromStep1 !== undefined || uploadedModuleSchemaBase64Read !== undefined)
-        ) {
-            try {
-                let schema = '';
+        try {
+            if (entryPointReadFunction === undefined) {
+                throw new Error('Set entry point name');
+            }
 
-                const schemaFromModule = useModuleFromStep1
-                    ? embeddedModuleSchemaBase64
-                    : uploadedModuleSchemaBase64Read;
+            if (contractNameRead === undefined) {
+                throw new Error('Set smart contract name');
+            }
 
-                if (schemaFromModule !== undefined) {
-                    schema = schemaFromModule;
-                }
+            let schema = '';
 
-                const readFunctionTemplate = getUpdateContractParameterSchema(
-                    toBuffer(schema, 'base64'),
-                    contractNameRead,
-                    entryPointReadFunction
-                );
+            const schemaFromModule = useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64Read;
 
-                receiveTemplateReadFunction = displayTypeSchemaTemplate(readFunctionTemplate);
+            if (schemaFromModule !== undefined) {
+                schema = schemaFromModule;
+            }
 
-                setEntryPointTemplateReadFunction(receiveTemplateReadFunction);
-            } catch (e) {
-                if (useModuleFromStep1) {
-                    setSchemaError({
-                        ...schemaError,
-                        readFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
-                    });
-                } else {
-                    setSchemaError({
-                        ...schemaError,
-                        readFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
-                    });
-                }
+            const readFunctionTemplate = getUpdateContractParameterSchema(
+                toBuffer(schema, 'base64'),
+                contractNameRead,
+                entryPointReadFunction
+            );
+
+            receiveTemplateReadFunction = displayTypeSchemaTemplate(readFunctionTemplate);
+
+            setEntryPointTemplateReadFunction(receiveTemplateReadFunction);
+        } catch (e) {
+            if (useModuleFromStep1) {
+                setSchemaError({
+                    ...schemaError,
+                    readFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                });
+            } else {
+                setSchemaError({
+                    ...schemaError,
+                    readFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                });
             }
         }
+
         if (receiveTemplateReadFunction) {
             if (dropDown === 'array') {
                 const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
@@ -978,6 +982,7 @@ export default function Main(props: ConnectionProps) {
                                             type="checkbox"
                                             id="useModuleReferenceFromStep1"
                                             ref={useModuleReferenceFromStep1Ref}
+                                            value={useModuleFromStep1.toString()}
                                             onChange={() => {
                                                 setModuleReferenceError(undefined);
                                                 setModuleReference(undefined);
@@ -1119,6 +1124,7 @@ export default function Main(props: ConnectionProps) {
                                     <label>
                                         <input
                                             type="checkbox"
+                                            value={isPayableInitFunction.toString()}
                                             onChange={() => {
                                                 setIsPayableInitFunction(!isPayableInitFunction);
                                             }}
@@ -1146,6 +1152,7 @@ export default function Main(props: ConnectionProps) {
                                 <label>
                                     <input
                                         type="checkbox"
+                                        value={hasInputParameterInitFunction.toString()}
                                         onChange={() => {
                                             setParsingError(undefined);
                                             setInputParameter(undefined);
@@ -1455,7 +1462,7 @@ export default function Main(props: ConnectionProps) {
                                     </label>
                                 )}
                                 <label className="field">
-                                    Entrypoint Name:
+                                    Entry Point Name:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -1465,6 +1472,91 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeEntryPointReadFunctionHandler}
                                     />
                                 </label>
+                                <br />
+                                <br />
+                                <div className="checkbox-wrapper">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            id="deriveFromSmartContractIndexRef"
+                                            ref={deriveFromSmartContractIndexRef}
+                                            value={deriveFromSmartContractIndex.toString()}
+                                            onChange={async () => {
+                                                setUploadedModuleSchemaBase64Read(undefined);
+                                                setSchemaError({
+                                                    ...schemaError,
+                                                    readFunction: undefined,
+                                                });
+                                                setContractNameRead(undefined);
+                                                setEntryPointReadFunction(undefined);
+
+                                                const checkboxElement =
+                                                    deriveFromSmartContractIndexRef.current as unknown as HTMLInputElement;
+
+                                                setDeriveFromSmartContractIndex(checkboxElement.checked);
+
+                                                if (checkboxElement.checked) {
+                                                    const embeddedSchema = getEmbeddedSchema(
+                                                        client,
+                                                        smartContractIndexInputField
+                                                    );
+                                                    console.log(embeddedSchema);
+                                                }
+
+                                                // const element =
+                                                //     moduleReferenceRef.current as unknown as HTMLTextAreaElement;
+
+                                                // element.value = '';
+
+                                                // if (
+                                                //     checkboxElement.checked &&
+                                                //     smartContractIndexInputField === undefined
+                                                // ) {
+                                                //     setDeriveFromSmartContractIndexError('Smart contract index is not set above');
+                                                // }
+
+                                                // const newModuleReference =
+                                                //     moduleReferenceDeployed !== undefined
+                                                //         ? moduleReferenceDeployed
+                                                //         : moduleReferenceCalculated;
+
+                                                // if (checkboxElement.checked && newModuleReference !== undefined) {
+                                                //     element.value = newModuleReference;
+
+                                                //     setModuleReference(newModuleReference);
+
+                                                //     setDisplayContracts(contracts);
+                                                //     setContractNameInit(contracts[0]);
+                                                // }
+                                            }}
+                                        />
+                                        <span>{' Derive From Smart Contract Index'}</span>
+                                    </label>
+                                </div>
+                                {deriveFromSmartContractIndex && (
+                                    <>
+                                        <br />
+                                        <div className="alert alert-info" role="alert">
+                                            <div>
+                                                This checkbox autofilled the <code>smart contract name</code>, the{' '}
+                                                <code>entry point name</code>, and the{' '}
+                                                <code>receive return_value/parameter schema</code> from the smart
+                                                contract index.
+                                            </div>
+                                            <br />
+                                            <div>
+                                                <b>Uncheck</b> this box, if you want to manually fill in a{' '}
+                                                <code>smart contract name</code>, an <code>entry point name</code>, or a{' '}
+                                                <code>receive return_value/parameter schema</code>.
+                                            </div>
+                                            <br />
+                                            <div>
+                                                <b>Uncheck</b> and <b>check</b> this box again, if you want to load a
+                                                new smart contract index.
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                                 <br />
                                 <br />
                                 <label className="field">
@@ -1509,6 +1601,7 @@ export default function Main(props: ConnectionProps) {
                                 <label>
                                     <input
                                         type="checkbox"
+                                        value={hasInputParameterReadFunction.toString()}
                                         onChange={() => {
                                             // setParsingError('');
                                             // setInputParameter('');
@@ -1727,7 +1820,7 @@ export default function Main(props: ConnectionProps) {
                                     </label>
                                 )}
                                 <label className="field">
-                                    Entrypoint Name:
+                                    Entry Point Name:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -1754,6 +1847,7 @@ export default function Main(props: ConnectionProps) {
                                     <label>
                                         <input
                                             type="checkbox"
+                                            value={isPayableWriteFunction.toString()}
                                             onChange={() => {
                                                 setIsPayableWriteFunction(!isPayableWriteFunction);
                                             }}
@@ -1781,6 +1875,7 @@ export default function Main(props: ConnectionProps) {
                                 <label>
                                     <input
                                         type="checkbox"
+                                        value={hasInputParameterWriteFunction.toString()}
                                         onChange={() => {
                                             // setParsingError('');
                                             // setInputParameter('');

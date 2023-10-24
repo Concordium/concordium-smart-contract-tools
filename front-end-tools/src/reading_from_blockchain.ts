@@ -7,11 +7,24 @@ import {
 
 import { CONTRACT_SUB_INDEX } from './constants';
 
+export async function getEmbeddedSchema(rpcClient: ConcordiumGRPCClient | undefined, contractIndex: bigint) {
+    if (rpcClient === undefined) {
+        throw new Error(`rpcClient undefined`);
+    }
+    if (contractIndex === undefined) {
+        throw new Error(`Set smart contract index`);
+    }
+
+    const info = await rpcClient.getInstanceInfo({ index: contractIndex, subindex: CONTRACT_SUB_INDEX });
+
+    return rpcClient.getEmbeddedSchema(info.sourceModule);
+}
+
 export async function read(
     rpcClient: ConcordiumGRPCClient | undefined,
     contractName: string | undefined,
     contractIndex: bigint,
-    entryPoint: string,
+    entryPoint: string | undefined,
     moduleSchema: string | undefined,
     inputParameter: string | undefined,
     dropDown: string,
@@ -23,6 +36,10 @@ export async function read(
     }
     if (contractName === undefined) {
         throw new Error(`Set contract name`);
+    }
+
+    if (entryPoint === undefined) {
+        throw new Error(`Set entry point name`);
     }
 
     let param = toBuffer('', 'hex');

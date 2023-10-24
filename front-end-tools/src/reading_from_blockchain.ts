@@ -3,11 +3,12 @@ import {
     ConcordiumGRPCClient,
     deserializeReceiveReturnValue,
     serializeUpdateContractParameters,
+    ModuleReference,
 } from '@concordium/web-sdk';
 
 import { CONTRACT_SUB_INDEX } from './constants';
 
-export async function getEmbeddedSchema(rpcClient: ConcordiumGRPCClient | undefined, contractIndex: bigint) {
+export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefined, contractIndex: bigint) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
     }
@@ -17,7 +18,28 @@ export async function getEmbeddedSchema(rpcClient: ConcordiumGRPCClient | undefi
 
     const info = await rpcClient.getInstanceInfo({ index: contractIndex, subindex: CONTRACT_SUB_INDEX });
 
-    return rpcClient.getEmbeddedSchema(info.sourceModule);
+    // Removing the `init_` prefix.
+    const contractName = info.name.substring(5);
+
+    // Removing the `contractName.` prefix.
+    const methods = info.methods.map((element) => element.substring(contractName.length + 1));
+
+    const returnValue = { contractName, methods, sourceModule: info.sourceModule };
+    return returnValue;
+}
+
+export async function getEmbeddedSchema(
+    rpcClient: ConcordiumGRPCClient | undefined,
+    moduleRef: ModuleReference | undefined
+) {
+    if (rpcClient === undefined) {
+        throw new Error(`rpcClient undefined`);
+    }
+    if (moduleRef === undefined) {
+        throw new Error(`Set module ref`);
+    }
+
+    return rpcClient.getEmbeddedSchema(moduleRef);
 }
 
 export async function read(
@@ -29,7 +51,7 @@ export async function read(
     inputParameter: string | undefined,
     dropDown: string,
     hasInputParameter: boolean,
-    useModuleFromStep1: boolean
+    deriveFromSmartContractIndex: boolean
 ) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
@@ -45,9 +67,9 @@ export async function read(
     let param = toBuffer('', 'hex');
 
     if (hasInputParameter) {
-        if (!useModuleFromStep1 && moduleSchema === undefined) {
+        if (!deriveFromSmartContractIndex && moduleSchema === undefined) {
             throw new Error(`Set schema`);
-        } else if (useModuleFromStep1 && moduleSchema === undefined) {
+        } else if (deriveFromSmartContractIndex && moduleSchema === undefined) {
             throw new Error(`No embedded module schema found in module`);
         }
 

@@ -23,7 +23,7 @@ import {
 } from '@concordium/web-sdk';
 
 import { initialize, deploy, write } from './writing_to_blockchain';
-import { read, getEmbeddedSchema } from './reading_from_blockchain';
+import { read, getEmbeddedSchema, getContractInfo } from './reading_from_blockchain';
 
 import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ARRAYS, EXAMPLE_JSON_OBJECT } from './constants';
 
@@ -122,6 +122,9 @@ export default function Main(props: ConnectionProps) {
     const [smartContractIndexInputField, setSmartContractIndexInputFiled] = useState<bigint>(1999n);
     const [entryPointReadFunction, setEntryPointReadFunction] = useState<string | undefined>('view');
     const [entryPointWriteFunction, setEntryPointWriteFunction] = useState<string | undefined>('set');
+    const [contractInstanceInfo, setContractInstanceInfo] = useState<
+        { contractName: string; methods: string[]; sourceModule: ModuleReference } | undefined
+    >(undefined);
     const [returnValue, setReturnValue] = useState<string | undefined>(undefined);
     const [readError, setReadError] = useState<string | undefined>(undefined);
 
@@ -137,7 +140,11 @@ export default function Main(props: ConnectionProps) {
     const [displayContracts, setDisplayContracts] = useState<string[]>([]);
     const [writeTransactionOutcome, setWriteTransactionOutcome] = useState<string | undefined>(undefined);
 
-    const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
+    const [embeddedModuleSchemaBase64Init, setEmbeddedModuleSchemaBase64Init] = useState<string | undefined>(undefined);
+    const [embeddedModuleSchemaBase64Read, setEmbeddedModuleSchemaBase64Read] = useState<string | undefined>(undefined);
+    const [embeddedModuleSchemaBase64Write, setEmbeddedModuleSchemaBase64write] = useState<string | undefined>(
+        undefined
+    );
 
     const [deriveFromSmartContractIndex, setDeriveFromSmartContractIndex] = useState(false);
     const [hasInputParameterInitFunction, setHasInputParameterInitFunction] = useState(false);
@@ -498,7 +505,7 @@ export default function Main(props: ConnectionProps) {
             let schema = '';
 
             const schemaFromModule = useModuleFromStep1
-                ? embeddedModuleSchemaBase64
+                ? embeddedModuleSchemaBase64Init
                 : uploadedModuleSchemaBase64Initialization;
 
             if (schemaFromModule !== undefined) {
@@ -562,7 +569,9 @@ export default function Main(props: ConnectionProps) {
 
             let schema = '';
 
-            const schemaFromModule = useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64Read;
+            const schemaFromModule = deriveFromSmartContractIndex
+                ? embeddedModuleSchemaBase64Read
+                : uploadedModuleSchemaBase64Read;
 
             if (schemaFromModule !== undefined) {
                 schema = schemaFromModule;
@@ -578,7 +587,7 @@ export default function Main(props: ConnectionProps) {
 
             setEntryPointTemplateReadFunction(receiveTemplateReadFunction);
         } catch (e) {
-            if (useModuleFromStep1) {
+            if (deriveFromSmartContractIndex) {
                 setSchemaError({
                     ...schemaError,
                     readFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
@@ -603,7 +612,7 @@ export default function Main(props: ConnectionProps) {
     }, [
         entryPointReadFunction,
         hasInputParameterReadFunction,
-        useModuleFromStep1,
+        deriveFromSmartContractIndex,
         contractNameRead,
         uploadedModuleSchemaBase64Read,
         dropDown,
@@ -629,7 +638,9 @@ export default function Main(props: ConnectionProps) {
 
             let schema = '';
 
-            const schemaFromModule = useModuleFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64Write;
+            const schemaFromModule = deriveFromSmartContractIndex
+                ? embeddedModuleSchemaBase64Write
+                : uploadedModuleSchemaBase64Write;
 
             if (schemaFromModule !== undefined) {
                 schema = schemaFromModule;
@@ -645,7 +656,7 @@ export default function Main(props: ConnectionProps) {
 
             setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
         } catch (e) {
-            if (useModuleFromStep1) {
+            if (deriveFromSmartContractIndex) {
                 setSchemaError({
                     ...schemaError,
                     writeFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
@@ -670,7 +681,7 @@ export default function Main(props: ConnectionProps) {
     }, [
         entryPointWriteFunction,
         hasInputParameterWriteFunction,
-        useModuleFromStep1,
+        deriveFromSmartContractIndex,
         contractNameWrite,
         uploadedModuleSchemaBase64Write,
         dropDown,
@@ -876,7 +887,7 @@ export default function Main(props: ConnectionProps) {
                                                         }, '')
                                                     );
 
-                                                    setEmbeddedModuleSchemaBase64(moduleSchemaBase64Embedded);
+                                                    setEmbeddedModuleSchemaBase64Init(moduleSchemaBase64Embedded);
                                                 } else {
                                                     setUploadError('Upload module file is undefined');
                                                 }
@@ -1341,7 +1352,7 @@ export default function Main(props: ConnectionProps) {
                                             hasInputParameterInitFunction,
                                             useModuleFromStep1,
                                             useModuleFromStep1
-                                                ? embeddedModuleSchemaBase64
+                                                ? embeddedModuleSchemaBase64Init
                                                 : uploadedModuleSchemaBase64Initialization,
                                             dropDown,
                                             maxContractExecutionEnergy,
@@ -1420,31 +1431,28 @@ export default function Main(props: ConnectionProps) {
                                         className="inputFieldStyle"
                                         id="smartContractIndexRead"
                                         ref={smartContractIndexRef}
-                                        disabled={useModuleFromStep1}
                                         type="number"
                                         value={smartContractIndexInputField.toString()}
                                         onChange={changeSmartContractHandler}
                                     />
                                 </label>
-                                {useModuleFromStep1 &&
-                                displayContracts.length > 0 &&
-                                (moduleReferenceDeployed !== undefined || moduleReferenceCalculated !== undefined) ? (
+                                {deriveFromSmartContractIndex &&
+                                contractInstanceInfo !== undefined &&
+                                contractInstanceInfo.contractName !== undefined ? (
                                     <label className="field">
                                         Smart Contract Name:
                                         <br />
-                                        <select
-                                            className="dropDownStyle"
-                                            name="contractNameDropDown"
-                                            id="contractNameDropDown"
-                                            ref={contractNameDropDownRef}
-                                            onChange={() => {
-                                                changeSmarContractDropDownHandler(setContractNameRead);
-                                            }}
-                                        >
-                                            {displayContracts?.map((contract) => (
-                                                <option key={contract}>{contract}</option>
-                                            ))}
-                                        </select>
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="contractName"
+                                            type="text"
+                                            disabled={deriveFromSmartContractIndex}
+                                            value={
+                                                contractInstanceInfo?.contractName
+                                                    ? contractInstanceInfo.contractName
+                                                    : 'undefined'
+                                            }
+                                        />
                                     </label>
                                 ) : (
                                     <label className="field">
@@ -1461,17 +1469,37 @@ export default function Main(props: ConnectionProps) {
                                         />
                                     </label>
                                 )}
-                                <label className="field">
-                                    Entry Point Name:
-                                    <br />
-                                    <input
-                                        className="inputFieldStyle"
-                                        id="entryPoint"
-                                        type="text"
-                                        value={entryPointReadFunction}
-                                        onChange={changeEntryPointReadFunctionHandler}
-                                    />
-                                </label>
+                                {deriveFromSmartContractIndex &&
+                                contractInstanceInfo !== undefined &&
+                                contractInstanceInfo.methods.length > 0 ? (
+                                    <label className="field">
+                                        Entry Point Name:
+                                        <br />
+                                        <select
+                                            className="dropDownStyle"
+                                            name="entryPoint"
+                                            id="entryPoint"
+                                            onChange={changeEntryPointReadFunctionHandler}
+                                        >
+                                            {contractInstanceInfo.methods?.map((method) => (
+                                                <option key={method}>{method}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                ) : (
+                                    <label className="field">
+                                        Entry Point Name:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            name="entryPoint"
+                                            id="entryPoint"
+                                            type="text"
+                                            value={entryPointReadFunction}
+                                            onChange={changeEntryPointReadFunctionHandler}
+                                        />
+                                    </label>
+                                )}
                                 <br />
                                 <br />
                                 <div className="checkbox-wrapper">
@@ -1489,6 +1517,9 @@ export default function Main(props: ConnectionProps) {
                                                 });
                                                 setContractNameRead(undefined);
                                                 setEntryPointReadFunction(undefined);
+                                                setContractInstanceInfo(undefined);
+                                                setContractNameRead(undefined);
+                                                setEntryPointReadFunction(undefined);
 
                                                 const checkboxElement =
                                                     deriveFromSmartContractIndexRef.current as unknown as HTMLInputElement;
@@ -1496,38 +1527,42 @@ export default function Main(props: ConnectionProps) {
                                                 setDeriveFromSmartContractIndex(checkboxElement.checked);
 
                                                 if (checkboxElement.checked) {
-                                                    const embeddedSchema = getEmbeddedSchema(
+                                                    const promiseContractInfo = getContractInfo(
                                                         client,
                                                         smartContractIndexInputField
                                                     );
-                                                    console.log(embeddedSchema);
+
+                                                    promiseContractInfo
+                                                        .then((contractInfo) => {
+                                                            setContractInstanceInfo(contractInfo);
+                                                            setContractNameRead(contractInfo.contractName);
+                                                            setEntryPointReadFunction(contractInfo.methods[0]);
+
+                                                            const promise = getEmbeddedSchema(
+                                                                client,
+                                                                contractInfo.sourceModule
+                                                            );
+
+                                                            promise
+                                                                .then((embeddedSchema) => {
+                                                                    const schema = new Uint8Array(embeddedSchema);
+
+                                                                    const moduleSchemaBase64Embedded = btoa(
+                                                                        new Uint8Array(schema).reduce((data, byte) => {
+                                                                            return data + String.fromCharCode(byte);
+                                                                        }, '')
+                                                                    );
+
+                                                                    setEmbeddedModuleSchemaBase64Read(
+                                                                        moduleSchemaBase64Embedded
+                                                                    );
+                                                                })
+                                                                .catch((err: Error) => {
+                                                                    setReadError((err as Error).message);
+                                                                });
+                                                        })
+                                                        .catch((err: Error) => setReadError((err as Error).message));
                                                 }
-
-                                                // const element =
-                                                //     moduleReferenceRef.current as unknown as HTMLTextAreaElement;
-
-                                                // element.value = '';
-
-                                                // if (
-                                                //     checkboxElement.checked &&
-                                                //     smartContractIndexInputField === undefined
-                                                // ) {
-                                                //     setDeriveFromSmartContractIndexError('Smart contract index is not set above');
-                                                // }
-
-                                                // const newModuleReference =
-                                                //     moduleReferenceDeployed !== undefined
-                                                //         ? moduleReferenceDeployed
-                                                //         : moduleReferenceCalculated;
-
-                                                // if (checkboxElement.checked && newModuleReference !== undefined) {
-                                                //     element.value = newModuleReference;
-
-                                                //     setModuleReference(newModuleReference);
-
-                                                //     setDisplayContracts(contracts);
-                                                //     setContractNameInit(contracts[0]);
-                                                // }
                                             }}
                                         />
                                         <span>{' Derive From Smart Contract Index'}</span>
@@ -1557,45 +1592,49 @@ export default function Main(props: ConnectionProps) {
                                         </div>
                                     </>
                                 )}
-                                <br />
-                                <br />
-                                <label className="field">
-                                    Upload Smart Contract Module Schema File (e.g. schema.bin):
-                                    <br />
-                                    <br />
-                                    <input
-                                        className="btn btn-primary"
-                                        type="file"
-                                        id="schemaFile"
-                                        ref={schemaFileRefRead}
-                                        accept=".bin"
-                                        onChange={async () => {
-                                            setUploadError2(undefined);
-                                            setUploadedModuleSchemaBase64Read(undefined);
+                                {!deriveFromSmartContractIndex && (
+                                    <>
+                                        <br />
+                                        <br />
+                                        <label className="field">
+                                            Upload Smart Contract Module Schema File (e.g. schema.bin):
+                                            <br />
+                                            <br />
+                                            <input
+                                                className="btn btn-primary"
+                                                type="file"
+                                                id="schemaFile"
+                                                ref={schemaFileRefRead}
+                                                accept=".bin"
+                                                onChange={async () => {
+                                                    setUploadError2(undefined);
+                                                    setUploadedModuleSchemaBase64Read(undefined);
 
-                                            const hTMLInputElement =
-                                                schemaFileRefRead.current as unknown as HTMLInputElement;
+                                                    const hTMLInputElement =
+                                                        schemaFileRefRead.current as unknown as HTMLInputElement;
 
-                                            if (
-                                                hTMLInputElement.files !== undefined &&
-                                                hTMLInputElement.files !== null &&
-                                                hTMLInputElement.files.length > 0
-                                            ) {
-                                                const file = hTMLInputElement.files[0];
-                                                const arrayBuffer = await file.arrayBuffer();
+                                                    if (
+                                                        hTMLInputElement.files !== undefined &&
+                                                        hTMLInputElement.files !== null &&
+                                                        hTMLInputElement.files.length > 0
+                                                    ) {
+                                                        const file = hTMLInputElement.files[0];
+                                                        const arrayBuffer = await file.arrayBuffer();
 
-                                                const schema = btoa(
-                                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                        return data + String.fromCharCode(byte);
-                                                    }, '')
-                                                );
-                                                setUploadedModuleSchemaBase64Read(schema);
-                                            } else {
-                                                setUploadError2('Upload schema file is undefined');
-                                            }
-                                        }}
-                                    />
-                                </label>
+                                                        const schema = btoa(
+                                                            new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                                return data + String.fromCharCode(byte);
+                                                            }, '')
+                                                        );
+                                                        setUploadedModuleSchemaBase64Read(schema);
+                                                    } else {
+                                                        setUploadError2('Upload schema file is undefined');
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </>
+                                )}
                                 <br />
                                 <br />
                                 <label>
@@ -1617,7 +1656,7 @@ export default function Main(props: ConnectionProps) {
                                 </label>
                                 {hasInputParameterReadFunction && (
                                     <div className="testBox">
-                                        {!useModuleFromStep1 && uploadedModuleSchemaBase64Read && (
+                                        {!deriveFromSmartContractIndex && uploadedModuleSchemaBase64Read && (
                                             <div className="actionResultBox">
                                                 Schema in base64:
                                                 <div>{uploadedModuleSchemaBase64Read.toString().slice(0, 30)} ...</div>
@@ -1734,11 +1773,13 @@ export default function Main(props: ConnectionProps) {
                                             contractNameRead,
                                             smartContractIndexInputField,
                                             entryPointReadFunction,
-                                            uploadedModuleSchemaBase64Read,
+                                            deriveFromSmartContractIndex
+                                                ? embeddedModuleSchemaBase64Read
+                                                : uploadedModuleSchemaBase64Read,
                                             inputParameter,
                                             dropDown,
                                             hasInputParameterReadFunction,
-                                            useModuleFromStep1
+                                            deriveFromSmartContractIndex
                                         );
 
                                         promise

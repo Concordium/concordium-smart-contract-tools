@@ -29,7 +29,7 @@ export async function write(
     contractName: string | undefined,
     entryPoint: string | undefined,
     hasInputParameter: boolean,
-    useModuleFromStep1: boolean,
+    deriveFromSmartContractIndexWrite: boolean,
     moduleSchema: string | undefined,
     dropDown: string,
     maxContractExecutionEnergy: string | undefined,
@@ -51,9 +51,9 @@ export async function write(
     let schema;
 
     if (hasInputParameter) {
-        if (!useModuleFromStep1 && moduleSchema === undefined) {
+        if (!deriveFromSmartContractIndexWrite && moduleSchema === undefined) {
             throw new Error(`Set schema`);
-        } else if (useModuleFromStep1 && moduleSchema === undefined) {
+        } else if (deriveFromSmartContractIndexWrite && moduleSchema === undefined) {
             throw new Error(`No embedded module schema found in module`);
         }
 

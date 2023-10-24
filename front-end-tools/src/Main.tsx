@@ -127,6 +127,7 @@ export default function Main(props: ConnectionProps) {
     >(undefined);
     const [returnValue, setReturnValue] = useState<string | undefined>(undefined);
     const [readError, setReadError] = useState<string | undefined>(undefined);
+    const [writeError, setWriteError] = useState<string | undefined>(undefined);
 
     const [inputParameterTemplate, setInputParameterTemplate] = useState<string | undefined>(undefined);
     const [entryPointTemplateReadFunction, setEntryPointTemplateReadFunction] = useState<string | undefined>(undefined);
@@ -142,11 +143,12 @@ export default function Main(props: ConnectionProps) {
 
     const [embeddedModuleSchemaBase64Init, setEmbeddedModuleSchemaBase64Init] = useState<string | undefined>(undefined);
     const [embeddedModuleSchemaBase64Read, setEmbeddedModuleSchemaBase64Read] = useState<string | undefined>(undefined);
-    const [embeddedModuleSchemaBase64Write, setEmbeddedModuleSchemaBase64write] = useState<string | undefined>(
+    const [embeddedModuleSchemaBase64Write, setEmbeddedModuleSchemaBase64Write] = useState<string | undefined>(
         undefined
     );
 
-    const [deriveFromSmartContractIndex, setDeriveFromSmartContractIndex] = useState(false);
+    const [deriveFromSmartContractIndexRead, setDeriveFromSmartContractIndexRead] = useState(false);
+    const [deriveFromSmartContractIndexWrite, setDeriveFromSmartContractIndexWrite] = useState(false);
     const [hasInputParameterInitFunction, setHasInputParameterInitFunction] = useState(false);
     const [hasInputParameterReadFunction, setHasInputParameterReadFunction] = useState(false);
     const [hasInputParameterWriteFunction, setHasInputParameterWriteFunction] = useState(false);
@@ -166,7 +168,8 @@ export default function Main(props: ConnectionProps) {
     const smartContractIndexRef = useRef(null);
     const inputParameterReadTextAreaRef = useRef(null);
     const inputParameterWriteTextAreaRef = useRef(null);
-    const deriveFromSmartContractIndexRef = useRef(null);
+    const deriveFromSmartContractIndexReadRef = useRef(null);
+    const deriveFromSmartContractIndexWriteRef = useRef(null);
 
     function arraysEqual(a: Uint8Array, b: Uint8Array) {
         if (a === b) return true;
@@ -569,7 +572,7 @@ export default function Main(props: ConnectionProps) {
 
             let schema = '';
 
-            const schemaFromModule = deriveFromSmartContractIndex
+            const schemaFromModule = deriveFromSmartContractIndexRead
                 ? embeddedModuleSchemaBase64Read
                 : uploadedModuleSchemaBase64Read;
 
@@ -587,7 +590,7 @@ export default function Main(props: ConnectionProps) {
 
             setEntryPointTemplateReadFunction(receiveTemplateReadFunction);
         } catch (e) {
-            if (deriveFromSmartContractIndex) {
+            if (deriveFromSmartContractIndexRead) {
                 setSchemaError({
                     ...schemaError,
                     readFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
@@ -612,7 +615,7 @@ export default function Main(props: ConnectionProps) {
     }, [
         entryPointReadFunction,
         hasInputParameterReadFunction,
-        deriveFromSmartContractIndex,
+        deriveFromSmartContractIndexRead,
         contractNameRead,
         uploadedModuleSchemaBase64Read,
         dropDown,
@@ -638,7 +641,7 @@ export default function Main(props: ConnectionProps) {
 
             let schema = '';
 
-            const schemaFromModule = deriveFromSmartContractIndex
+            const schemaFromModule = deriveFromSmartContractIndexWrite
                 ? embeddedModuleSchemaBase64Write
                 : uploadedModuleSchemaBase64Write;
 
@@ -656,7 +659,7 @@ export default function Main(props: ConnectionProps) {
 
             setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
         } catch (e) {
-            if (deriveFromSmartContractIndex) {
+            if (deriveFromSmartContractIndexWrite) {
                 setSchemaError({
                     ...schemaError,
                     writeFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
@@ -681,7 +684,7 @@ export default function Main(props: ConnectionProps) {
     }, [
         entryPointWriteFunction,
         hasInputParameterWriteFunction,
-        deriveFromSmartContractIndex,
+        deriveFromSmartContractIndexWrite,
         contractNameWrite,
         uploadedModuleSchemaBase64Write,
         dropDown,
@@ -1436,7 +1439,7 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeSmartContractHandler}
                                     />
                                 </label>
-                                {deriveFromSmartContractIndex &&
+                                {deriveFromSmartContractIndexRead &&
                                 contractInstanceInfo !== undefined &&
                                 contractInstanceInfo.contractName !== undefined ? (
                                     <label className="field">
@@ -1446,7 +1449,7 @@ export default function Main(props: ConnectionProps) {
                                             className="inputFieldStyle"
                                             id="contractName"
                                             type="text"
-                                            disabled={deriveFromSmartContractIndex}
+                                            disabled={deriveFromSmartContractIndexRead}
                                             value={
                                                 contractInstanceInfo?.contractName
                                                     ? contractInstanceInfo.contractName
@@ -1469,7 +1472,7 @@ export default function Main(props: ConnectionProps) {
                                         />
                                     </label>
                                 )}
-                                {deriveFromSmartContractIndex &&
+                                {deriveFromSmartContractIndexRead &&
                                 contractInstanceInfo !== undefined &&
                                 contractInstanceInfo.methods.length > 0 ? (
                                     <label className="field">
@@ -1507,8 +1510,8 @@ export default function Main(props: ConnectionProps) {
                                         <input
                                             type="checkbox"
                                             id="deriveFromSmartContractIndexRef"
-                                            ref={deriveFromSmartContractIndexRef}
-                                            value={deriveFromSmartContractIndex.toString()}
+                                            ref={deriveFromSmartContractIndexReadRef}
+                                            value={deriveFromSmartContractIndexRead.toString()}
                                             onChange={async () => {
                                                 setUploadedModuleSchemaBase64Read(undefined);
                                                 setSchemaError({
@@ -1520,11 +1523,12 @@ export default function Main(props: ConnectionProps) {
                                                 setContractInstanceInfo(undefined);
                                                 setContractNameRead(undefined);
                                                 setEntryPointReadFunction(undefined);
+                                                setReadError(undefined);
 
                                                 const checkboxElement =
-                                                    deriveFromSmartContractIndexRef.current as unknown as HTMLInputElement;
+                                                    deriveFromSmartContractIndexReadRef.current as unknown as HTMLInputElement;
 
-                                                setDeriveFromSmartContractIndex(checkboxElement.checked);
+                                                setDeriveFromSmartContractIndexRead(checkboxElement.checked);
 
                                                 if (checkboxElement.checked) {
                                                     const promiseContractInfo = getContractInfo(
@@ -1568,7 +1572,7 @@ export default function Main(props: ConnectionProps) {
                                         <span>{' Derive From Smart Contract Index'}</span>
                                     </label>
                                 </div>
-                                {deriveFromSmartContractIndex && (
+                                {deriveFromSmartContractIndexRead && (
                                     <>
                                         <br />
                                         <div className="alert alert-info" role="alert">
@@ -1592,7 +1596,7 @@ export default function Main(props: ConnectionProps) {
                                         </div>
                                     </>
                                 )}
-                                {!deriveFromSmartContractIndex && (
+                                {!deriveFromSmartContractIndexRead && (
                                     <>
                                         <br />
                                         <br />
@@ -1656,7 +1660,7 @@ export default function Main(props: ConnectionProps) {
                                 </label>
                                 {hasInputParameterReadFunction && (
                                     <div className="testBox">
-                                        {!deriveFromSmartContractIndex && uploadedModuleSchemaBase64Read && (
+                                        {!deriveFromSmartContractIndexRead && uploadedModuleSchemaBase64Read && (
                                             <div className="actionResultBox">
                                                 Schema in base64:
                                                 <div>{uploadedModuleSchemaBase64Read.toString().slice(0, 30)} ...</div>
@@ -1773,13 +1777,13 @@ export default function Main(props: ConnectionProps) {
                                             contractNameRead,
                                             smartContractIndexInputField,
                                             entryPointReadFunction,
-                                            deriveFromSmartContractIndex
+                                            deriveFromSmartContractIndexRead
                                                 ? embeddedModuleSchemaBase64Read
                                                 : uploadedModuleSchemaBase64Read,
                                             inputParameter,
                                             dropDown,
                                             hasInputParameterReadFunction,
-                                            deriveFromSmartContractIndex
+                                            deriveFromSmartContractIndexRead
                                         );
 
                                         promise
@@ -1825,25 +1829,23 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeSmartContractHandler}
                                     />
                                 </label>
-                                {useModuleFromStep1 &&
-                                displayContracts.length > 0 &&
-                                (moduleReferenceDeployed !== undefined || moduleReferenceCalculated !== undefined) ? (
+                                {deriveFromSmartContractIndexWrite &&
+                                contractInstanceInfo !== undefined &&
+                                contractInstanceInfo.contractName !== undefined ? (
                                     <label className="field">
                                         Smart Contract Name:
                                         <br />
-                                        <select
-                                            className="dropDownStyle"
-                                            name="contractNameDropDown"
-                                            id="contractNameDropDown"
-                                            ref={contractNameDropDownRef}
-                                            onChange={() => {
-                                                changeSmarContractDropDownHandler(setContractNameWrite);
-                                            }}
-                                        >
-                                            {displayContracts?.map((contract) => (
-                                                <option key={contract}>{contract}</option>
-                                            ))}
-                                        </select>
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="contractName"
+                                            type="text"
+                                            disabled={deriveFromSmartContractIndexWrite}
+                                            value={
+                                                contractInstanceInfo?.contractName
+                                                    ? contractInstanceInfo.contractName
+                                                    : 'undefined'
+                                            }
+                                        />
                                     </label>
                                 ) : (
                                     <label className="field">
@@ -1860,17 +1862,37 @@ export default function Main(props: ConnectionProps) {
                                         />
                                     </label>
                                 )}
-                                <label className="field">
-                                    Entry Point Name:
-                                    <br />
-                                    <input
-                                        className="inputFieldStyle"
-                                        id="entryPoint"
-                                        type="text"
-                                        value={entryPointWriteFunction}
-                                        onChange={changeEntryPointWriteFunctionHandler}
-                                    />
-                                </label>
+                                {deriveFromSmartContractIndexWrite &&
+                                contractInstanceInfo !== undefined &&
+                                contractInstanceInfo.methods.length > 0 ? (
+                                    <label className="field">
+                                        Entry Point Name:
+                                        <br />
+                                        <select
+                                            className="dropDownStyle"
+                                            name="entryPoint"
+                                            id="entryPoint"
+                                            onChange={changeEntryPointWriteFunctionHandler}
+                                        >
+                                            {contractInstanceInfo.methods?.map((method) => (
+                                                <option key={method}>{method}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                ) : (
+                                    <label className="field">
+                                        Entry Point Name:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            name="entryPoint"
+                                            id="entryPoint"
+                                            type="text"
+                                            value={entryPointWriteFunction}
+                                            onChange={changeEntryPointWriteFunctionHandler}
+                                        />
+                                    </label>
+                                )}
                                 <label className="field">
                                     Max Execution Energy:
                                     <br />
@@ -1882,6 +1904,98 @@ export default function Main(props: ConnectionProps) {
                                         onChange={changeMaxExecutionEnergyHandler}
                                     />
                                 </label>
+                                <br />
+                                <br />
+                                <div className="checkbox-wrapper">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            id="deriveFromSmartContractIndexRef"
+                                            ref={deriveFromSmartContractIndexWriteRef}
+                                            value={deriveFromSmartContractIndexWrite.toString()}
+                                            onChange={async () => {
+                                                setUploadedModuleSchemaBase64Write(undefined);
+                                                setSchemaError({
+                                                    ...schemaError,
+                                                    writeFunction: undefined,
+                                                });
+                                                setContractNameWrite(undefined);
+                                                setEntryPointWriteFunction(undefined);
+                                                setContractInstanceInfo(undefined);
+                                                setContractNameWrite(undefined);
+                                                setEntryPointWriteFunction(undefined);
+                                                setWriteError(undefined);
+
+                                                const checkboxElement =
+                                                    deriveFromSmartContractIndexWriteRef.current as unknown as HTMLInputElement;
+
+                                                setDeriveFromSmartContractIndexWrite(checkboxElement.checked);
+
+                                                if (checkboxElement.checked) {
+                                                    const promiseContractInfo = getContractInfo(
+                                                        client,
+                                                        smartContractIndexInputField
+                                                    );
+
+                                                    promiseContractInfo
+                                                        .then((contractInfo) => {
+                                                            setContractInstanceInfo(contractInfo);
+                                                            setContractNameWrite(contractInfo.contractName);
+                                                            setEntryPointWriteFunction(contractInfo.methods[0]);
+
+                                                            const promise = getEmbeddedSchema(
+                                                                client,
+                                                                contractInfo.sourceModule
+                                                            );
+
+                                                            promise
+                                                                .then((embeddedSchema) => {
+                                                                    const schema = new Uint8Array(embeddedSchema);
+
+                                                                    const moduleSchemaBase64Embedded = btoa(
+                                                                        new Uint8Array(schema).reduce((data, byte) => {
+                                                                            return data + String.fromCharCode(byte);
+                                                                        }, '')
+                                                                    );
+
+                                                                    setEmbeddedModuleSchemaBase64Write(
+                                                                        moduleSchemaBase64Embedded
+                                                                    );
+                                                                })
+                                                                .catch((err: Error) => {
+                                                                    setWriteError((err as Error).message);
+                                                                });
+                                                        })
+                                                        .catch((err: Error) => setWriteError((err as Error).message));
+                                                }
+                                            }}
+                                        />
+                                        <span>{' Derive From Smart Contract Index'}</span>
+                                    </label>
+                                </div>
+                                {deriveFromSmartContractIndexWrite && (
+                                    <>
+                                        <br />
+                                        <div className="alert alert-info" role="alert">
+                                            <div>
+                                                This checkbox autofilled the <code>smart contract name</code>, the{' '}
+                                                <code>entry point name</code>, and the{' '}
+                                                <code>receive parameter schema</code> from the smart contract index.
+                                            </div>
+                                            <br />
+                                            <div>
+                                                <b>Uncheck</b> this box, if you want to manually fill in a{' '}
+                                                <code>smart contract name</code>, an <code>entry point name</code>, or a{' '}
+                                                <code>receive parameter schema</code>.
+                                            </div>
+                                            <br />
+                                            <div>
+                                                <b>Uncheck</b> and <b>check</b> this box again, if you want to load a
+                                                new smart contract index.
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                                 <br />
                                 <br />
                                 <div className="checkbox-wrapper">
@@ -1971,8 +2085,7 @@ export default function Main(props: ConnectionProps) {
                                                 }}
                                             />
                                         </label>
-
-                                        {!useModuleFromStep1 && uploadedModuleSchemaBase64Write && (
+                                        {!deriveFromSmartContractIndexWrite && uploadedModuleSchemaBase64Write && (
                                             <>
                                                 <br />
                                                 <br />
@@ -1997,6 +2110,11 @@ export default function Main(props: ConnectionProps) {
                                         {schemaError.writeFunction !== undefined && (
                                             <div className="alert alert-danger" role="alert">
                                                 Error: {schemaError.writeFunction}.
+                                            </div>
+                                        )}
+                                        {writeError && (
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {writeError}.
                                             </div>
                                         )}
                                         {entryPointTemplateWriteFunction && (
@@ -2098,8 +2216,10 @@ export default function Main(props: ConnectionProps) {
                                             contractNameWrite,
                                             entryPointWriteFunction,
                                             hasInputParameterWriteFunction,
-                                            useModuleFromStep1,
-                                            uploadedModuleSchemaBase64Write,
+                                            deriveFromSmartContractIndexWrite,
+                                            deriveFromSmartContractIndexWrite
+                                                ? embeddedModuleSchemaBase64Write
+                                                : uploadedModuleSchemaBase64Write,
                                             dropDown,
                                             maxContractExecutionEnergy,
                                             smartContractIndexInputField,

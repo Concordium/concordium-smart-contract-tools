@@ -48,6 +48,12 @@ fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
+///
+/// If successful, the return value is a pair of metadata and all of the
+/// `cargo_args` except the `--manifest-path` and the path to the manifest file.
+/// This last part is used for reproducible builds. There we want to keep the
+/// remaining `cargo` arguments, but the manifest path does not make sense since
+/// the project is built from a specific location inside the container.
 fn get_crate_metadata(
     cargo_args: &[String],
 ) -> anyhow::Result<(Metadata, impl Iterator<Item = &String>)> {
@@ -111,9 +117,15 @@ pub struct BuildInfo {
     /// The metadata used for building the contract (the actual code, not the
     /// schema).
     pub metadata:          cargo_metadata::Metadata,
+    /// If a reproducible/verifiable build is requested, this contains the build
+    /// information that should be embedded in the module, together with a
+    /// list of file paths that were used to build the artifact. The file
+    /// paths are relative to the package root.
     pub stored_build_info: Option<(utils::VersionedBuildInfo, Vec<PathBuf>)>,
 }
 
+/// Result of [`create_archive`]. It contains the actual archive with a
+/// list of files that were included.
 pub struct TarArchiveData {
     /// The archive itself.
     tar_archive:    Vec<u8>,
@@ -229,14 +241,29 @@ struct ContainerBuildOutput {
     tar_archive: TarArchiveData,
 }
 
+/// Build the provided directory in the container. Return the built module and
+/// tar archive. The arguments are
+///
+/// - `image`, the docker image that will be used to build.
+/// - `package_target_dir`, the target directory of the package that is being
+///   built. This is used to exclude it from bundling.
+/// - `package_root_path`, the root of the package to build.
+/// - `extra_args`, the extra arguments to pass to the cargo build command.
+/// - `container_runtime`, the container runtime to use, e.g. `docker` or
+///   `podman`
+/// - `out_path`, - the path to the out file for the wasm artifact. This should
+///   be a fully expanded, canonical path.
+/// - `tar_path`, - the path to the tar archive. This should be a fully
+///   expanded, canonical path.
 fn build_in_container<'a>(
     image: String,
     package_target_dir: &Path,
     package_root_path: &Path,
     extra_args: impl Iterator<Item = &'a String>,
     container_runtime: &str,
-    out_path: &Path, // canonical, fully expanded path
-    tar_path: &Path, // canonical, fully expanded path
+    out_path: &Path,
+    tar_path: &Path,
+    source_link: Option<String>,
 ) -> anyhow::Result<ContainerBuildOutput> {
     let tar_archive = create_archive(package_root_path, &[out_path, tar_path, package_target_dir])?;
 
@@ -260,7 +287,7 @@ fn build_in_container<'a>(
     // If both the potential output files exist check if there is no point
     // rebuilding.
     let mut output_wasm = Vec::new();
-    let mut built_alread = false;
+    let mut built_already = false;
 
     // Check if we have to rebuild.
     'skip: {
@@ -285,12 +312,12 @@ fn build_in_container<'a>(
             {
                 strip(&mut skeleton);
                 skeleton.output(&mut output_wasm)?;
-                built_alread = true;
+                built_already = true;
             }
         }
     }
 
-    if !built_alread {
+    if !built_already {
         output_wasm = build_archive(
             &image,
             &tar_archive.tar_archive,
@@ -302,7 +329,7 @@ fn build_in_container<'a>(
 
     let build_info = utils::VersionedBuildInfo::V0(utils::BuildInfo {
         archive_hash: <[u8; 32]>::from(archive_hash).into(),
-        source_link: None, // TODO
+        source_link,
         image,
         build_command,
     });
@@ -316,10 +343,17 @@ fn build_in_container<'a>(
 /// Build a contract and its schema.
 /// If build_schema is set then the return value will contain the schema of the
 /// version specified.
+///
+/// If a verifiable build is requested then the result will contain the build
+/// information that should be embedded in the resulting `wasm.v1` file.
+///
+/// Note that even if a verifiable build is requested the schemas are built on
+/// the host machine.
 pub fn build_contract(
     version: WasmVersion,
     build_schema: SchemaBuildOptions,
     image: Option<String>,
+    source_link: Option<String>,
     container_runtime: String,
     out: Option<PathBuf>,
     cargo_args: &[String],
@@ -411,7 +445,6 @@ pub fn build_contract(
 
     let wasm_file_name = format!("{}.wasm", to_snake_case(package.name.as_str()));
 
-    // TODO: cargo-concordium should check if wasm32 target is installed
     let package_root_path = package_root.canonicalize()?;
 
     let (out_filename, wasm, stored_build_info) = if let Some(image) = image {
@@ -442,6 +475,7 @@ pub fn build_contract(
             &container_runtime,
             &out_filename,
             &tar_filename,
+            source_link,
         )?;
         std::fs::write(tar_filename.as_path(), &tar_archive.tar_archive).with_context(|| {
             format!(

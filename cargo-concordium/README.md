@@ -71,6 +71,9 @@ always build the contract in a fixed environment specified as a Docker image.
 The list of available images can be found on
 [DockerHub](https://hub.docker.com/r/concordium/verifiable-sc/)
 
+**Note that the image used to verify a build is part of the chain of trust. When
+verifying a build you must only use images you trust.**
+
 Both `cargo concordium build` and `cargo concordium test` support verifiable
 builds, which can be requested by adding the option `--verifiable` to the build
 command. The value of this option should be a docker image listed above. For example

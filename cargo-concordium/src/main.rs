@@ -429,6 +429,12 @@ struct BuildOptions {
     )]
     container_runtime:   String,
     #[structopt(
+        name = "source-link",
+        long = "source-link",
+        help = "If a verifiable build is requested, a source link can be embedded in the module."
+    )]
+    source_link:         Option<String>,
+    #[structopt(
         raw = true,
         help = "Extra arguments passed to `cargo build` when building Wasm module."
     )]
@@ -761,6 +767,7 @@ fn download_file_into(url: &str, out: &mut impl std::io::Write) -> anyhow::Resul
     Ok(pos)
 }
 
+/// Handler for the command to verify a build.
 fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
     let module = WasmModule::from_file(&options.source)?;
     let mut skeleton = parse_skeleton(module.source.as_ref())
@@ -811,6 +818,7 @@ fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
     }
 }
 
+/// Handler for the command to edit build information in a module.
 fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
     let module = WasmModule::from_file(&options.source)?;
     let mut skeleton = parse_skeleton(module.source.as_ref())
@@ -928,6 +936,7 @@ fn handle_build(
         options.version,
         build_schema,
         options.image,
+        options.source_link,
         options.container_runtime,
         options.out,
         &options.cargo_args,
@@ -2145,7 +2154,7 @@ fn print_build_info(utils::VersionedBuildInfo::V0(bi): &utils::VersionedBuildInf
         "    - Build command used: {}",
         bold_style.paint(bi.build_command.join(" "))
     );
-    eprintln!("    - Hash of the archive: {}", bi.archive_hash);
+    eprintln!("    - Hash of the archive: {}", bold_style.paint(bi.archive_hash.to_string()));
     if let Some(link) = &bi.source_link {
         eprintln!("    - Link to source code: {}", bold_style.paint(link));
     } else {

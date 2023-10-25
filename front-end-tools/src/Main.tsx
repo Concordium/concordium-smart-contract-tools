@@ -593,7 +593,7 @@ export default function Main(props: ConnectionProps) {
             if (deriveFromSmartContractIndexRead) {
                 setSchemaError({
                     ...schemaError,
-                    readFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                    readFunction: `Could not derive the embedded schema from the smart contract index. \nUncheck "Derive From Smart Contract Index" checkbox to manually upload a schema. Original error: ${e}`,
                 });
             } else {
                 setSchemaError({
@@ -662,7 +662,7 @@ export default function Main(props: ConnectionProps) {
             if (deriveFromSmartContractIndexWrite) {
                 setSchemaError({
                     ...schemaError,
-                    writeFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                    writeFunction: `Could not derive the embedded schema from the smart contract index. \nUncheck "Derive From Smart Contract Index" checkbox to manually upload a schema. Original error: ${e}`,
                 });
             } else {
                 setSchemaError({
@@ -1518,12 +1518,10 @@ export default function Main(props: ConnectionProps) {
                                                     ...schemaError,
                                                     readFunction: undefined,
                                                 });
-                                                setContractNameRead(undefined);
                                                 setEntryPointReadFunction(undefined);
                                                 setContractInstanceInfo(undefined);
-                                                setContractNameRead(undefined);
-                                                setEntryPointReadFunction(undefined);
                                                 setReadError(undefined);
+                                                setEmbeddedModuleSchemaBase64Read(undefined);
 
                                                 const checkboxElement =
                                                     deriveFromSmartContractIndexReadRef.current as unknown as HTMLInputElement;
@@ -1795,14 +1793,21 @@ export default function Main(props: ConnectionProps) {
                                 >
                                     Read Smart Contract
                                 </button>
+                                <br />
+                                <br />
+                                {(deriveFromSmartContractIndexRead
+                                    ? embeddedModuleSchemaBase64Read
+                                    : uploadedModuleSchemaBase64Read) === undefined && (
+                                    <div className="alert alert-warning" role="alert">
+                                        Warning: ModuleSchema is undefined. Return value might not be correctly decoded.
+                                    </div>
+                                )}
                                 {shouldWarnInputParameterInSchemaIgnored.readFunction && (
                                     <div className="alert alert-warning" role="alert">
                                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
                                         checkbox is unchecked.
                                     </div>
                                 )}
-                                <br />
-                                <br />
                                 {returnValue && (
                                     <div className="actionResultBox">
                                         Read value:
@@ -1919,12 +1924,10 @@ export default function Main(props: ConnectionProps) {
                                                     ...schemaError,
                                                     writeFunction: undefined,
                                                 });
-                                                setContractNameWrite(undefined);
                                                 setEntryPointWriteFunction(undefined);
                                                 setContractInstanceInfo(undefined);
-                                                setContractNameWrite(undefined);
-                                                setEntryPointWriteFunction(undefined);
                                                 setWriteError(undefined);
+                                                setEmbeddedModuleSchemaBase64Read(undefined);
 
                                                 const checkboxElement =
                                                     deriveFromSmartContractIndexWriteRef.current as unknown as HTMLInputElement;
@@ -2047,44 +2050,46 @@ export default function Main(props: ConnectionProps) {
                                 <br />
                                 {hasInputParameterWriteFunction && (
                                     <div className="testBox">
-                                        <label className="field">
-                                            Upload Smart Contract Module Schema File (e.g. schema.bin):
-                                            <br />
-                                            <br />
-                                            <input
-                                                className="btn btn-primary"
-                                                type="file"
-                                                id="schemaFile"
-                                                ref={schemaFileRefWrite}
-                                                accept=".bin"
-                                                onChange={async () => {
-                                                    setUploadError2(undefined);
-                                                    setUploadedModuleSchemaBase64Write(undefined);
+                                        {!deriveFromSmartContractIndexWrite && (
+                                            <label className="field">
+                                                Upload Smart Contract Module Schema File (e.g. schema.bin):
+                                                <br />
+                                                <br />
+                                                <input
+                                                    className="btn btn-primary"
+                                                    type="file"
+                                                    id="schemaFile"
+                                                    ref={schemaFileRefWrite}
+                                                    accept=".bin"
+                                                    onChange={async () => {
+                                                        setUploadError2(undefined);
+                                                        setUploadedModuleSchemaBase64Write(undefined);
 
-                                                    const hTMLInputElement =
-                                                        schemaFileRefWrite.current as unknown as HTMLInputElement;
+                                                        const hTMLInputElement =
+                                                            schemaFileRefWrite.current as unknown as HTMLInputElement;
 
-                                                    if (
-                                                        hTMLInputElement.files !== undefined &&
-                                                        hTMLInputElement.files !== null &&
-                                                        hTMLInputElement.files.length > 0
-                                                    ) {
-                                                        const file = hTMLInputElement.files[0];
-                                                        const arrayBuffer = await file.arrayBuffer();
+                                                        if (
+                                                            hTMLInputElement.files !== undefined &&
+                                                            hTMLInputElement.files !== null &&
+                                                            hTMLInputElement.files.length > 0
+                                                        ) {
+                                                            const file = hTMLInputElement.files[0];
+                                                            const arrayBuffer = await file.arrayBuffer();
 
-                                                        const schema = btoa(
-                                                            new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                                return data + String.fromCharCode(byte);
-                                                            }, '')
-                                                        );
+                                                            const schema = btoa(
+                                                                new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                                    return data + String.fromCharCode(byte);
+                                                                }, '')
+                                                            );
 
-                                                        setUploadedModuleSchemaBase64Write(schema);
-                                                    } else {
-                                                        setUploadError2('Upload schema file is undefined');
-                                                    }
-                                                }}
-                                            />
-                                        </label>
+                                                            setUploadedModuleSchemaBase64Write(schema);
+                                                        } else {
+                                                            setUploadError2('Upload schema file is undefined');
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        )}
                                         {!deriveFromSmartContractIndexWrite && uploadedModuleSchemaBase64Write && (
                                             <>
                                                 <br />
@@ -2099,13 +2104,11 @@ export default function Main(props: ConnectionProps) {
                                             </>
                                         )}
                                         <br />
+                                        <br />
                                         {uploadError2 !== undefined && (
-                                            <>
-                                                <br />
-                                                <div className="alert alert-danger" role="alert">
-                                                    Error: {uploadError2}.
-                                                </div>
-                                            </>
+                                            <div className="alert alert-danger" role="alert">
+                                                Error: {uploadError2}.
+                                            </div>
                                         )}
                                         {schemaError.writeFunction !== undefined && (
                                             <div className="alert alert-danger" role="alert">

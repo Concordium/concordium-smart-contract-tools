@@ -766,22 +766,29 @@ fn download_tar_file_into(url: &str, out: &mut impl std::io::Write) -> anyhow::R
     }
     anyhow::ensure!(pos < max_data_size, "The source archive is too large.");
     // check that it's either a tar.gz archive or just a tar archive
-    let Some(data_type) = infer::get(&out_buf) else {
+    gunzip_if(&out_buf, out)?;
+    Ok(pos)
+}
+
+/// If the filetype is a gzip archive then gunzip it into the provided `out`
+/// writer.
+fn gunzip_if(buf: &[u8], out: &mut impl std::io::Write) -> anyhow::Result<()> {
+    let Some(data_type) = infer::get(buf) else {
         anyhow::bail!("Unable to determine file type of downloaded file.");
     };
     if data_type.mime_type() == "application/gzip" {
         use std::io::Write;
         let mut decoder = flate2::write::GzDecoder::new(out);
         decoder
-            .write_all(&out_buf)
+            .write_all(buf)
             .context("Failed to decode downloaded archive")?;
         decoder
             .finish()
             .context("Failed to decode downloaded archive.")?;
     } else {
-        out.write_all(&out_buf)?;
+        out.write_all(buf)?;
     }
-    Ok(pos)
+    Ok(())
 }
 
 /// Handler for the command to verify a build.
@@ -794,7 +801,11 @@ fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
         utils::get_build_info_from_skeleton(&skeleton).context("Unable to extract build info.")?;
 
     let tar_file_contents = if let Some(path) = options.source_path {
-        std::fs::read(path).context("Unable to read the supplied source path.")?
+        let archive_data =
+            std::fs::read(path).context("Unable to read the supplied source path.")?;
+        let mut tar_archive = Vec::new();
+        gunzip_if(&archive_data, &mut tar_archive)?;
+        tar_archive
     } else if let Some(url) = build_info.source_link {
         eprintln!("Downloading source from {url}");
         let mut out = Vec::new();

@@ -32,6 +32,8 @@ tar = "0.4"
 sha2 = "0.10"
 tempfile = "3.8"
 reqwest = { version = "0.11.22", features = ["blocking"] }
+infer = "0.15"
+flate2 = "1.0"
 
 [dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"

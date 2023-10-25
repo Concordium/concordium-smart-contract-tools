@@ -742,7 +742,8 @@ pub fn main() -> anyhow::Result<()> {
 
 /// Download the file into the provided writer and return the amount of data
 /// that was downloaded.
-fn download_file_into(url: &str, out: &mut impl std::io::Write) -> anyhow::Result<usize> {
+fn download_tar_file_into(url: &str, out: &mut impl std::io::Write) -> anyhow::Result<usize> {
+    let mut out_buf: Vec<u8> = Vec::new();
     let mut response = reqwest::blocking::get(url)
         .with_context(|| format!("Unable to retrieve source from {}.", url))?;
     ensure!(
@@ -760,10 +761,26 @@ fn download_file_into(url: &str, out: &mut impl std::io::Write) -> anyhow::Resul
         if bytes_read == 0 {
             break;
         }
-        out.write_all(&buf[0..bytes_read])?;
+        out_buf.extend_from_slice(&buf[0..bytes_read]);
         pos += bytes_read;
     }
     anyhow::ensure!(pos < max_data_size, "The source archive is too large.");
+    // check that it's either a tar.gz archive or just a tar archive
+    let Some(data_type) = infer::get(&out_buf) else {
+        anyhow::bail!("Unable to determine file type of downloaded file.");
+    };
+    if data_type.mime_type() == "application/gzip" {
+        use std::io::Write;
+        let mut decoder = flate2::write::GzDecoder::new(out);
+        decoder
+            .write_all(&out_buf)
+            .context("Failed to decode downloaded archive")?;
+        decoder
+            .finish()
+            .context("Failed to decode downloaded archive.")?;
+    } else {
+        out.write_all(&out_buf)?;
+    }
     Ok(pos)
 }
 
@@ -781,7 +798,7 @@ fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
     } else if let Some(url) = build_info.source_link {
         eprintln!("Downloading source from {url}");
         let mut out = Vec::new();
-        download_file_into(&url, &mut out)?;
+        download_tar_file_into(&url, &mut out)?;
         out
     } else {
         anyhow::bail!("No source provided, and no source link embedded.");
@@ -847,7 +864,7 @@ fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
         if options.verify {
             eprintln!("Verifying data consistency.");
             let mut hasher = sha2::Sha256::new();
-            download_file_into(link, &mut hasher)?;
+            download_tar_file_into(link, &mut hasher)?;
             anyhow::ensure!(
                 hashes::Hash::from(<[u8; 32]>::from(hasher.finalize())) == inner.archive_hash,
                 "The embedded archive hash does not match the file at the supplied URL."

@@ -141,8 +141,10 @@ pub struct TarArchiveData {
 /// `package_root_path`.
 fn create_archive(
     package_root_path: &Path,
+    package_version_string: &str,
     omit_files: &[&Path],
 ) -> anyhow::Result<TarArchiveData> {
+    let in_package_root_dir = std::path::Path::new(package_version_string);
     let mut tar = tar::Builder::new(Vec::new());
     // Ignore files that are ignored by Git.
     let files = ignore::WalkBuilder::new(package_root_path)
@@ -167,7 +169,9 @@ fn create_archive(
             lock_file_found = true;
         }
         archived_files.push(relative_path.to_path_buf());
-        tar.append_path_with_name(file.path(), relative_path)?;
+        // We put the files in the tar archive under the `in_package_root_dir`
+        // directory. This then matches the behaviour of cargo package.
+        tar.append_path_with_name(file.path(), in_package_root_dir.join(relative_path))?;
     }
     anyhow::ensure!(
         lock_file_found,
@@ -241,13 +245,24 @@ struct ContainerBuildOutput {
     tar_archive: TarArchiveData,
 }
 
+/// Package data for building inside a container.
+struct PackageData<'a> {
+    /// The target directory of the package that is being
+    /// built. This is used to exclude it from bundling.
+    package_target_dir:     &'a Path,
+    /// The root of the package to build.
+    package_root_path:      &'a Path,
+    /// The package-name-version pair to mimics the behaviour or cargo package.
+    /// The paths in the tar archive are
+    package_version_string: &'a str,
+}
+
 /// Build the provided directory in the container. Return the built module and
 /// tar archive. The arguments are
 ///
 /// - `image`, the docker image that will be used to build.
-/// - `package_target_dir`, the target directory of the package that is being
-///   built. This is used to exclude it from bundling.
-/// - `package_root_path`, the root of the package to build.
+/// - `package_target_dir`,
+/// - `package_root_path`,
 /// - `extra_args`, the extra arguments to pass to the cargo build command.
 /// - `container_runtime`, the container runtime to use, e.g. `docker` or
 ///   `podman`
@@ -257,15 +272,22 @@ struct ContainerBuildOutput {
 ///   expanded, canonical path.
 fn build_in_container<'a>(
     image: String,
-    package_target_dir: &Path,
-    package_root_path: &Path,
+    PackageData {
+        package_target_dir,
+        package_root_path,
+        package_version_string,
+    }: PackageData,
     extra_args: impl Iterator<Item = &'a String>,
     container_runtime: &str,
     out_path: &Path,
     tar_path: &Path,
     source_link: Option<String>,
 ) -> anyhow::Result<ContainerBuildOutput> {
-    let tar_archive = create_archive(package_root_path, &[out_path, tar_path, package_target_dir])?;
+    let tar_archive = create_archive(package_root_path, package_version_string, &[
+        out_path,
+        tar_path,
+        package_target_dir,
+    ])?;
 
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
 
@@ -447,6 +469,8 @@ pub fn build_contract(
 
     let package_root_path = package_root.canonicalize()?;
 
+    let package_version_string = format!("{}-{}", package.name, package.version);
+
     let (out_filename, wasm, stored_build_info) = if let Some(image) = image {
         let cwd = env::current_dir()
             .context("Unable to get working directory. Does it exist?")?
@@ -469,8 +493,11 @@ pub fn build_contract(
             tar_archive,
         } = build_in_container(
             image,
-            metadata.target_directory.as_std_path(),
-            package_root_path.as_path(),
+            PackageData {
+                package_target_dir:     metadata.target_directory.as_std_path(),
+                package_root_path:      package_root_path.as_path(),
+                package_version_string: &package_version_string,
+            },
             args_without_manifest,
             &container_runtime,
             &out_filename,

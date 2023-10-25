@@ -2154,7 +2154,10 @@ fn print_build_info(utils::VersionedBuildInfo::V0(bi): &utils::VersionedBuildInf
         "    - Build command used: {}",
         bold_style.paint(bi.build_command.join(" "))
     );
-    eprintln!("    - Hash of the archive: {}", bold_style.paint(bi.archive_hash.to_string()));
+    eprintln!(
+        "    - Hash of the archive: {}",
+        bold_style.paint(bi.archive_hash.to_string())
+    );
     if let Some(link) = &bi.source_link {
         eprintln!("    - Link to source code: {}", bold_style.paint(link));
     } else {

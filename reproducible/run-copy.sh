@@ -16,7 +16,7 @@ export ARCHIVE=$1
 
 mkdir -p /b
 cd /b
-tar xf $ARCHIVE
+tar --strip-components=1 -xf $ARCHIVE
 shift 2
 # execute the supplied command which consists of everything apart from the first
 # 2 arguments to the `run-copy` script.

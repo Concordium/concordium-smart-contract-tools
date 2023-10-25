@@ -102,7 +102,8 @@ Information about the sources and the build will be embedded into
   example above)
 - the exact build command executed inside the image
 - optionally the link to the sources if the `--source` flag is provided. If this
-  is not provided the link can be embedded later.
+  is not provided the link can be embedded later. The source link should point
+  either to the `tar` file directly, or to a `gzip`ped version of the file.
 
 ### Publishing the sources
 
@@ -123,11 +124,11 @@ to the metadata.
 
 ### Verifying a build
 
-To verify that a deployed module was built from given sources there is a
-`cargo concordium verify-build` command. This takes a path to the module and
-optionally a path to the source `tar` archive. If the `tar` archive is not
-provided then it will be downloaded from a link embedded in the module, if
-available.
+To verify that a deployed module was built from given sources there is a `cargo
+concordium verify-build` command. This takes a path to the module and optionally
+a path to the source `tar` archive. If the `tar` archive is not provided then it
+will be downloaded from a link embedded in the module, if available. The source
+link may also point to a gzipped `tar` archive.
 
 For example
 ```

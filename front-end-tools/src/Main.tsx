@@ -119,7 +119,8 @@ export default function Main(props: ConnectionProps) {
     );
     const [dropDown, setDropDown] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
-    const [smartContractIndexInputField, setSmartContractIndexInputFiled] = useState<bigint>(1999n);
+    const [smartContractIndexReadInputField, setSmartContractIndexReadInputField] = useState<bigint>(1999n);
+    const [smartContractIndexWriteInputField, setSmartContractIndexWriteInputField] = useState<bigint>(1999n);
     const [entryPointReadFunction, setEntryPointReadFunction] = useState<string | undefined>('view');
     const [entryPointWriteFunction, setEntryPointWriteFunction] = useState<string | undefined>('set');
     const [contractInstanceInfo, setContractInstanceInfo] = useState<
@@ -165,7 +166,8 @@ export default function Main(props: ConnectionProps) {
     const useModuleReferenceFromStep1Ref = useRef(null);
     const moduleReferenceRef = useRef(null);
     const inputParameterFieldRef = useRef(null);
-    const smartContractIndexRef = useRef(null);
+    const smartContractIndexReadRef = useRef(null);
+    const smartContractIndexWriteRef = useRef(null);
     const inputParameterReadTextAreaRef = useRef(null);
     const inputParameterWriteTextAreaRef = useRef(null);
     const deriveFromSmartContractIndexReadRef = useRef(null);
@@ -231,10 +233,13 @@ export default function Main(props: ConnectionProps) {
         setCCDAmount(target.value);
     }, []);
 
-    const changeSmartContractHandler = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setSmartContractIndexInputFiled(BigInt(target.value));
-    }, []);
+    const changeSmartContractHandler = useCallback(
+        (event: ChangeEvent, setSmartContractIndexInputFiled: (arg0: bigint) => void) => {
+            const target = event.target as HTMLTextAreaElement;
+            setSmartContractIndexInputFiled(BigInt(target.value));
+        },
+        []
+    );
 
     const changeEntryPointReadFunctionHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
@@ -541,10 +546,14 @@ export default function Main(props: ConnectionProps) {
         if (initTemplate) {
             if (dropDown === 'array') {
                 const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
-                element.value = getArrayExample(initTemplate);
+                if (element?.value !== undefined) {
+                    element.value = getArrayExample(initTemplate);
+                }
             } else if (dropDown === 'object') {
                 const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
-                element.value = getObjectExample(initTemplate);
+                if (element?.value !== undefined) {
+                    element.value = getObjectExample(initTemplate);
+                }
             }
         }
     }, [
@@ -606,10 +615,14 @@ export default function Main(props: ConnectionProps) {
         if (receiveTemplateReadFunction) {
             if (dropDown === 'array') {
                 const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
-                element.value = getArrayExample(receiveTemplateReadFunction);
+                if (element?.value !== undefined) {
+                    element.value = getArrayExample(receiveTemplateReadFunction);
+                }
             } else if (dropDown === 'object') {
                 const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
-                element.value = getObjectExample(receiveTemplateReadFunction);
+                if (element?.value !== undefined) {
+                    element.value = getObjectExample(receiveTemplateReadFunction);
+                }
             }
         }
     }, [
@@ -675,10 +688,14 @@ export default function Main(props: ConnectionProps) {
         if (receiveTemplateWriteFunction) {
             if (dropDown === 'array') {
                 const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
-                element.value = getArrayExample(receiveTemplateWriteFunction);
+                if (element?.value !== undefined) {
+                    element.value = getArrayExample(receiveTemplateWriteFunction);
+                }
             } else if (dropDown === 'object') {
                 const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
-                element.value = getObjectExample(receiveTemplateWriteFunction);
+                if (element?.value !== undefined) {
+                    element.value = getObjectExample(receiveTemplateWriteFunction);
+                }
             }
         }
     }, [
@@ -1433,10 +1450,12 @@ export default function Main(props: ConnectionProps) {
                                     <input
                                         className="inputFieldStyle"
                                         id="smartContractIndexRead"
-                                        ref={smartContractIndexRef}
+                                        ref={smartContractIndexReadRef}
                                         type="number"
-                                        value={smartContractIndexInputField.toString()}
-                                        onChange={changeSmartContractHandler}
+                                        value={smartContractIndexReadInputField.toString()}
+                                        onChange={(event) => {
+                                            changeSmartContractHandler(event, setSmartContractIndexReadInputField);
+                                        }}
                                     />
                                 </label>
                                 {deriveFromSmartContractIndexRead &&
@@ -1531,7 +1550,7 @@ export default function Main(props: ConnectionProps) {
                                                 if (checkboxElement.checked) {
                                                     const promiseContractInfo = getContractInfo(
                                                         client,
-                                                        smartContractIndexInputField
+                                                        smartContractIndexReadInputField
                                                     );
 
                                                     promiseContractInfo
@@ -1773,7 +1792,7 @@ export default function Main(props: ConnectionProps) {
                                         const promise = read(
                                             client,
                                             contractNameRead,
-                                            smartContractIndexInputField,
+                                            smartContractIndexReadInputField,
                                             entryPointReadFunction,
                                             deriveFromSmartContractIndexRead
                                                 ? embeddedModuleSchemaBase64Read
@@ -1827,11 +1846,12 @@ export default function Main(props: ConnectionProps) {
                                     <input
                                         className="inputFieldStyle"
                                         id="smartContractIndexWrite"
-                                        ref={smartContractIndexRef}
-                                        disabled={useModuleFromStep1}
+                                        ref={smartContractIndexWriteRef}
                                         type="number"
-                                        value={smartContractIndexInputField.toString()}
-                                        onChange={changeSmartContractHandler}
+                                        value={smartContractIndexWriteInputField.toString()}
+                                        onChange={(event) => {
+                                            changeSmartContractHandler(event, setSmartContractIndexWriteInputField);
+                                        }}
                                     />
                                 </label>
                                 {deriveFromSmartContractIndexWrite &&
@@ -1937,7 +1957,7 @@ export default function Main(props: ConnectionProps) {
                                                 if (checkboxElement.checked) {
                                                     const promiseContractInfo = getContractInfo(
                                                         client,
-                                                        smartContractIndexInputField
+                                                        smartContractIndexWriteInputField
                                                     );
 
                                                     promiseContractInfo
@@ -2225,7 +2245,7 @@ export default function Main(props: ConnectionProps) {
                                                 : uploadedModuleSchemaBase64Write,
                                             dropDown,
                                             maxContractExecutionEnergy,
-                                            smartContractIndexInputField,
+                                            smartContractIndexWriteInputField,
                                             cCDAmount
                                         );
 

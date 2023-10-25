@@ -62,6 +62,94 @@ or even `opt-level = "z"`.
 
 In some cases using `opt-level=3` actually leads to smaller code sizes, presumably due to more inlining and dead code removal as a result.
 
+## Reproducible and verifiable builds.
+
+A normal build with `cargo concordium build` is generally not reproducible since
+some host information is embedded into the resulting binary. For this reason
+`cargo concordium` supports so-called verifiable or reproducible builds that
+always build the contract in a fixed environment specified as a Docker image.
+The list of available images can be found on
+[DockerHub](https://hub.docker.com/r/concordium/verifiable-sc/)
+
+**Note that the image used to verify a build is part of the chain of trust. When
+verifying a build you must only use images you trust.**
+
+Both `cargo concordium build` and `cargo concordium test` support verifiable
+builds, which can be requested by adding the option `--verifiable` to the build
+command. The value of this option should be a docker image listed above. For example
+
+```
+cargo concordium build --verifiable concordium/verifable-sc:1.70 -o contract.wasm.v1 -e
+```
+This will build the smart contract, embed the schema (`-e`) and output it to a
+`contract.wasm.v1` file. In addition to this `cargo concordium` will also
+produce a file `contract.wasm.v1.tar` that contains the exact sources that were
+used to build the contract.
+
+When constructing the `tar` archive `cargo concordium` will include the contents
+of the package root subject to the following
+- files listed in `.gitignore` are ignored (both `.gitignore` in the package
+  directory and parent directories)
+- the package build directory (typically `target`) will be ignored
+- additional files listed in any `.ignore` files will be ignored. The format
+  of this file should be the same as a `.gitignore` file.
+
+Information about the sources and the build will be embedded into
+`contract.wasm.v1` file. This information includes
+
+- SHA2-256 hash of the `tar` file
+- the docker image used in the build (`concordium/verifiable-sc:1.70` in the
+  example above)
+- the exact build command executed inside the image
+- optionally the link to the sources if the `--source` flag is provided. If this
+  is not provided the link can be embedded later. The source link should point
+  either to the `tar` file directly, or to a `gzip`ped version of the file.
+
+### Publishing the sources
+
+The `tar` archive is meant to be published and its link embedded in the source
+that is put to the chain. Before registering the module on the chain the `tar`
+file should be uploaded somewhere that is accessible via http `GET` request.
+Then the link should be embedded into the `wasm.v1` file using the
+`edit-build-info` command.
+
+```
+cargo concordium edit-build-info --module contract.wasm.v1 --source-link https://domain.com/contract.wasm.v1.tar --verify
+```
+
+The `--verify` flag is optional, and if it is set `cargo concordium` will
+download the contents at the supplied link and verify that it matches the build
+metadata that is already embedded in the module. If it does, the link is added
+to the metadata.
+
+### Verifying a build
+
+To verify that a deployed module was built from given sources there is a `cargo
+concordium verify-build` command. This takes a path to the module and optionally
+a path to the source `tar` archive. If the `tar` archive is not provided then it
+will be downloaded from a link embedded in the module, if available. The source
+link may also point to a gzipped `tar` archive.
+
+For example
+```
+cargo concordium verify-build --module contract.wasm.v1
+```
+
+### Printing build information
+
+```
+cargo concordium print-build-info --module contract.wasm.v1
+```
+
+Will print any embedded build information.
+
+### Limitations
+
+- The `Cargo.lock` file must be up to date for reproducible builds.
+- The contract sources must be either available remotely on a package
+  repository such as [crates.io](https://crates.io) or entirely under the
+  package root directory.
+
 ## Locally executing contracts
 
 The following are some example invocations of the `cargo concordium` binary's subcommand `run`.

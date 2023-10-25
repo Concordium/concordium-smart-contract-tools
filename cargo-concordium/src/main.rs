@@ -5,10 +5,14 @@ use crate::{
 use ansi_term::Color;
 use anyhow::{bail, ensure, Context};
 use clap::AppSettings;
-use concordium_contracts_common::{
-    from_bytes,
-    schema::{Type, VersionedModuleSchema},
-    to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName,
+use concordium_base::{
+    contracts_common::{
+        self, from_bytes,
+        schema::{Type, VersionedModuleSchema},
+        to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName,
+    },
+    hashes,
+    smart_contracts::{self, WasmModule},
 };
 use concordium_smart_contract_engine::{
     utils::{self, WasmVersion},
@@ -16,8 +20,13 @@ use concordium_smart_contract_engine::{
     v1::{self, ReturnValue},
     InterpreterEnergy,
 };
-use concordium_wasm::validate::ValidationConfig;
+use concordium_wasm::{
+    output::{write_custom_section, Output},
+    parse::parse_skeleton,
+    validate::ValidationConfig,
+};
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
+use sha2::Digest;
 use std::{
     fs::{self, File},
     io::Read,
@@ -254,6 +263,86 @@ A schema has to be provided either as part of a smart contract module or with th
         #[structopt(flatten)]
         build_options: BuildOptions,
     },
+    #[structopt(
+        name = "print-build-info",
+        about = "Print any embedded build information in a module."
+    )]
+    PrintBuildInfo {
+        #[structopt(name = "module", long = "module", help = "Path to the source module.")]
+        source: PathBuf,
+    },
+    #[structopt(
+        name = "edit-build-info",
+        about = "Edit build information in a module."
+    )]
+    EditBuildInfo {
+        #[structopt(flatten)]
+        edit_options: EditOptions,
+    },
+    #[structopt(name = "verify-build", about = "Verify a build.")]
+    Verify {
+        #[structopt(flatten)]
+        verify_options: VerifyOptions,
+    },
+}
+
+// Verify a build.
+//
+// This is *not* a doc comment on purpose, as that has the effect of overriding
+// the `about` message in the help menu for the command.
+// The issue is known (https://github.com/TeXitoi/structopt/issues/391) but won't
+// be fixed in `structopt` as it is in maintenance mode and is now integrated
+// in `clap` v3+. Once we migrate to `clap` v3+, this can become a doc comment.
+#[derive(Debug, StructOpt)]
+struct VerifyOptions {
+    #[structopt(
+        name = "source",
+        long = "source",
+        help = "Path to the sources. If not present then the sources will be downloaded from an \
+                embedded link in the build info."
+    )]
+    source_path:       Option<PathBuf>,
+    #[structopt(name = "module", long = "module", help = "Module to verify.")]
+    source:            PathBuf,
+    #[structopt(
+        name = "crt",
+        long = "container-runtime",
+        help = "The container runtime (either binary name or path) used to run the image to \
+                verify the build.",
+        default_value = "docker",
+        env = "CARGO_CONCORDIUM_CONTAINER_RUNTIME"
+    )]
+    container_runtime: String,
+}
+
+// Edit a build section by adding a source link.
+//
+// This is *not* a doc comment on purpose, as that has the effect of overriding
+// the `about` message in the help menu for the command.
+// The issue is known (https://github.com/TeXitoi/structopt/issues/391) but won't
+// be fixed in `structopt` as it is in maintenance mode and is now integrated
+// in `clap` v3+. Once we migrate to `clap` v3+, this can become a doc comment.
+#[derive(Debug, StructOpt)]
+struct EditOptions {
+    #[structopt(
+        name = "source-link",
+        long = "source-link",
+        help = "URL pointing to the sources. If not set the link is removed."
+    )]
+    source_link: Option<String>,
+    #[structopt(
+        name = "module",
+        long = "module",
+        help = "Module to add the URL to. This will be overwritten."
+    )]
+    source:      PathBuf,
+    #[structopt(
+        name = "verify",
+        long = "verify",
+        help = "If a source link is supplied, verify that the data at the URL matches the \
+                embedded archive hash."
+    )]
+    verify:      bool,
 }
 
 // The build options used in the build and test command.
@@ -309,7 +398,7 @@ struct BuildOptions {
         name = "out",
         long = "out",
         short = "o",
-        help = "Writes the resulting module to file at specified location."
+        help = "Write the resulting smart contract module to the specified file."
     )]
     out:                 Option<PathBuf>,
     #[structopt(
@@ -320,6 +409,31 @@ struct BuildOptions {
         default_value = "V1"
     )]
     version:             utils::WasmVersion,
+    #[structopt(
+        name = "verifiable",
+        long = "verifiable",
+        requires = "out",
+        short = "r",
+        help = "The image to use for a build of a contract that can be verified. If this is not \
+                supplied then the contract will be built in the context of the host, which is \
+                usually not verifiable."
+    )]
+    image:               Option<String>,
+    #[structopt(
+        name = "crt",
+        long = "container-runtime",
+        help = "The container runtime (either binary name or path) used to run the image when a \
+                verifiable build is requested.",
+        default_value = "docker",
+        env = "CARGO_CONCORDIUM_CONTAINER_RUNTIME"
+    )]
+    container_runtime:   String,
+    #[structopt(
+        name = "source-link",
+        long = "source-link",
+        help = "If a verifiable build is requested, a source link can be embedded in the module."
+    )]
+    source_link:         Option<String>,
     #[structopt(
         raw = true,
         help = "Extra arguments passed to `cargo build` when building Wasm module."
@@ -516,29 +630,13 @@ pub fn main() -> anyhow::Result<()> {
                 RunCommand::Init { ref runner, .. } => runner,
                 RunCommand::Receive { ref runner, .. } => runner,
             };
-            // Expect a versioned module. The first 4 bytes are the WasmVersion.
-            let versioned_module =
-                fs::read(&runner.module).context("Could not read module file.")?;
-            let mut cursor = std::io::Cursor::new(&versioned_module[..]);
-            let wasm_version = utils::WasmVersion::read(&mut cursor)
-                .context("Could not read module version from the supplied module file.")?;
-
-            let len = {
-                let mut buf = [0u8; 4];
-                cursor
-                    .read_exact(&mut buf)
-                    .context("Could not parse supplied module.")?;
-                u32::from_be_bytes(buf)
-            };
-            let module = &cursor.into_inner()[8..];
-            ensure!(
-                module.len() == len as usize,
-                "Could not parse the supplied module. The specified length does not match the \
-                 size of the provided data."
-            );
-            match wasm_version {
-                utils::WasmVersion::V0 => handle_run_v0(*run_cmd, module)?,
-                utils::WasmVersion::V1 => handle_run_v1(*run_cmd, module)?,
+            let versioned_module = WasmModule::from_file(&runner.module).with_context(|| {
+                format!("Could not read module file {}", runner.module.display())
+            })?;
+            let module = versioned_module.source.as_ref();
+            match versioned_module.version {
+                smart_contracts::WasmVersion::V0 => handle_run_v0(*run_cmd, module)?,
+                smart_contracts::WasmVersion::V1 => handle_run_v1(*run_cmd, module)?,
             }
         }
         Command::Test {
@@ -625,9 +723,222 @@ pub fn main() -> anyhow::Result<()> {
                     .context("Could not write template schema files.")?;
             }
         }
-        Command::Build { build_options } => handle_build(build_options, true)?,
+        Command::Build { build_options } => {
+            handle_build(build_options, true)?;
+        }
+        Command::EditBuildInfo { edit_options } => {
+            handle_edit(edit_options)?;
+        }
+        Command::PrintBuildInfo { source } => {
+            handle_print_build_info(source)?;
+        }
+        Command::Verify { verify_options } => {
+            handle_verify(verify_options)?;
+        }
         Command::DisplayState { state_bin_path } => display_state_from_file(state_bin_path)?,
     };
+    Ok(())
+}
+
+/// Download the file into the provided writer and return the amount of data
+/// that was downloaded.
+fn download_tar_file_into(url: &str, out: &mut impl std::io::Write) -> anyhow::Result<usize> {
+    let mut out_buf: Vec<u8> = Vec::new();
+    let mut response = reqwest::blocking::get(url)
+        .with_context(|| format!("Unable to retrieve source from {}.", url))?;
+    ensure!(
+        response.status().is_success(),
+        "Unable to retrieve source. Received {} status code response.",
+        response.status()
+    );
+    // Download at most 11MB of data.
+    let max_data_size = 10 * 1024 * 1024;
+    let mut pos: usize = 0;
+    // Read in terms of 1MB chunks.
+    let mut buf = [0u8; 1024];
+    while pos < max_data_size {
+        let bytes_read = response.read(&mut buf)?;
+        if bytes_read == 0 {
+            break;
+        }
+        out_buf.extend_from_slice(&buf[0..bytes_read]);
+        pos += bytes_read;
+    }
+    anyhow::ensure!(pos < max_data_size, "The source archive is too large.");
+    // check that it's either a tar.gz archive or just a tar archive
+    gunzip_if(&out_buf, out)?;
+    Ok(pos)
+}
+
+/// If the filetype is a gzip archive then gunzip it into the provided `out`
+/// writer.
+fn gunzip_if(buf: &[u8], out: &mut impl std::io::Write) -> anyhow::Result<()> {
+    let Some(data_type) = infer::get(buf) else {
+        anyhow::bail!("Unable to determine file type of downloaded file.");
+    };
+    if data_type.mime_type() == "application/gzip" {
+        use std::io::Write;
+        let mut decoder = flate2::write::GzDecoder::new(out);
+        decoder
+            .write_all(buf)
+            .context("Failed to decode downloaded archive")?;
+        decoder
+            .finish()
+            .context("Failed to decode downloaded archive.")?;
+    } else {
+        out.write_all(buf)?;
+    }
+    Ok(())
+}
+
+/// Handler for the command to verify a build.
+fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
+    let module = WasmModule::from_file(&options.source)?;
+    let mut skeleton = parse_skeleton(module.source.as_ref())
+        .context("The supplied module is not a valid Wasm module")?;
+
+    let utils::VersionedBuildInfo::V0(build_info) =
+        utils::get_build_info_from_skeleton(&skeleton).context("Unable to extract build info.")?;
+
+    let tar_file_contents = if let Some(path) = options.source_path {
+        let archive_data =
+            std::fs::read(path).context("Unable to read the supplied source path.")?;
+        let mut tar_archive = Vec::new();
+        gunzip_if(&archive_data, &mut tar_archive)?;
+        tar_archive
+    } else if let Some(url) = build_info.source_link {
+        eprintln!("Downloading source from {url}");
+        let mut out = Vec::new();
+        download_tar_file_into(&url, &mut out)?;
+        out
+    } else {
+        anyhow::bail!("No source provided, and no source link embedded.");
+    };
+
+    eprintln!("Building source and checking ...");
+    let rebuilt_source = build::build_archive(
+        &build_info.image,
+        &tar_file_contents,
+        &options.container_runtime,
+        &build_info.build_command,
+    )
+    .context("Unable to build sources.")?;
+
+    concordium_wasm::utils::strip(&mut skeleton);
+    let mut rebuilt_skeleton =
+        parse_skeleton(&rebuilt_source).context("Unable to parse rebuilt module.")?;
+    concordium_wasm::utils::strip(&mut rebuilt_skeleton);
+
+    let mut sha_origin = sha2::Sha256::new();
+    let mut sha_new = sha2::Sha256::new();
+    skeleton.output(&mut sha_origin)?;
+    rebuilt_skeleton.output(&mut sha_new)?;
+    let error_style = ansi_term::Color::Red.bold();
+    if sha_origin.finalize() != sha_new.finalize() {
+        anyhow::bail!(
+            "\n{}",
+            error_style.paint("The source does not correspond to the module.")
+        );
+    } else {
+        let success_style = ansi_term::Color::Green.bold();
+        eprintln!("\n{}", success_style.paint("Source and module match."));
+        Ok(())
+    }
+}
+
+/// Handler for the command to edit build information in a module.
+fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
+    let module = WasmModule::from_file(&options.source)?;
+    let mut skeleton = parse_skeleton(module.source.as_ref())
+        .context("The supplied module is not a valid Wasm module")?;
+
+    let mut build_context_section = None;
+    for (i, ucs) in skeleton.custom.iter_mut().enumerate() {
+        let cs = concordium_wasm::parse::parse_custom(ucs)?;
+        if cs.name.as_ref() == utils::BUILD_INFO_SECTION_NAME
+            && build_context_section.replace((i, cs)).is_some()
+        {
+            anyhow::bail!(
+                "Multiple sections {}. The module is malformed.",
+                utils::BUILD_INFO_SECTION_NAME
+            );
+        }
+    }
+    let Some((i, mut cs)) = build_context_section else {
+        anyhow::bail!("No embedded build information found.");
+    };
+    skeleton.custom.remove(i);
+    let mut info: utils::VersionedBuildInfo =
+        from_bytes(cs.contents).context("Failed parsing build info")?;
+    let utils::VersionedBuildInfo::V0(ref mut inner) = info;
+    if let Some(ref link) = options.source_link {
+        if options.verify {
+            eprintln!("Verifying data consistency.");
+            let mut hasher = sha2::Sha256::new();
+            download_tar_file_into(link, &mut hasher)?;
+            anyhow::ensure!(
+                hashes::Hash::from(<[u8; 32]>::from(hasher.finalize())) == inner.archive_hash,
+                "The embedded archive hash does not match the file at the supplied URL."
+            );
+            eprintln!("The archive at the supplied URL matches the stored archive checksum.");
+        }
+        eprintln!("Setting source link to {link}.");
+    } else {
+        eprintln!("Unsetting source link.")
+    }
+    inner.source_link = options.source_link;
+    let mut out_buf = Vec::new();
+    skeleton
+        .output(&mut out_buf)
+        .context("Failed to write output module.")?;
+
+    let new_section_content = to_bytes(&info);
+    cs.contents = &new_section_content;
+    write_custom_section(&mut out_buf, &cs)?;
+
+    let out_module = WasmModule {
+        version: module.version,
+        source:  out_buf.into(),
+    };
+    std::fs::write(
+        options.source,
+        concordium_base::common::to_bytes(&out_module),
+    )
+    .context("Unable to replace module source.")?;
+
+    let success_style = ansi_term::Color::Green.bold();
+    eprintln!("{}", success_style.paint("Finished."));
+    eprintln!("\nNew build information embedded in the module.");
+    print_build_info(&info);
+
+    Ok(())
+}
+
+fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
+    let module = WasmModule::from_file(&source)?;
+    let mut skeleton = parse_skeleton(module.source.as_ref())
+        .context("The supplied module is not a valid Wasm module")?;
+
+    let mut build_context_section = None;
+    for ucs in skeleton.custom.iter_mut() {
+        let cs = concordium_wasm::parse::parse_custom(ucs)?;
+        if cs.name.as_ref() == utils::BUILD_INFO_SECTION_NAME
+            && build_context_section.replace(cs).is_some()
+        {
+            anyhow::bail!(
+                "Multiple sections {}. The module is malformed.",
+                utils::BUILD_INFO_SECTION_NAME
+            );
+        }
+    }
+    let Some(cs) = build_context_section else {
+        anyhow::bail!("No embedded build information found.");
+    };
+
+    let info: utils::VersionedBuildInfo =
+        from_bytes(cs.contents).context("Failed parsing build info")?;
+    print_build_info(&info);
+
     Ok(())
 }
 
@@ -637,20 +948,31 @@ pub fn main() -> anyhow::Result<()> {
 /// When building, i.e. when running `cargo concordium build`, the schema
 /// information is outputted, but that is not the case when testing.
 /// This behaviour is configurable via the parameter `print_schema_info`.
-fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Result<()> {
+fn handle_build(
+    options: BuildOptions,
+    print_extra_info: bool,
+) -> anyhow::Result<cargo_metadata::Metadata> {
     let success_style = ansi_term::Color::Green.bold();
     let bold_style = ansi_term::Style::new().bold();
     let build_schema = options.schema_build_options();
-    let (byte_len, schema) = build_contract(
+    let BuildInfo {
+        total_module_len,
+        schema,
+        metadata,
+        stored_build_info,
+    } = build_contract(
         options.version,
         build_schema,
+        options.image,
+        options.source_link,
+        options.container_runtime,
         options.out,
         &options.cargo_args,
     )
     .context("Could not build smart contract.")?;
     if let Some(module_schema) = &schema {
         let module_schema_bytes = to_bytes(module_schema);
-        if print_schema_info {
+        if print_extra_info {
             match module_schema {
                 VersionedModuleSchema::V0(module_schema) => {
                     eprintln!("\n   Module schema includes:");
@@ -736,19 +1058,33 @@ fn handle_build(options: BuildOptions, print_schema_info: bool) -> anyhow::Resul
                     .context("Could not write base64 schema file.")?;
             }
         }
-        if options.schema_embed && print_schema_info {
+        if options.schema_embed && print_extra_info {
             eprintln!("   Embedding schema into module.\n");
         }
     }
-    if print_schema_info {
-        let size = format!("{}.{:03} kB", byte_len / 1000, byte_len % 1000);
+    if print_extra_info {
+        if let Some((bi, archived_files)) = stored_build_info {
+            eprintln!("  Embedded build information information:\n",);
+            print_build_info(&bi);
+            eprintln!();
+            eprintln!("    - Archived source files:");
+            for file in archived_files {
+                eprintln!("        - {}", file.display());
+            }
+        }
+
+        let size = format!(
+            "{}.{:03} kB",
+            total_module_len / 1000,
+            total_module_len % 1000
+        );
         eprintln!(
             "    {} smart contract module {}",
             success_style.paint("Finished"),
             bold_style.paint(size)
-        )
+        );
     }
-    Ok(())
+    Ok(metadata)
 }
 
 /// Loads the contract state from file and displays it as a tree by printing to
@@ -795,7 +1131,7 @@ fn get_colon_position<'a>(iter: impl Iterator<Item = &'a str>) -> usize {
 /// Print the contract name and its entrypoints
 fn print_contract_schema_v0(
     contract_name: &str,
-    contract_schema: &concordium_contracts_common::schema::ContractV0,
+    contract_schema: &contracts_common::schema::ContractV0,
 ) {
     let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
@@ -825,7 +1161,7 @@ fn print_contract_schema_v0(
 /// Print the contract name and its entrypoints.
 fn print_contract_schema_v1(
     contract_name: &str,
-    contract_schema: &concordium_contracts_common::schema::ContractV1,
+    contract_schema: &contracts_common::schema::ContractV1,
 ) {
     let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
@@ -852,7 +1188,7 @@ fn print_contract_schema_v1(
 /// Print the contract name and its entrypoints.
 fn print_contract_schema_v2(
     contract_name: &str,
-    contract_schema: &concordium_contracts_common::schema::ContractV2,
+    contract_schema: &contracts_common::schema::ContractV2,
 ) {
     let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
@@ -879,7 +1215,7 @@ fn print_contract_schema_v2(
 /// Print the contract name and its entrypoints.
 fn print_contract_schema_v3(
     contract_name: &str,
-    contract_schema: &concordium_contracts_common::schema::ContractV3,
+    contract_schema: &contracts_common::schema::ContractV3,
 ) {
     let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
     let colon_position = get_colon_position(receive_iter);
@@ -1090,8 +1426,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             // if the balance is set in the flag it overrides any balance that is set in the
             // context.
             if let Some(balance) = balance {
-                receive_ctx.self_balance =
-                    Some(concordium_contracts_common::Amount::from_micro_ccd(balance));
+                receive_ctx.self_balance = Some(contracts_common::Amount::from_micro_ccd(balance));
             }
 
             // initial state of the smart contract, read from either a binary or json file.
@@ -1522,7 +1857,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             // context.
             if let Some(balance) = balance {
                 receive_ctx.common.self_balance =
-                    Some(concordium_contracts_common::Amount::from_micro_ccd(balance));
+                    Some(contracts_common::Amount::from_micro_ccd(balance));
             }
 
             // initial state of the smart contract, read from either a binary or json file.
@@ -1838,4 +2173,25 @@ fn write_json_schema(out: &Path, schema: &VersionedModuleSchema) -> anyhow::Resu
         }
     }
     Ok(())
+}
+
+fn print_build_info(utils::VersionedBuildInfo::V0(bi): &utils::VersionedBuildInfo) {
+    let bold_style = ansi_term::Style::new().bold();
+    eprintln!("    - Build image used: {}", bold_style.paint(&bi.image));
+    eprintln!(
+        "    - Build command used: {}",
+        bold_style.paint(bi.build_command.join(" "))
+    );
+    eprintln!(
+        "    - Hash of the archive: {}",
+        bold_style.paint(bi.archive_hash.to_string())
+    );
+    if let Some(link) = &bi.source_link {
+        eprintln!("    - Link to source code: {}", bold_style.paint(link));
+    } else {
+        eprintln!(
+            "{}",
+            WARNING_STYLE.paint("    - No link to source code embedded.")
+        );
+    }
 }

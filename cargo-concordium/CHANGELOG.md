@@ -2,6 +2,10 @@
 
 ## Unreleased changes
 
+## 3.1.0
+
+- Support verifiable/reproducible builds.
+
 ## 3.0.0
 
 - Add support for `--manifest-path` flag.

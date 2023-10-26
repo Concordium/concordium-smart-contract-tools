@@ -117,7 +117,9 @@ export default function Main(props: ConnectionProps) {
     const [uploadedModuleSchemaBase64Write, setUploadedModuleSchemaBase64Write] = useState<string | undefined>(
         undefined
     );
-    const [dropDown, setDropDown] = useState('number');
+    const [dropDownInit, setDropDownInit] = useState('number');
+    const [dropDownRead, setDropDownRead] = useState('number');
+    const [dropDownWrite, setDropDownWrite] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
     const [smartContractIndexReadInputField, setSmartContractIndexReadInputField] = useState<bigint>(1999n);
     const [smartContractIndexWriteInputField, setSmartContractIndexWriteInputField] = useState<bigint>(1999n);
@@ -136,7 +138,8 @@ export default function Main(props: ConnectionProps) {
         undefined
     );
 
-    const [maxContractExecutionEnergy, setMaxContractExecutionEnergy] = useState('30000');
+    const [maxContractExecutionEnergyInit, setMaxContractExecutionEnergyInit] = useState('30000');
+    const [maxContractExecutionEnergyWrite, setMaxContractExecutionEnergyWrite] = useState('30000');
     const [useModuleFromStep1, setUseModuleFromStep1] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
     const [displayContracts, setDisplayContracts] = useState<string[]>([]);
@@ -157,7 +160,6 @@ export default function Main(props: ConnectionProps) {
     const [isPayableWriteFunction, setIsPayableWriteFunction] = useState(false);
 
     const moduleFileRef = useRef(null);
-    const inputParameterDropDownRef = useRef(null);
     const contractNameDropDownRef = useRef(null);
     const schemaFileRefInit = useRef(null);
     const schemaFileRefRead = useRef(null);
@@ -172,6 +174,9 @@ export default function Main(props: ConnectionProps) {
     const inputParameterWriteTextAreaRef = useRef(null);
     const deriveFromSmartContractIndexReadRef = useRef(null);
     const deriveFromSmartContractIndexWriteRef = useRef(null);
+    const inputParameterDropDownInitRef = useRef(null);
+    const inputParameterDropDownReadRef = useRef(null);
+    const inputParameterDropDownWriteRef = useRef(null);
 
     function arraysEqual(a: Uint8Array, b: Uint8Array) {
         if (a === b) return true;
@@ -210,15 +215,18 @@ export default function Main(props: ConnectionProps) {
         }
     }, []);
 
-    const changeInputParameterDropDownHandler = useCallback(() => {
-        setParsingError(undefined);
-        setInputParameter(undefined);
-        setTransactionErrorInit(undefined);
-        const e = inputParameterDropDownRef.current as unknown as HTMLSelectElement;
-        const sel = e.selectedIndex;
-        const { value } = e.options[sel];
-        setDropDown(value);
-    }, []);
+    const changeInputParameterDropDownHandler = useCallback(
+        (inputParameterDropDownRef: React.MutableRefObject<null>, setDropDown: (arg0: string) => void) => {
+            setParsingError(undefined);
+            setInputParameter(undefined);
+            setTransactionErrorInit(undefined);
+            const e = inputParameterDropDownRef.current as unknown as HTMLSelectElement;
+            const sel = e.selectedIndex;
+            const { value } = e.options[sel];
+            setDropDown(value);
+        },
+        []
+    );
 
     const changeSmarContractDropDownHandler = useCallback((setContractName: (arg0: string) => void) => {
         setTransactionErrorInit(undefined);
@@ -251,10 +259,13 @@ export default function Main(props: ConnectionProps) {
         setEntryPointWriteFunction(target.value);
     }, []);
 
-    const changeMaxExecutionEnergyHandler = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setMaxContractExecutionEnergy(target.value);
-    }, []);
+    const changeMaxExecutionEnergyHandler = useCallback(
+        (event: ChangeEvent, setMaxContractExecutionEnergy: (arg0: string) => void) => {
+            const target = event.target as HTMLTextAreaElement;
+            setMaxContractExecutionEnergy(target.value);
+        },
+        []
+    );
 
     const changeContractNameHandler = useCallback((event: ChangeEvent, setContractName: (arg0: string) => void) => {
         setTransactionErrorInit(undefined);
@@ -544,12 +555,12 @@ export default function Main(props: ConnectionProps) {
         }
 
         if (initTemplate) {
-            if (dropDown === 'array') {
+            if (dropDownInit === 'array') {
                 const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getArrayExample(initTemplate);
                 }
-            } else if (dropDown === 'object') {
+            } else if (dropDownInit === 'object') {
                 const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getObjectExample(initTemplate);
@@ -561,7 +572,7 @@ export default function Main(props: ConnectionProps) {
         useModuleFromStep1,
         contractNameInit,
         uploadedModuleSchemaBase64Initialization,
-        dropDown,
+        dropDownInit,
     ]);
 
     useEffect(() => {
@@ -613,12 +624,12 @@ export default function Main(props: ConnectionProps) {
         }
 
         if (receiveTemplateReadFunction) {
-            if (dropDown === 'array') {
+            if (dropDownRead === 'array') {
                 const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getArrayExample(receiveTemplateReadFunction);
                 }
-            } else if (dropDown === 'object') {
+            } else if (dropDownRead === 'object') {
                 const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getObjectExample(receiveTemplateReadFunction);
@@ -631,7 +642,7 @@ export default function Main(props: ConnectionProps) {
         deriveFromSmartContractIndexRead,
         contractNameRead,
         uploadedModuleSchemaBase64Read,
-        dropDown,
+        dropDownRead,
     ]);
 
     useEffect(() => {
@@ -686,12 +697,12 @@ export default function Main(props: ConnectionProps) {
         }
 
         if (receiveTemplateWriteFunction) {
-            if (dropDown === 'array') {
+            if (dropDownWrite === 'array') {
                 const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getArrayExample(receiveTemplateWriteFunction);
                 }
-            } else if (dropDown === 'object') {
+            } else if (dropDownWrite === 'object') {
                 const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getObjectExample(receiveTemplateWriteFunction);
@@ -704,7 +715,7 @@ export default function Main(props: ConnectionProps) {
         deriveFromSmartContractIndexWrite,
         contractNameWrite,
         uploadedModuleSchemaBase64Write,
-        dropDown,
+        dropDownWrite,
     ]);
 
     useEffect(() => {
@@ -1103,10 +1114,12 @@ export default function Main(props: ConnectionProps) {
                                     <br />
                                     <input
                                         className="inputFieldStyle"
-                                        id="maxContractExecutionEnergy"
+                                        id="maxContractExecutionEnergyInit"
                                         type="text"
-                                        value={maxContractExecutionEnergy}
-                                        onChange={changeMaxExecutionEnergyHandler}
+                                        value={maxContractExecutionEnergyInit}
+                                        onChange={(event) => {
+                                            changeMaxExecutionEnergyHandler(event, setMaxContractExecutionEnergyInit);
+                                        }}
                                     />
                                 </label>
                                 {useModuleFromStep1 &&
@@ -1189,7 +1202,7 @@ export default function Main(props: ConnectionProps) {
                                             setInputParameter(undefined);
                                             setUploadedModuleSchemaBase64Initialization(undefined);
                                             setTransactionErrorInit(undefined);
-                                            setDropDown('number');
+                                            setDropDownInit('number');
                                             setHasInputParameterInitFunction(!hasInputParameterInitFunction);
                                             setInputParameterTemplate(undefined);
                                             setSchemaError({ ...schemaError, initFunction: undefined });
@@ -1285,10 +1298,15 @@ export default function Main(props: ConnectionProps) {
                                             <br />
                                             <select
                                                 className="dropDownStyle"
-                                                name="inputParameterDropDown"
-                                                id="inputParameterDropDown"
-                                                ref={inputParameterDropDownRef}
-                                                onChange={changeInputParameterDropDownHandler}
+                                                name="inputParameterDropDownInit"
+                                                id="inputParameterDropDownInit"
+                                                ref={inputParameterDropDownInitRef}
+                                                onChange={() => {
+                                                    changeInputParameterDropDownHandler(
+                                                        inputParameterDropDownInitRef,
+                                                        setDropDownInit
+                                                    );
+                                                }}
                                             >
                                                 <option value="number">number</option>
                                                 <option value="string">string</option>
@@ -1297,11 +1315,11 @@ export default function Main(props: ConnectionProps) {
                                             </select>
                                         </label>
                                         <br />
-                                        {(dropDown === 'object' || dropDown === 'array') && (
+                                        {(dropDownInit === 'object' || dropDownInit === 'array') && (
                                             <label className="field">
-                                                Add your input parameter ({dropDown}):
+                                                Add your input parameter ({dropDownInit}):
                                                 <br />
-                                                {dropDown === 'array' && (
+                                                {dropDownInit === 'array' && (
                                                     <textarea
                                                         id="inputParameterTextArea"
                                                         ref={inputParameterTextAreaRef}
@@ -1315,7 +1333,7 @@ export default function Main(props: ConnectionProps) {
                                                         {getArrayExample(inputParameterTemplate)}
                                                     </textarea>
                                                 )}
-                                                {dropDown === 'object' && (
+                                                {dropDownInit === 'object' && (
                                                     <textarea
                                                         id="inputParameterTextArea"
                                                         ref={inputParameterTextAreaRef}
@@ -1331,16 +1349,16 @@ export default function Main(props: ConnectionProps) {
                                                 )}
                                             </label>
                                         )}
-                                        {(dropDown === 'string' || dropDown === 'number') && (
+                                        {(dropDownInit === 'string' || dropDownInit === 'number') && (
                                             <label className="field">
-                                                Add your input parameter ({dropDown}):
+                                                Add your input parameter ({dropDownInit}):
                                                 <br />
                                                 <input
                                                     className="inputFieldStyle"
                                                     id="inputParameterField"
                                                     ref={inputParameterFieldRef}
                                                     type="text"
-                                                    placeholder={dropDown === 'string' ? 'myString' : '1000000'}
+                                                    placeholder={dropDownInit === 'string' ? 'myString' : '1000000'}
                                                     onChange={changeInputParameterFieldHandler}
                                                 />
                                             </label>
@@ -1374,8 +1392,8 @@ export default function Main(props: ConnectionProps) {
                                             useModuleFromStep1
                                                 ? embeddedModuleSchemaBase64Init
                                                 : uploadedModuleSchemaBase64Initialization,
-                                            dropDown,
-                                            maxContractExecutionEnergy,
+                                            dropDownInit,
+                                            maxContractExecutionEnergyInit,
                                             cCDAmount
                                         );
                                         tx.then(setTxHashInit).catch((err: Error) =>
@@ -1663,11 +1681,12 @@ export default function Main(props: ConnectionProps) {
                                         type="checkbox"
                                         value={hasInputParameterReadFunction.toString()}
                                         onChange={() => {
-                                            // setParsingError('');
+                                            setParsingError(undefined);
                                             // setInputParameter('');
                                             // setUploadedModuleSchemaBase64('');
                                             // setTransactionErrorInit('');
                                             // setDropDown('number');
+                                            setDropDownRead('number');
                                             setHasInputParameterReadFunction(!hasInputParameterReadFunction);
                                             // setInputParameterTemplate('');
                                             // setSchemaError('');
@@ -1714,10 +1733,15 @@ export default function Main(props: ConnectionProps) {
                                             <br />
                                             <select
                                                 className="dropDownStyle"
-                                                name="inputParameterDropDown"
-                                                id="inputParameterDropDown"
-                                                ref={inputParameterDropDownRef}
-                                                onChange={changeInputParameterDropDownHandler}
+                                                name="inputParameterDropDownRead"
+                                                id="inputParameterDropDownRead"
+                                                ref={inputParameterDropDownReadRef}
+                                                onChange={() =>
+                                                    changeInputParameterDropDownHandler(
+                                                        inputParameterDropDownReadRef,
+                                                        setDropDownRead
+                                                    )
+                                                }
                                             >
                                                 <option value="number">number</option>
                                                 <option value="string">string</option>
@@ -1726,11 +1750,11 @@ export default function Main(props: ConnectionProps) {
                                             </select>
                                         </label>
                                         <br />
-                                        {(dropDown === 'object' || dropDown === 'array') && (
+                                        {(dropDownRead === 'object' || dropDownRead === 'array') && (
                                             <label className="field">
-                                                Add your input parameter ({dropDown}):
+                                                Add your input parameter ({dropDownRead}):
                                                 <br />
-                                                {dropDown === 'array' && (
+                                                {dropDownRead === 'array' && (
                                                     <textarea
                                                         id="inputParameterReadTextAreaRef1"
                                                         ref={inputParameterReadTextAreaRef}
@@ -1744,7 +1768,7 @@ export default function Main(props: ConnectionProps) {
                                                         {getArrayExample(entryPointTemplateReadFunction)}
                                                     </textarea>
                                                 )}
-                                                {dropDown === 'object' && (
+                                                {dropDownRead === 'object' && (
                                                     <textarea
                                                         id="inputParameterReadTextAreaRef2"
                                                         ref={inputParameterReadTextAreaRef}
@@ -1760,16 +1784,16 @@ export default function Main(props: ConnectionProps) {
                                                 )}
                                             </label>
                                         )}
-                                        {(dropDown === 'string' || dropDown === 'number') && (
+                                        {(dropDownRead === 'string' || dropDownRead === 'number') && (
                                             <label className="field">
-                                                Add your input parameter ({dropDown}):
+                                                Add your input parameter ({dropDownRead}):
                                                 <br />
                                                 <input
                                                     className="inputFieldStyle"
                                                     id="inputParameterField"
                                                     ref={inputParameterFieldRef}
                                                     type="text"
-                                                    placeholder={dropDown === 'string' ? 'myString' : '1000000'}
+                                                    placeholder={dropDownRead === 'string' ? 'myString' : '1000000'}
                                                     onChange={changeInputParameterFieldHandler}
                                                 />
                                             </label>
@@ -1798,7 +1822,7 @@ export default function Main(props: ConnectionProps) {
                                                 ? embeddedModuleSchemaBase64Read
                                                 : uploadedModuleSchemaBase64Read,
                                             inputParameter,
-                                            dropDown,
+                                            dropDownRead,
                                             hasInputParameterReadFunction,
                                             deriveFromSmartContractIndexRead
                                         );
@@ -1923,10 +1947,12 @@ export default function Main(props: ConnectionProps) {
                                     <br />
                                     <input
                                         className="inputFieldStyle"
-                                        id="maxContractExecutionEnergy"
+                                        id="maxContractExecutionEnergyWrite"
                                         type="text"
-                                        value={maxContractExecutionEnergy}
-                                        onChange={changeMaxExecutionEnergyHandler}
+                                        value={maxContractExecutionEnergyWrite}
+                                        onChange={(event) => {
+                                            changeMaxExecutionEnergyHandler(event, setMaxContractExecutionEnergyWrite);
+                                        }}
                                     />
                                 </label>
                                 <br />
@@ -2055,11 +2081,11 @@ export default function Main(props: ConnectionProps) {
                                         type="checkbox"
                                         value={hasInputParameterWriteFunction.toString()}
                                         onChange={() => {
-                                            // setParsingError('');
+                                            setParsingError(undefined);
                                             // setInputParameter('');
                                             // setUploadedModuleSchemaBase64('');
                                             // setTransactionErrorInit('');
-                                            // setDropDown('number');
+                                            setDropDownWrite('number');
                                             setHasInputParameterWriteFunction(!hasInputParameterWriteFunction);
                                             // setInputParameterTemplate('');
                                             // setSchemaError('');
@@ -2159,8 +2185,13 @@ export default function Main(props: ConnectionProps) {
                                                 className="dropDownStyle"
                                                 name="inputParameterDropDown"
                                                 id="inputParameterDropDown"
-                                                ref={inputParameterDropDownRef}
-                                                onChange={changeInputParameterDropDownHandler}
+                                                ref={inputParameterDropDownWriteRef}
+                                                onChange={() =>
+                                                    changeInputParameterDropDownHandler(
+                                                        inputParameterDropDownWriteRef,
+                                                        setDropDownWrite
+                                                    )
+                                                }
                                             >
                                                 <option value="number">number</option>
                                                 <option value="string">string</option>
@@ -2169,11 +2200,11 @@ export default function Main(props: ConnectionProps) {
                                             </select>
                                         </label>
                                         <br />
-                                        {(dropDown === 'object' || dropDown === 'array') && (
+                                        {(dropDownWrite === 'object' || dropDownWrite === 'array') && (
                                             <label className="field">
-                                                Add your input parameter ({dropDown}):
+                                                Add your input parameter ({dropDownWrite}):
                                                 <br />
-                                                {dropDown === 'array' && (
+                                                {dropDownWrite === 'array' && (
                                                     <textarea
                                                         id="inputParameterWriteTextAreaRef1"
                                                         ref={inputParameterWriteTextAreaRef}
@@ -2187,7 +2218,7 @@ export default function Main(props: ConnectionProps) {
                                                         {getArrayExample(entryPointTemplateWriteFunction)}
                                                     </textarea>
                                                 )}
-                                                {dropDown === 'object' && (
+                                                {dropDownWrite === 'object' && (
                                                     <textarea
                                                         id="inputParameterWriteTextAreaRef2"
                                                         ref={inputParameterWriteTextAreaRef}
@@ -2203,16 +2234,16 @@ export default function Main(props: ConnectionProps) {
                                                 )}
                                             </label>
                                         )}
-                                        {(dropDown === 'string' || dropDown === 'number') && (
+                                        {(dropDownWrite === 'string' || dropDownWrite === 'number') && (
                                             <label className="field">
-                                                Add your input parameter ({dropDown}):
+                                                Add your input parameter ({dropDownWrite}):
                                                 <br />
                                                 <input
                                                     className="inputFieldStyle"
                                                     id="inputParameterField"
                                                     ref={inputParameterFieldRef}
                                                     type="text"
-                                                    placeholder={dropDown === 'string' ? 'myString' : '1000000'}
+                                                    placeholder={dropDownWrite === 'string' ? 'myString' : '1000000'}
                                                     onChange={changeInputParameterFieldHandler}
                                                 />
                                             </label>
@@ -2243,8 +2274,8 @@ export default function Main(props: ConnectionProps) {
                                             deriveFromSmartContractIndexWrite
                                                 ? embeddedModuleSchemaBase64Write
                                                 : uploadedModuleSchemaBase64Write,
-                                            dropDown,
-                                            maxContractExecutionEnergy,
+                                            dropDownWrite,
+                                            maxContractExecutionEnergyWrite,
                                             smartContractIndexWriteInputField,
                                             cCDAmount
                                         );

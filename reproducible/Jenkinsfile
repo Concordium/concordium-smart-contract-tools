@@ -1,7 +1,7 @@
 pipeline {
     agent { label 'jenkins-worker' }
     environment {
-        image_name: "concordium/verifiable-sc:${image_tag}"
+        image_name = "concordium/verifiable-sc:${image_tag}"
     }
     stages {
         stage('dockerhub-login') {

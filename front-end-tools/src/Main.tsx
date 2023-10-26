@@ -108,7 +108,8 @@ export default function Main(props: ConnectionProps) {
     const [moduleReference, setModuleReference] = useState<string | undefined>(
         '91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693'
     );
-    const [cCDAmount, setCCDAmount] = useState('0');
+    const [cCDAmountInit, setCCDAmountInit] = useState<bigint>(0n);
+    const [cCDAmountWrite, setCCDAmountWrite] = useState<bigint>(0n);
     const [base64Module, setBase64Module] = useState<string | undefined>(undefined);
     const [uploadedModuleSchemaBase64Initialization, setUploadedModuleSchemaBase64Initialization] = useState<
         string | undefined
@@ -138,8 +139,8 @@ export default function Main(props: ConnectionProps) {
         undefined
     );
 
-    const [maxContractExecutionEnergyInit, setMaxContractExecutionEnergyInit] = useState('30000');
-    const [maxContractExecutionEnergyWrite, setMaxContractExecutionEnergyWrite] = useState('30000');
+    const [maxContractExecutionEnergyInit, setMaxContractExecutionEnergyInit] = useState<bigint>(30000n);
+    const [maxContractExecutionEnergyWrite, setMaxContractExecutionEnergyWrite] = useState<bigint>(30000n);
     const [useModuleFromStep1, setUseModuleFromStep1] = useState(false);
     const [contracts, setContracts] = useState<string[]>([]);
     const [displayContracts, setDisplayContracts] = useState<string[]>([]);
@@ -236,9 +237,9 @@ export default function Main(props: ConnectionProps) {
         setContractName(value);
     }, []);
 
-    const changeCCDAmountHandler = useCallback((event: ChangeEvent) => {
+    const changeCCDAmountHandler = useCallback((event: ChangeEvent, setCCDAmount: (arg0: bigint) => void) => {
         const target = event.target as HTMLTextAreaElement;
-        setCCDAmount(target.value);
+        setCCDAmount(BigInt(target.value));
     }, []);
 
     const changeSmartContractHandler = useCallback(
@@ -260,9 +261,9 @@ export default function Main(props: ConnectionProps) {
     }, []);
 
     const changeMaxExecutionEnergyHandler = useCallback(
-        (event: ChangeEvent, setMaxContractExecutionEnergy: (arg0: string) => void) => {
+        (event: ChangeEvent, setMaxContractExecutionEnergy: (arg0: bigint) => void) => {
             const target = event.target as HTMLTextAreaElement;
-            setMaxContractExecutionEnergy(target.value);
+            setMaxContractExecutionEnergy(BigInt(target.value));
         },
         []
     );
@@ -1115,8 +1116,8 @@ export default function Main(props: ConnectionProps) {
                                     <input
                                         className="inputFieldStyle"
                                         id="maxContractExecutionEnergyInit"
-                                        type="text"
-                                        value={maxContractExecutionEnergyInit}
+                                        type="number"
+                                        value={maxContractExecutionEnergyInit.toString()}
                                         onChange={(event) => {
                                             changeMaxExecutionEnergyHandler(event, setMaxContractExecutionEnergyInit);
                                         }}
@@ -1170,6 +1171,7 @@ export default function Main(props: ConnectionProps) {
                                             type="checkbox"
                                             value={isPayableInitFunction.toString()}
                                             onChange={() => {
+                                                setCCDAmountInit(0n);
                                                 setIsPayableInitFunction(!isPayableInitFunction);
                                             }}
                                         />
@@ -1184,9 +1186,11 @@ export default function Main(props: ConnectionProps) {
                                             <input
                                                 className="inputFieldStyle"
                                                 id="CCDAmount"
-                                                type="text"
-                                                value={cCDAmount}
-                                                onChange={changeCCDAmountHandler}
+                                                type="number"
+                                                value={cCDAmountInit.toString()}
+                                                onChange={(event) => {
+                                                    changeCCDAmountHandler(event, setCCDAmountInit);
+                                                }}
                                             />
                                         </label>
                                     </div>
@@ -1394,7 +1398,7 @@ export default function Main(props: ConnectionProps) {
                                                 : uploadedModuleSchemaBase64Initialization,
                                             dropDownInit,
                                             maxContractExecutionEnergyInit,
-                                            cCDAmount
+                                            cCDAmountInit
                                         );
                                         tx.then(setTxHashInit).catch((err: Error) =>
                                             setTransactionErrorInit((err as Error).message)
@@ -1948,8 +1952,8 @@ export default function Main(props: ConnectionProps) {
                                     <input
                                         className="inputFieldStyle"
                                         id="maxContractExecutionEnergyWrite"
-                                        type="text"
-                                        value={maxContractExecutionEnergyWrite}
+                                        type="number"
+                                        value={maxContractExecutionEnergyWrite.toString()}
                                         onChange={(event) => {
                                             changeMaxExecutionEnergyHandler(event, setMaxContractExecutionEnergyWrite);
                                         }}
@@ -2053,6 +2057,7 @@ export default function Main(props: ConnectionProps) {
                                             type="checkbox"
                                             value={isPayableWriteFunction.toString()}
                                             onChange={() => {
+                                                setCCDAmountWrite(0n);
                                                 setIsPayableWriteFunction(!isPayableWriteFunction);
                                             }}
                                         />
@@ -2067,9 +2072,11 @@ export default function Main(props: ConnectionProps) {
                                             <input
                                                 className="inputFieldStyle"
                                                 id="CCDAmount"
-                                                type="text"
-                                                value={cCDAmount}
-                                                onChange={changeCCDAmountHandler}
+                                                type="number"
+                                                value={cCDAmountWrite.toString()}
+                                                onChange={(event) => {
+                                                    changeCCDAmountHandler(event, setCCDAmountWrite);
+                                                }}
                                             />
                                         </label>
                                     </div>
@@ -2277,7 +2284,7 @@ export default function Main(props: ConnectionProps) {
                                             dropDownWrite,
                                             maxContractExecutionEnergyWrite,
                                             smartContractIndexWriteInputField,
-                                            cCDAmount
+                                            cCDAmountWrite
                                         );
 
                                         tx.then(setTxHashUpdate).catch((err: Error) =>

@@ -1,4 +1,3 @@
-import { createContext } from 'react';
 import {
     AccountTransactionType,
     CcdAmount,
@@ -32,16 +31,12 @@ export async function write(
     deriveFromSmartContractIndexWrite: boolean,
     moduleSchema: string | undefined,
     dropDown: string,
-    maxContractExecutionEnergy: string | undefined,
+    maxContractExecutionEnergy: bigint,
     contractIndex: bigint,
-    amount?: string
+    amount: bigint
 ) {
     if (contractName === undefined) {
         throw new Error(`Set smart contract name`);
-    }
-
-    if (maxContractExecutionEnergy === undefined) {
-        throw new Error(`Set max contract execution energy`);
     }
 
     if (entryPoint === undefined) {
@@ -97,10 +92,10 @@ export async function write(
         account,
         AccountTransactionType.Update,
         {
-            amount: new CcdAmount(BigInt(amount ? Number(amount) : 0)),
+            amount: new CcdAmount(amount),
             address: { index: contractIndex, subindex: CONTRACT_SUB_INDEX },
             receiveName: `${contractName}.${entryPoint}`,
-            maxContractExecutionEnergy: BigInt(maxContractExecutionEnergy),
+            maxContractExecutionEnergy,
         } as UpdateContractPayload,
         schema
     );
@@ -117,8 +112,8 @@ export async function initialize(
     useModuleFromStep1: boolean,
     moduleSchema: string | undefined,
     dropDown: string,
-    maxContractExecutionEnergy: string | undefined,
-    amount?: string
+    maxContractExecutionEnergy: bigint,
+    amount: bigint
 ) {
     if (moduleReferenceAlreadyDeployed === false) {
         throw new Error(`Module reference does not exist on chain. First, deploy your module in step 1.`);
@@ -130,10 +125,6 @@ export async function initialize(
 
     if (contractName === undefined) {
         throw new Error(`Set smart contract name`);
-    }
-
-    if (maxContractExecutionEnergy === undefined) {
-        throw new Error(`Set max contract execution energy`);
     }
 
     let schema;
@@ -185,22 +176,12 @@ export async function initialize(
         account,
         AccountTransactionType.InitContract,
         {
-            amount: new CcdAmount(BigInt(amount ? Number(amount) : 0)),
+            amount: new CcdAmount(amount),
             moduleRef: new ModuleReference(moduleReference),
             initName: contractName,
             param: toBuffer(''),
-            maxContractExecutionEnergy: BigInt(maxContractExecutionEnergy),
+            maxContractExecutionEnergy,
         } as InitContractPayload,
         schema
     );
 }
-
-/**
- * Global application state.
- */
-export type State = {
-    isConnected: boolean;
-    account: string | undefined;
-};
-
-export const state = createContext<State>({ isConnected: false, account: undefined });

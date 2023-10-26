@@ -79,7 +79,7 @@ builds, which can be requested by adding the option `--verifiable` to the build
 command. The value of this option should be a docker image listed above. For example
 
 ```
-cargo concordium build --verifiable concordium/verifable-sc:1.70 -o contract.wasm.v1 -e
+cargo concordium build --verifiable docker.io/concordium/verifable-sc:1.70.0 -o contract.wasm.v1 -e
 ```
 This will build the smart contract, embed the schema (`-e`) and output it to a
 `contract.wasm.v1` file. In addition to this `cargo concordium` will also
@@ -98,7 +98,7 @@ Information about the sources and the build will be embedded into
 `contract.wasm.v1` file. This information includes
 
 - SHA2-256 hash of the `tar` file
-- the docker image used in the build (`concordium/verifiable-sc:1.70` in the
+- the docker image used in the build (`docker.io/concordium/verifiable-sc:1.70.0` in the
   example above)
 - the exact build command executed inside the image
 - optionally the link to the sources if the `--source` flag is provided. If this

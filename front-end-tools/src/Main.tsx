@@ -101,7 +101,9 @@ export default function Main(props: ConnectionProps) {
     const [txHashUpdate, setTxHashUpdate] = useState<string | undefined>(undefined);
 
     const [accountBalance, setAccountBalance] = useState<string | undefined>(undefined);
-    const [inputParameter, setInputParameter] = useState<string | undefined>(undefined);
+    const [inputParameterInit, setInputParameterInit] = useState<string | undefined>(undefined);
+    const [inputParameterRead, setInputParameterRead] = useState<string | undefined>(undefined);
+    const [inputParameterWrite, setInputParameterWrite] = useState<string | undefined>(undefined);
     const [contractNameInit, setContractNameInit] = useState<string | undefined>('myContract');
     const [contractNameRead, setContractNameRead] = useState<string | undefined>('myContract');
     const [contractNameWrite, setContractNameWrite] = useState<string | undefined>('myContract');
@@ -217,7 +219,11 @@ export default function Main(props: ConnectionProps) {
     }, []);
 
     const changeInputParameterDropDownHandler = useCallback(
-        (inputParameterDropDownRef: React.MutableRefObject<null>, setDropDown: (arg0: string) => void) => {
+        (
+            inputParameterDropDownRef: React.MutableRefObject<null>,
+            setInputParameter: (arg0: string | undefined) => void,
+            setDropDown: (arg0: string) => void
+        ) => {
             setParsingError(undefined);
             setInputParameter(undefined);
             setTransactionErrorInit(undefined);
@@ -274,15 +280,18 @@ export default function Main(props: ConnectionProps) {
         setContractName(target.value);
     }, []);
 
-    const changeInputParameterFieldHandler = useCallback((event: ChangeEvent) => {
-        setParsingError(undefined);
-        setTransactionErrorInit(undefined);
-        const target = event.target as HTMLTextAreaElement;
-        setInputParameter(target.value);
-    }, []);
+    const changeInputParameterFieldHandler = useCallback(
+        (event: ChangeEvent, setInputParameter: (arg0: string) => void) => {
+            setParsingError(undefined);
+            setTransactionErrorInit(undefined);
+            const target = event.target as HTMLTextAreaElement;
+            setInputParameter(target.value);
+        },
+        []
+    );
 
     const changeInputParameterTextAreaHandler = useCallback(
-        (event: ChangeEvent, textAreaRef: React.MutableRefObject<null>) => {
+        (event: ChangeEvent, textAreaRef: React.MutableRefObject<null>, setInputParameter: (arg0: string) => void) => {
             setParsingError(undefined);
             setTransactionErrorInit(undefined);
             const inputTextArea = textAreaRef.current as unknown as HTMLTextAreaElement;
@@ -1203,7 +1212,7 @@ export default function Main(props: ConnectionProps) {
                                         value={hasInputParameterInitFunction.toString()}
                                         onChange={() => {
                                             setParsingError(undefined);
-                                            setInputParameter(undefined);
+                                            setInputParameterInit(undefined);
                                             setUploadedModuleSchemaBase64Initialization(undefined);
                                             setTransactionErrorInit(undefined);
                                             setDropDownInit('number');
@@ -1308,6 +1317,7 @@ export default function Main(props: ConnectionProps) {
                                                 onChange={() => {
                                                     changeInputParameterDropDownHandler(
                                                         inputParameterDropDownInitRef,
+                                                        setInputParameterInit,
                                                         setDropDownInit
                                                     );
                                                 }}
@@ -1330,7 +1340,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterTextAreaRef
+                                                                inputParameterTextAreaRef,
+                                                                setInputParameterInit
                                                             )
                                                         }
                                                     >
@@ -1344,7 +1355,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterTextAreaRef
+                                                                inputParameterTextAreaRef,
+                                                                setInputParameterInit
                                                             )
                                                         }
                                                     >
@@ -1363,7 +1375,9 @@ export default function Main(props: ConnectionProps) {
                                                     ref={inputParameterFieldRef}
                                                     type="text"
                                                     placeholder={dropDownInit === 'string' ? 'myString' : '1000000'}
-                                                    onChange={changeInputParameterFieldHandler}
+                                                    onChange={(event) =>
+                                                        changeInputParameterFieldHandler(event, setInputParameterInit)
+                                                    }
                                                 />
                                             </label>
                                         )}
@@ -1389,7 +1403,7 @@ export default function Main(props: ConnectionProps) {
                                             account,
                                             isModuleReferenceAlreadyDeployedStep2,
                                             moduleReference,
-                                            inputParameter,
+                                            inputParameterInit,
                                             contractNameInit,
                                             hasInputParameterInitFunction,
                                             useModuleFromStep1,
@@ -1743,6 +1757,7 @@ export default function Main(props: ConnectionProps) {
                                                 onChange={() =>
                                                     changeInputParameterDropDownHandler(
                                                         inputParameterDropDownReadRef,
+                                                        setInputParameterRead,
                                                         setDropDownRead
                                                     )
                                                 }
@@ -1765,7 +1780,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterReadTextAreaRef
+                                                                inputParameterReadTextAreaRef,
+                                                                setInputParameterRead
                                                             )
                                                         }
                                                     >
@@ -1779,7 +1795,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterReadTextAreaRef
+                                                                inputParameterReadTextAreaRef,
+                                                                setInputParameterRead
                                                             )
                                                         }
                                                     >
@@ -1798,7 +1815,9 @@ export default function Main(props: ConnectionProps) {
                                                     ref={inputParameterFieldRef}
                                                     type="text"
                                                     placeholder={dropDownRead === 'string' ? 'myString' : '1000000'}
-                                                    onChange={changeInputParameterFieldHandler}
+                                                    onChange={(event) =>
+                                                        changeInputParameterFieldHandler(event, setInputParameterRead)
+                                                    }
                                                 />
                                             </label>
                                         )}
@@ -1825,7 +1844,7 @@ export default function Main(props: ConnectionProps) {
                                             deriveFromSmartContractIndexRead
                                                 ? embeddedModuleSchemaBase64Read
                                                 : uploadedModuleSchemaBase64Read,
-                                            inputParameter,
+                                            inputParameterRead,
                                             dropDownRead,
                                             hasInputParameterReadFunction,
                                             deriveFromSmartContractIndexRead
@@ -2196,6 +2215,7 @@ export default function Main(props: ConnectionProps) {
                                                 onChange={() =>
                                                     changeInputParameterDropDownHandler(
                                                         inputParameterDropDownWriteRef,
+                                                        setInputParameterWrite,
                                                         setDropDownWrite
                                                     )
                                                 }
@@ -2218,7 +2238,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterWriteTextAreaRef
+                                                                inputParameterWriteTextAreaRef,
+                                                                setInputParameterWrite
                                                             )
                                                         }
                                                     >
@@ -2232,7 +2253,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterWriteTextAreaRef
+                                                                inputParameterWriteTextAreaRef,
+                                                                setInputParameterWrite
                                                             )
                                                         }
                                                     >
@@ -2251,7 +2273,9 @@ export default function Main(props: ConnectionProps) {
                                                     ref={inputParameterFieldRef}
                                                     type="text"
                                                     placeholder={dropDownWrite === 'string' ? 'myString' : '1000000'}
-                                                    onChange={changeInputParameterFieldHandler}
+                                                    onChange={(event) =>
+                                                        changeInputParameterFieldHandler(event, setInputParameterWrite)
+                                                    }
                                                 />
                                             </label>
                                         )}
@@ -2273,7 +2297,7 @@ export default function Main(props: ConnectionProps) {
                                         const tx = write(
                                             connection,
                                             account,
-                                            inputParameter,
+                                            inputParameterWrite,
                                             contractNameWrite,
                                             entryPointWriteFunction,
                                             hasInputParameterWriteFunction,

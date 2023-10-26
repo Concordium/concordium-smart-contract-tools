@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback, useRef } from 'react';
+import { Buffer } from 'buffer';
 import {
     WalletConnectionProps,
     useConnection,
@@ -9,7 +10,7 @@ import {
     MAINNET,
     useWalletConnectorSelector,
 } from '@concordium/react-components';
-import { Buffer } from 'buffer';
+
 import {
     AccountAddress,
     ModuleReference,
@@ -24,8 +25,9 @@ import {
 
 import { initialize, deploy, write } from './writing_to_blockchain';
 import { read, getEmbeddedSchema, getContractInfo } from './reading_from_blockchain';
+import { getObjectExample, getArrayExample, arraysEqual } from './utils';
 
-import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ARRAYS, EXAMPLE_JSON_OBJECT } from './constants';
+import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
 
 type BoxProps = PropsWithChildren<{
     header: string;
@@ -183,27 +185,6 @@ export default function Main(props: ConnectionProps) {
     const inputParameterDropDownReadRef = useRef(null);
     const inputParameterDropDownWriteRef = useRef(null);
 
-    function arraysEqual(a: Uint8Array, b: Uint8Array) {
-        if (a === b) return true;
-        if (a == null || b == null) return false;
-        if (a.length !== b.length) return false;
-
-        for (let i = 0; i < a.length; i += 1) {
-            if (a[i] !== b[i]) return false;
-        }
-        return true;
-    }
-
-    function getObjectExample(template: string | undefined) {
-        return template !== undefined
-            ? JSON.stringify(JSON.parse(template), undefined, 2)
-            : JSON.stringify(EXAMPLE_JSON_OBJECT, undefined, 2);
-    }
-
-    function getArrayExample(template: string | undefined) {
-        return template !== undefined ? JSON.stringify(JSON.parse(template), undefined, 2) : EXAMPLE_ARRAYS;
-    }
-
     const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
         setModuleReferenceLengthError(undefined);
         setModuleReference(undefined);
@@ -243,40 +224,14 @@ export default function Main(props: ConnectionProps) {
         setContractName(value);
     }, []);
 
-    const changeCCDAmountHandler = useCallback((event: ChangeEvent, setCCDAmount: (arg0: bigint) => void) => {
+    const changeBigIntValue = useCallback((event: ChangeEvent, setValue: (arg0: bigint) => void) => {
         const target = event.target as HTMLTextAreaElement;
-        setCCDAmount(BigInt(target.value));
+        setValue(BigInt(target.value));
     }, []);
 
-    const changeSmartContractHandler = useCallback(
-        (event: ChangeEvent, setSmartContractIndexInputFiled: (arg0: bigint) => void) => {
-            const target = event.target as HTMLTextAreaElement;
-            setSmartContractIndexInputFiled(BigInt(target.value));
-        },
-        []
-    );
-
-    const changeEntryPointReadFunctionHandler = useCallback((event: ChangeEvent) => {
+    const changeStringValue = useCallback((event: ChangeEvent, setValue: (arg0: string) => void) => {
         const target = event.target as HTMLTextAreaElement;
-        setEntryPointReadFunction(target.value);
-    }, []);
-
-    const changeEntryPointWriteFunctionHandler = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setEntryPointWriteFunction(target.value);
-    }, []);
-
-    const changeMaxExecutionEnergyHandler = useCallback(
-        (event: ChangeEvent, setMaxContractExecutionEnergy: (arg0: bigint) => void) => {
-            const target = event.target as HTMLTextAreaElement;
-            setMaxContractExecutionEnergy(BigInt(target.value));
-        },
-        []
-    );
-
-    const changeContractNameHandler = useCallback((event: ChangeEvent, setContractName: (arg0: string) => void) => {
-        const target = event.target as HTMLTextAreaElement;
-        setContractName(target.value);
+        setValue(target.value);
     }, []);
 
     const changeInputParameterFieldHandler = useCallback(
@@ -308,7 +263,7 @@ export default function Main(props: ConnectionProps) {
                 return;
             }
 
-            setInputParameter(JSON.stringify(JSON.parse(target.value)));
+            setInputParameter(target.value);
         },
         []
     );
@@ -317,7 +272,7 @@ export default function Main(props: ConnectionProps) {
     // eslint-disable-next-line consistent-return
     useEffect(() => {
         if (connection && client && account) {
-            const interval = setInterval(() => {
+            setInterval(() => {
                 console.log('refreshing_accountInfo');
                 client
                     .getAccountInfo(new AccountAddress(account))
@@ -336,7 +291,6 @@ export default function Main(props: ConnectionProps) {
                         setAccountExistsOnNetwork(false);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
-            return () => clearInterval(interval);
         }
     }, [connection, account, client]);
 
@@ -357,15 +311,16 @@ export default function Main(props: ConnectionProps) {
                                 report.outcome.summary.transactionType === TransactionKindString.DeployModule
                             ) {
                                 setModuleReferenceDeployed(report.outcome.summary.moduleDeployed.contents);
+                                clearInterval(interval);
                             }
                         }
                     })
                     .catch((e) => {
                         setModuleReferenceDeployed(undefined);
                         setViewErrorModuleReference((e as Error).message);
+                        clearInterval(interval);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
-            return () => clearInterval(interval);
         }
     }, [connection, account, client, txHashDeploy]);
 
@@ -388,8 +343,10 @@ export default function Main(props: ConnectionProps) {
                                     setSmartContractIndex(
                                         report.outcome.summary.contractInitialized.address.index.toString()
                                     );
+                                    clearInterval(interval);
                                 } else {
                                     setSmartContractIndexError('Contract initialization failed');
+                                    clearInterval(interval);
                                 }
                             }
                         }
@@ -397,9 +354,9 @@ export default function Main(props: ConnectionProps) {
                     .catch((e) => {
                         setSmartContractIndex(undefined);
                         setSmartContractIndexError((e as Error).message);
+                        clearInterval(interval);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
-            return () => clearInterval(interval);
         }
     }, [connection, account, client, txHashInit]);
 
@@ -419,19 +376,21 @@ export default function Main(props: ConnectionProps) {
                                     report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
                                     report.outcome.summary.transactionType === TransactionKindString.Update
                                 ) {
-                                    setWriteTransactionOutcome('Success');
+                                    setWriteTransactionOutcome('Transaction was successful');
+                                    clearInterval(interval);
                                 } else {
-                                    setWriteTransactionOutcome('Fail');
+                                    setWriteTransactionOutcome('Transaction failed');
+                                    clearInterval(interval);
                                 }
                             }
                         }
                     })
                     .catch((e) => {
-                        setWriteTransactionOutcome(`Fail: ${(e as Error).message}`);
+                        setWriteTransactionOutcome(`Transaction failed; Error: ${(e as Error).message}`);
+                        clearInterval(interval);
                         // setViewErrorModuleReference((e as Error).message);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
-            return () => clearInterval(interval);
         }
     }, [connection, account, client, txHashUpdate]);
 
@@ -1137,7 +1096,7 @@ export default function Main(props: ConnectionProps) {
                                         type="number"
                                         value={maxContractExecutionEnergyInit.toString()}
                                         onChange={(event) => {
-                                            changeMaxExecutionEnergyHandler(event, setMaxContractExecutionEnergyInit);
+                                            changeBigIntValue(event, setMaxContractExecutionEnergyInit);
                                         }}
                                     />
                                 </label>
@@ -1171,7 +1130,7 @@ export default function Main(props: ConnectionProps) {
                                             type="text"
                                             value={contractNameInit}
                                             onChange={(event) => {
-                                                changeContractNameHandler(event, setContractNameInit);
+                                                changeStringValue(event, setContractNameInit);
                                             }}
                                         />
                                     </label>
@@ -1207,7 +1166,7 @@ export default function Main(props: ConnectionProps) {
                                                 type="number"
                                                 value={cCDAmountInit.toString()}
                                                 onChange={(event) => {
-                                                    changeCCDAmountHandler(event, setCCDAmountInit);
+                                                    changeBigIntValue(event, setCCDAmountInit);
                                                 }}
                                             />
                                         </label>
@@ -1507,7 +1466,7 @@ export default function Main(props: ConnectionProps) {
                                         type="number"
                                         value={smartContractIndexReadInputField.toString()}
                                         onChange={(event) => {
-                                            changeSmartContractHandler(event, setSmartContractIndexReadInputField);
+                                            changeBigIntValue(event, setSmartContractIndexReadInputField);
                                         }}
                                     />
                                 </label>
@@ -1539,7 +1498,7 @@ export default function Main(props: ConnectionProps) {
                                             type="text"
                                             value={contractNameRead}
                                             onChange={(event) => {
-                                                changeContractNameHandler(event, setContractNameRead);
+                                                changeStringValue(event, setContractNameRead);
                                             }}
                                         />
                                     </label>
@@ -1554,7 +1513,9 @@ export default function Main(props: ConnectionProps) {
                                             className="dropDownStyle"
                                             name="entryPoint"
                                             id="entryPoint"
-                                            onChange={changeEntryPointReadFunctionHandler}
+                                            onChange={(event) => {
+                                                changeStringValue(event, setEntryPointReadFunction);
+                                            }}
                                         >
                                             {contractInstanceInfo.methods?.map((method) => (
                                                 <option key={method}>{method}</option>
@@ -1571,7 +1532,9 @@ export default function Main(props: ConnectionProps) {
                                             id="entryPoint"
                                             type="text"
                                             value={entryPointReadFunction}
-                                            onChange={changeEntryPointReadFunctionHandler}
+                                            onChange={(event) => {
+                                                changeStringValue(event, setEntryPointReadFunction);
+                                            }}
                                         />
                                     </label>
                                 )}
@@ -1922,7 +1885,7 @@ export default function Main(props: ConnectionProps) {
                                         type="number"
                                         value={smartContractIndexWriteInputField.toString()}
                                         onChange={(event) => {
-                                            changeSmartContractHandler(event, setSmartContractIndexWriteInputField);
+                                            changeBigIntValue(event, setSmartContractIndexWriteInputField);
                                         }}
                                     />
                                 </label>
@@ -1954,7 +1917,7 @@ export default function Main(props: ConnectionProps) {
                                             type="text"
                                             value={contractNameWrite}
                                             onChange={(event) => {
-                                                changeContractNameHandler(event, setContractNameWrite);
+                                                changeStringValue(event, setContractNameWrite);
                                             }}
                                         />
                                     </label>
@@ -1969,7 +1932,9 @@ export default function Main(props: ConnectionProps) {
                                             className="dropDownStyle"
                                             name="entryPoint"
                                             id="entryPoint"
-                                            onChange={changeEntryPointWriteFunctionHandler}
+                                            onChange={(event) => {
+                                                changeStringValue(event, setEntryPointWriteFunction);
+                                            }}
                                         >
                                             {contractInstanceInfo.methods?.map((method) => (
                                                 <option key={method}>{method}</option>
@@ -1986,7 +1951,9 @@ export default function Main(props: ConnectionProps) {
                                             id="entryPoint"
                                             type="text"
                                             value={entryPointWriteFunction}
-                                            onChange={changeEntryPointWriteFunctionHandler}
+                                            onChange={(event) => {
+                                                changeStringValue(event, setEntryPointWriteFunction);
+                                            }}
                                         />
                                     </label>
                                 )}
@@ -1999,7 +1966,7 @@ export default function Main(props: ConnectionProps) {
                                         type="number"
                                         value={maxContractExecutionEnergyWrite.toString()}
                                         onChange={(event) => {
-                                            changeMaxExecutionEnergyHandler(event, setMaxContractExecutionEnergyWrite);
+                                            changeBigIntValue(event, setMaxContractExecutionEnergyWrite);
                                         }}
                                     />
                                 </label>
@@ -2119,7 +2086,7 @@ export default function Main(props: ConnectionProps) {
                                                 type="number"
                                                 value={cCDAmountWrite.toString()}
                                                 onChange={(event) => {
-                                                    changeCCDAmountHandler(event, setCCDAmountWrite);
+                                                    changeBigIntValue(event, setCCDAmountWrite);
                                                 }}
                                             />
                                         </label>

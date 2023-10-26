@@ -27,15 +27,15 @@ import { read, getEmbeddedSchema, getContractInfo } from './reading_from_blockch
 
 import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ARRAYS, EXAMPLE_JSON_OBJECT } from './constants';
 
-type TestBoxProps = PropsWithChildren<{
+type BoxProps = PropsWithChildren<{
     header: string;
 }>;
 
-function TestBox({ header, children }: TestBoxProps) {
+function Box({ header, children }: BoxProps) {
     return (
-        <fieldset className="testBox">
+        <fieldset className="Box">
             <legend>{header}</legend>
-            <div className="testBoxFields">{children}</div>
+            <div className="BoxFields">{children}</div>
             <br />
         </fieldset>
     );
@@ -203,7 +203,6 @@ export default function Main(props: ConnectionProps) {
     }
 
     const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
-        setTransactionErrorInit(undefined);
         setModuleReferenceLengthError(undefined);
         setModuleReference(undefined);
 
@@ -226,7 +225,6 @@ export default function Main(props: ConnectionProps) {
         ) => {
             setParsingError(undefined);
             setInputParameter(undefined);
-            setTransactionErrorInit(undefined);
             const e = inputParameterDropDownRef.current as unknown as HTMLSelectElement;
             const sel = e.selectedIndex;
             const { value } = e.options[sel];
@@ -236,7 +234,6 @@ export default function Main(props: ConnectionProps) {
     );
 
     const changeSmarContractDropDownHandler = useCallback((setContractName: (arg0: string) => void) => {
-        setTransactionErrorInit(undefined);
         const e = contractNameDropDownRef.current as unknown as HTMLSelectElement;
         const sel = e.selectedIndex;
         const { value } = e.options[sel];
@@ -275,7 +272,6 @@ export default function Main(props: ConnectionProps) {
     );
 
     const changeContractNameHandler = useCallback((event: ChangeEvent, setContractName: (arg0: string) => void) => {
-        setTransactionErrorInit(undefined);
         const target = event.target as HTMLTextAreaElement;
         setContractName(target.value);
     }, []);
@@ -283,7 +279,6 @@ export default function Main(props: ConnectionProps) {
     const changeInputParameterFieldHandler = useCallback(
         (event: ChangeEvent, setInputParameter: (arg0: string) => void) => {
             setParsingError(undefined);
-            setTransactionErrorInit(undefined);
             const target = event.target as HTMLTextAreaElement;
             setInputParameter(target.value);
         },
@@ -291,11 +286,8 @@ export default function Main(props: ConnectionProps) {
     );
 
     const changeInputParameterTextAreaHandler = useCallback(
-        (event: ChangeEvent, textAreaRef: React.MutableRefObject<null>, setInputParameter: (arg0: string) => void) => {
+        (event: ChangeEvent, setInputParameter: (arg0: string) => void) => {
             setParsingError(undefined);
-            setTransactionErrorInit(undefined);
-            const inputTextArea = textAreaRef.current as unknown as HTMLTextAreaElement;
-            inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
             const target = event.target as HTMLTextAreaElement;
 
             try {
@@ -569,11 +561,13 @@ export default function Main(props: ConnectionProps) {
                 const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getArrayExample(initTemplate);
+                    element?.setAttribute('style', `height:${element.scrollHeight}px;overflow-y:hidden;`);
                 }
             } else if (dropDownInit === 'object') {
                 const element = inputParameterTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getObjectExample(initTemplate);
+                    element?.setAttribute('style', `height:${element.scrollHeight}px;overflow-y:hidden;`);
                 }
             }
         }
@@ -638,11 +632,13 @@ export default function Main(props: ConnectionProps) {
                 const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getArrayExample(receiveTemplateReadFunction);
+                    element?.setAttribute('style', `height:${element.scrollHeight}px;overflow-y:hidden;`);
                 }
             } else if (dropDownRead === 'object') {
                 const element = inputParameterReadTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getObjectExample(receiveTemplateReadFunction);
+                    element?.setAttribute('style', `height:${element.scrollHeight}px;overflow-y:hidden;`);
                 }
             }
         }
@@ -711,11 +707,13 @@ export default function Main(props: ConnectionProps) {
                 const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getArrayExample(receiveTemplateWriteFunction);
+                    element?.setAttribute('style', `height:${element.scrollHeight}px;overflow-y:hidden;`);
                 }
             } else if (dropDownWrite === 'object') {
                 const element = inputParameterWriteTextAreaRef.current as unknown as HTMLSelectElement;
                 if (element?.value !== undefined) {
                     element.value = getObjectExample(receiveTemplateWriteFunction);
+                    element?.setAttribute('style', `height:${element.scrollHeight}px;overflow-y:hidden;`);
                 }
             }
         }
@@ -832,7 +830,7 @@ export default function Main(props: ConnectionProps) {
                                     <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
                                 </>
                             )}
-                            <TestBox header="Step 1: Deploy Smart Contract Module">
+                            <Box header="Step 1: Deploy Smart Contract Module">
                                 <label className="field">
                                     Upload Smart Contract Module File (e.g. myContract.wasm.v1):
                                     <br />
@@ -1024,8 +1022,8 @@ export default function Main(props: ConnectionProps) {
                                         </div>
                                     </>
                                 )}
-                            </TestBox>
-                            <TestBox header="Step 2: Initialize Smart Contract">
+                            </Box>
+                            <Box header="Step 2: Initialize Smart Contract">
                                 <br />
                                 <br />
                                 <div className="checkbox-wrapper">
@@ -1188,7 +1186,7 @@ export default function Main(props: ConnectionProps) {
                                     </label>
                                 </div>
                                 {isPayableInitFunction && (
-                                    <div className="testBox">
+                                    <div className="Box">
                                         <label className="field">
                                             CCD amount (micro):
                                             <br />
@@ -1224,7 +1222,7 @@ export default function Main(props: ConnectionProps) {
                                     <span>{' Has Input Parameter'}</span>
                                 </label>
                                 {hasInputParameterInitFunction && (
-                                    <div className="testBox">
+                                    <div className="Box">
                                         {!useModuleFromStep1 && (
                                             <>
                                                 <label className="field">
@@ -1330,9 +1328,12 @@ export default function Main(props: ConnectionProps) {
                                         </label>
                                         <br />
                                         {(dropDownInit === 'object' || dropDownInit === 'array') && (
-                                            <label className="field">
-                                                Add your input parameter ({dropDownInit}):
-                                                <br />
+                                            <>
+                                                <label className="field">
+                                                    Add your input parameter ({dropDownInit}):
+                                                    <br />
+                                                    <br />
+                                                </label>
                                                 {dropDownInit === 'array' && (
                                                     <textarea
                                                         id="inputParameterTextArea"
@@ -1340,7 +1341,6 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterTextAreaRef,
                                                                 setInputParameterInit
                                                             )
                                                         }
@@ -1355,7 +1355,6 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterTextAreaRef,
                                                                 setInputParameterInit
                                                             )
                                                         }
@@ -1363,7 +1362,7 @@ export default function Main(props: ConnectionProps) {
                                                         {getObjectExample(inputParameterTemplate)}
                                                     </textarea>
                                                 )}
-                                            </label>
+                                            </>
                                         )}
                                         {(dropDownInit === 'string' || dropDownInit === 'number') && (
                                             <label className="field">
@@ -1477,9 +1476,9 @@ export default function Main(props: ConnectionProps) {
                                         <div>{smartContractIndex}</div>
                                     </div>
                                 )}
-                            </TestBox>
+                            </Box>
                             {/* Additional helpers: */}
-                            <TestBox header="Reading from contract">
+                            <Box header="Reading from contract">
                                 <label className="field">
                                     Smart Contract Index:
                                     <br />
@@ -1700,20 +1699,20 @@ export default function Main(props: ConnectionProps) {
                                         value={hasInputParameterReadFunction.toString()}
                                         onChange={() => {
                                             setParsingError(undefined);
-                                            // setInputParameter('');
-                                            // setUploadedModuleSchemaBase64('');
-                                            // setTransactionErrorInit('');
-                                            // setDropDown('number');
+                                            setInputParameterRead(undefined);
                                             setDropDownRead('number');
                                             setHasInputParameterReadFunction(!hasInputParameterReadFunction);
-                                            // setInputParameterTemplate('');
-                                            // setSchemaError('');
+                                            setEntryPointTemplateReadFunction(undefined);
+                                            setSchemaError({
+                                                ...schemaError,
+                                                readFunction: undefined,
+                                            });
                                         }}
                                     />
                                     <span>{' Has Input Parameter'}</span>
                                 </label>
                                 {hasInputParameterReadFunction && (
-                                    <div className="testBox">
+                                    <div className="Box">
                                         {!deriveFromSmartContractIndexRead && uploadedModuleSchemaBase64Read && (
                                             <div className="actionResultBox">
                                                 Schema in base64:
@@ -1770,9 +1769,12 @@ export default function Main(props: ConnectionProps) {
                                         </label>
                                         <br />
                                         {(dropDownRead === 'object' || dropDownRead === 'array') && (
-                                            <label className="field">
-                                                Add your input parameter ({dropDownRead}):
-                                                <br />
+                                            <>
+                                                <label className="field">
+                                                    Add your input parameter ({dropDownRead}):
+                                                    <br />
+                                                    <br />
+                                                </label>
                                                 {dropDownRead === 'array' && (
                                                     <textarea
                                                         id="inputParameterReadTextAreaRef1"
@@ -1780,7 +1782,6 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterReadTextAreaRef,
                                                                 setInputParameterRead
                                                             )
                                                         }
@@ -1795,7 +1796,6 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterReadTextAreaRef,
                                                                 setInputParameterRead
                                                             )
                                                         }
@@ -1803,7 +1803,7 @@ export default function Main(props: ConnectionProps) {
                                                         {getObjectExample(entryPointTemplateReadFunction)}
                                                     </textarea>
                                                 )}
-                                            </label>
+                                            </>
                                         )}
                                         {(dropDownRead === 'string' || dropDownRead === 'number') && (
                                             <label className="field">
@@ -1885,8 +1885,8 @@ export default function Main(props: ConnectionProps) {
                                         Error: {readError}.
                                     </div>
                                 )}
-                            </TestBox>
-                            <TestBox header="Writing to contract">
+                            </Box>
+                            <Box header="Writing to contract">
                                 <label className="field">
                                     Smart Contract Index:
                                     <br />
@@ -2084,7 +2084,7 @@ export default function Main(props: ConnectionProps) {
                                     </label>
                                 </div>
                                 {isPayableWriteFunction && (
-                                    <div className="testBox">
+                                    <div className="Box">
                                         <label className="field">
                                             CCD amount (micro):
                                             <br />
@@ -2108,20 +2108,22 @@ export default function Main(props: ConnectionProps) {
                                         value={hasInputParameterWriteFunction.toString()}
                                         onChange={() => {
                                             setParsingError(undefined);
-                                            // setInputParameter('');
-                                            // setUploadedModuleSchemaBase64('');
-                                            // setTransactionErrorInit('');
+                                            setInputParameterWrite(undefined);
+                                            setUploadedModuleSchemaBase64Write(undefined);
                                             setDropDownWrite('number');
                                             setHasInputParameterWriteFunction(!hasInputParameterWriteFunction);
-                                            // setInputParameterTemplate('');
-                                            // setSchemaError('');
+                                            setEntryPointTemplateWriteFunction(undefined);
+                                            setSchemaError({
+                                                ...schemaError,
+                                                writeFunction: undefined,
+                                            });
                                         }}
                                     />
                                     <span>{' Has Input Parameter'}</span>
                                 </label>
                                 <br />
                                 {hasInputParameterWriteFunction && (
-                                    <div className="testBox">
+                                    <div className="Box">
                                         {!deriveFromSmartContractIndexWrite && (
                                             <label className="field">
                                                 Upload Smart Contract Module Schema File (e.g. schema.bin):
@@ -2228,9 +2230,12 @@ export default function Main(props: ConnectionProps) {
                                         </label>
                                         <br />
                                         {(dropDownWrite === 'object' || dropDownWrite === 'array') && (
-                                            <label className="field">
-                                                Add your input parameter ({dropDownWrite}):
-                                                <br />
+                                            <>
+                                                <label className="field">
+                                                    Add your input parameter ({dropDownWrite}):
+                                                    <br />
+                                                    <br />
+                                                </label>
                                                 {dropDownWrite === 'array' && (
                                                     <textarea
                                                         id="inputParameterWriteTextAreaRef1"
@@ -2238,7 +2243,6 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterWriteTextAreaRef,
                                                                 setInputParameterWrite
                                                             )
                                                         }
@@ -2253,7 +2257,6 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                inputParameterWriteTextAreaRef,
                                                                 setInputParameterWrite
                                                             )
                                                         }
@@ -2261,7 +2264,7 @@ export default function Main(props: ConnectionProps) {
                                                         {getObjectExample(entryPointTemplateWriteFunction)}
                                                     </textarea>
                                                 )}
-                                            </label>
+                                            </>
                                         )}
                                         {(dropDownWrite === 'string' || dropDownWrite === 'number') && (
                                             <label className="field">
@@ -2371,7 +2374,7 @@ export default function Main(props: ConnectionProps) {
                                         </div>
                                     </>
                                 )}
-                            </TestBox>
+                            </Box>
                             <br />
                             <a
                                 href="https://developer.concordium.software/en/mainnet/smart-contracts/guides/on-chain-index.html"

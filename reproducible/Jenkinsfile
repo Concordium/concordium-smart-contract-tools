@@ -22,13 +22,16 @@ pipeline {
         }
         stage('build') {
             steps {
-                sh '''\
-                    docker build \
-                      -t "${image_name}" \
-                      --build-arg source_image="${source_image_tag}" \
-                      --label source_image="${source_image_tag}" \
-                      .
-                '''
+                dir('reproducible') {
+                    sh '''\
+                        docker build \
+                          -t "${image_name}" \
+                          --build-arg source_image="${source_image_tag}" \
+                          --label source_image="${source_image_tag}" \
+                          -f ./Dockerfile \
+                          .
+                    '''
+                }
             }
         }
 

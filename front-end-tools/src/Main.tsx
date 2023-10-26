@@ -73,7 +73,9 @@ export default function Main(props: ConnectionProps) {
 
     const [uploadError, setUploadError] = useState<string | undefined>(undefined);
     const [uploadError2, setUploadError2] = useState<string | undefined>(undefined);
-    const [parsingError, setParsingError] = useState<string | undefined>(undefined);
+    const [parsingErrorInit, setParsingErrorInit] = useState<string | undefined>(undefined);
+    const [parsingErrorRead, setParsingErrorRead] = useState<string | undefined>(undefined);
+    const [parsingErrorWrite, setParsingErrorWrite] = useState<string | undefined>(undefined);
     const [smartContractIndexError, setSmartContractIndexError] = useState<string | undefined>(undefined);
     const [moduleReferenceError, setModuleReferenceError] = useState<string | undefined>(undefined);
     const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState<string | undefined>(undefined);
@@ -221,7 +223,8 @@ export default function Main(props: ConnectionProps) {
         (
             inputParameterDropDownRef: React.MutableRefObject<null>,
             setInputParameter: (arg0: string | undefined) => void,
-            setDropDown: (arg0: string) => void
+            setDropDown: (arg0: string) => void,
+            setParsingError: (arg0: string | undefined) => void
         ) => {
             setParsingError(undefined);
             setInputParameter(undefined);
@@ -277,7 +280,11 @@ export default function Main(props: ConnectionProps) {
     }, []);
 
     const changeInputParameterFieldHandler = useCallback(
-        (event: ChangeEvent, setInputParameter: (arg0: string) => void) => {
+        (
+            event: ChangeEvent,
+            setInputParameter: (arg0: string) => void,
+            setParsingError: (arg0: string | undefined) => void
+        ) => {
             setParsingError(undefined);
             const target = event.target as HTMLTextAreaElement;
             setInputParameter(target.value);
@@ -286,7 +293,11 @@ export default function Main(props: ConnectionProps) {
     );
 
     const changeInputParameterTextAreaHandler = useCallback(
-        (event: ChangeEvent, setInputParameter: (arg0: string) => void) => {
+        (
+            event: ChangeEvent,
+            setInputParameter: (arg0: string) => void,
+            setParsingError: (arg0: string | undefined) => void
+        ) => {
             setParsingError(undefined);
             const target = event.target as HTMLTextAreaElement;
 
@@ -1209,7 +1220,7 @@ export default function Main(props: ConnectionProps) {
                                         type="checkbox"
                                         value={hasInputParameterInitFunction.toString()}
                                         onChange={() => {
-                                            setParsingError(undefined);
+                                            setParsingErrorInit(undefined);
                                             setInputParameterInit(undefined);
                                             setUploadedModuleSchemaBase64Initialization(undefined);
                                             setTransactionErrorInit(undefined);
@@ -1316,7 +1327,8 @@ export default function Main(props: ConnectionProps) {
                                                     changeInputParameterDropDownHandler(
                                                         inputParameterDropDownInitRef,
                                                         setInputParameterInit,
-                                                        setDropDownInit
+                                                        setDropDownInit,
+                                                        setParsingErrorInit
                                                     );
                                                 }}
                                             >
@@ -1341,7 +1353,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                setInputParameterInit
+                                                                setInputParameterInit,
+                                                                setParsingErrorInit
                                                             )
                                                         }
                                                     >
@@ -1355,7 +1368,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                setInputParameterInit
+                                                                setInputParameterInit,
+                                                                setParsingErrorInit
                                                             )
                                                         }
                                                     >
@@ -1375,14 +1389,18 @@ export default function Main(props: ConnectionProps) {
                                                     type="text"
                                                     placeholder={dropDownInit === 'string' ? 'myString' : '1000000'}
                                                     onChange={(event) =>
-                                                        changeInputParameterFieldHandler(event, setInputParameterInit)
+                                                        changeInputParameterFieldHandler(
+                                                            event,
+                                                            setInputParameterInit,
+                                                            setParsingErrorInit
+                                                        )
                                                     }
                                                 />
                                             </label>
                                         )}
-                                        {parsingError && (
+                                        {parsingErrorInit && (
                                             <div className="alert alert-danger" role="alert">
-                                                Error: {parsingError}.
+                                                Error: {parsingErrorInit}.
                                             </div>
                                         )}
                                     </div>
@@ -1698,7 +1716,7 @@ export default function Main(props: ConnectionProps) {
                                         type="checkbox"
                                         value={hasInputParameterReadFunction.toString()}
                                         onChange={() => {
-                                            setParsingError(undefined);
+                                            setParsingErrorRead(undefined);
                                             setInputParameterRead(undefined);
                                             setDropDownRead('number');
                                             setHasInputParameterReadFunction(!hasInputParameterReadFunction);
@@ -1757,7 +1775,8 @@ export default function Main(props: ConnectionProps) {
                                                     changeInputParameterDropDownHandler(
                                                         inputParameterDropDownReadRef,
                                                         setInputParameterRead,
-                                                        setDropDownRead
+                                                        setDropDownRead,
+                                                        setParsingErrorRead
                                                     )
                                                 }
                                             >
@@ -1782,7 +1801,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                setInputParameterRead
+                                                                setInputParameterRead,
+                                                                setParsingErrorRead
                                                             )
                                                         }
                                                     >
@@ -1796,7 +1816,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                setInputParameterRead
+                                                                setInputParameterRead,
+                                                                setParsingErrorRead
                                                             )
                                                         }
                                                     >
@@ -1816,14 +1837,18 @@ export default function Main(props: ConnectionProps) {
                                                     type="text"
                                                     placeholder={dropDownRead === 'string' ? 'myString' : '1000000'}
                                                     onChange={(event) =>
-                                                        changeInputParameterFieldHandler(event, setInputParameterRead)
+                                                        changeInputParameterFieldHandler(
+                                                            event,
+                                                            setInputParameterRead,
+                                                            setParsingErrorRead
+                                                        )
                                                     }
                                                 />
                                             </label>
                                         )}
-                                        {parsingError && (
+                                        {parsingErrorRead && (
                                             <div className="alert alert-danger" role="alert">
-                                                Error: {parsingError}.
+                                                Error: {parsingErrorRead}.
                                             </div>
                                         )}
                                     </div>
@@ -2107,7 +2132,7 @@ export default function Main(props: ConnectionProps) {
                                         type="checkbox"
                                         value={hasInputParameterWriteFunction.toString()}
                                         onChange={() => {
-                                            setParsingError(undefined);
+                                            setParsingErrorWrite(undefined);
                                             setInputParameterWrite(undefined);
                                             setUploadedModuleSchemaBase64Write(undefined);
                                             setDropDownWrite('number');
@@ -2218,7 +2243,8 @@ export default function Main(props: ConnectionProps) {
                                                     changeInputParameterDropDownHandler(
                                                         inputParameterDropDownWriteRef,
                                                         setInputParameterWrite,
-                                                        setDropDownWrite
+                                                        setDropDownWrite,
+                                                        setParsingErrorWrite
                                                     )
                                                 }
                                             >
@@ -2243,7 +2269,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                setInputParameterWrite
+                                                                setInputParameterWrite,
+                                                                setParsingErrorWrite
                                                             )
                                                         }
                                                     >
@@ -2257,7 +2284,8 @@ export default function Main(props: ConnectionProps) {
                                                         onChange={(event) =>
                                                             changeInputParameterTextAreaHandler(
                                                                 event,
-                                                                setInputParameterWrite
+                                                                setInputParameterWrite,
+                                                                setParsingErrorWrite
                                                             )
                                                         }
                                                     >
@@ -2277,14 +2305,18 @@ export default function Main(props: ConnectionProps) {
                                                     type="text"
                                                     placeholder={dropDownWrite === 'string' ? 'myString' : '1000000'}
                                                     onChange={(event) =>
-                                                        changeInputParameterFieldHandler(event, setInputParameterWrite)
+                                                        changeInputParameterFieldHandler(
+                                                            event,
+                                                            setInputParameterWrite,
+                                                            setParsingErrorWrite
+                                                        )
                                                     }
                                                 />
                                             </label>
                                         )}
-                                        {parsingError && (
+                                        {parsingErrorWrite && (
                                             <div className="alert alert-danger" role="alert">
-                                                Error: {parsingError}.
+                                                Error: {parsingErrorWrite}.
                                             </div>
                                         )}
                                     </div>

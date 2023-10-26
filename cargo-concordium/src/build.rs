@@ -495,7 +495,11 @@ pub fn build_contract(
         } = build_in_container(
             image,
             PackageData {
-                package_target_dir:     metadata.target_directory.as_std_path(),
+                package_target_dir:     metadata
+                    .target_directory
+                    .as_std_path()
+                    .canonicalize()?
+                    .as_path(),
                 package_root_path:      package_root_path.as_path(),
                 package_version_string: &package_version_string,
             },

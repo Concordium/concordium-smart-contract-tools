@@ -28,7 +28,7 @@ pipeline {
                           -t "${image_name}" \
                           --build-arg source_image="${source_image_tag}" \
                           --label source_image="${source_image_tag}" \
-                          -f ./Dockerfile \
+                          -f ./build.Dockerfile \
                           .
                     '''
                 }

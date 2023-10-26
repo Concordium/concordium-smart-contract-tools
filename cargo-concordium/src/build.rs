@@ -146,6 +146,7 @@ fn create_archive(
 ) -> anyhow::Result<TarArchiveData> {
     let in_package_root_dir = std::path::Path::new(package_version_string);
     let mut tar = tar::Builder::new(Vec::new());
+    tar.mode(tar::HeaderMode::Deterministic);
     // Ignore files that are ignored by Git.
     let files = ignore::WalkBuilder::new(package_root_path)
         .git_global(true)

@@ -2,6 +2,24 @@
 
 ## Unreleased changes
 
+## 3.1.4
+
+- Support crate names with uppercase letters.
+
+## 3.1.3
+
+- Fix a bug where a missing target directory would fail if a reproducible build
+  was requested without a schema.
+
+## 3.1.2
+
+- Make sure to ignore the target directory also on Windows.
+
+## 3.1.1
+
+- Do not include file modification times in the tar archive produced as part of
+  a verifiable build.
+
 ## 3.1.0
 
 - Support verifiable/reproducible builds.

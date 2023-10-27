@@ -44,7 +44,7 @@ const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
 ///
 /// Used for converting crate names, which often contain `-`, to module names,
 /// which cannot have `-`.
-fn to_snake_case(string: &str) -> String { string.to_lowercase().replace('-', "_") }
+fn to_snake_case(string: &str) -> String { string.replace('-', "_") }
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.

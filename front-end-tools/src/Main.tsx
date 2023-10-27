@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback, useRef } from 'react';
 import { Buffer } from 'buffer';
+
 import {
     WalletConnectionProps,
     useConnection,
@@ -10,7 +11,6 @@ import {
     MAINNET,
     useWalletConnectorSelector,
 } from '@concordium/react-components';
-
 import {
     AccountAddress,
     ModuleReference,
@@ -75,6 +75,8 @@ export default function Main(props: ConnectionProps) {
 
     const [uploadError, setUploadError] = useState<string | undefined>(undefined);
     const [uploadError2, setUploadError2] = useState<string | undefined>(undefined);
+    const [uploadErrorRead, setUploadErrorRead] = useState<string | undefined>(undefined);
+    const [uploadErrorWrite, setUploadErrorWrite] = useState<string | undefined>(undefined);
     const [parsingErrorInit, setParsingErrorInit] = useState<string | undefined>(undefined);
     const [parsingErrorRead, setParsingErrorRead] = useState<string | undefined>(undefined);
     const [parsingErrorWrite, setParsingErrorWrite] = useState<string | undefined>(undefined);
@@ -370,25 +372,23 @@ export default function Main(props: ConnectionProps) {
                     .getBlockItemStatus(txHashUpdate)
                     .then((report) => {
                         if (report !== undefined) {
-                            // setViewErrorModuleReference(undefined);
                             if (report.status === 'finalized') {
                                 if (
                                     report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
                                     report.outcome.summary.transactionType === TransactionKindString.Update
                                 ) {
-                                    setWriteTransactionOutcome('Transaction was successful');
+                                    setWriteTransactionOutcome('Success');
                                     clearInterval(interval);
                                 } else {
-                                    setWriteTransactionOutcome('Transaction failed');
+                                    setWriteTransactionOutcome('Fail');
                                     clearInterval(interval);
                                 }
                             }
                         }
                     })
                     .catch((e) => {
-                        setWriteTransactionOutcome(`Transaction failed; Error: ${(e as Error).message}`);
+                        setWriteTransactionOutcome(`Fail; Error: ${(e as Error).message}`);
                         clearInterval(interval);
-                        // setViewErrorModuleReference((e as Error).message);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
         }
@@ -615,7 +615,6 @@ export default function Main(props: ConnectionProps) {
     }, [
         entryPointReadFunction,
         hasInputParameterReadFunction,
-        deriveFromSmartContractIndexRead,
         contractNameRead,
         uploadedModuleSchemaBase64Read,
         dropDownRead,
@@ -690,7 +689,6 @@ export default function Main(props: ConnectionProps) {
     }, [
         entryPointWriteFunction,
         hasInputParameterWriteFunction,
-        deriveFromSmartContractIndexWrite,
         contractNameWrite,
         uploadedModuleSchemaBase64Write,
         dropDownWrite,
@@ -996,7 +994,7 @@ export default function Main(props: ConnectionProps) {
                             <Box header="Step 2: Initialize Smart Contract">
                                 <br />
                                 <br />
-                                <div className="checkbox-wrapper">
+                                <div>
                                     <label>
                                         <input
                                             type="checkbox"
@@ -1142,7 +1140,7 @@ export default function Main(props: ConnectionProps) {
                                 )}
                                 <br />
                                 <br />
-                                <div className="checkbox-wrapper">
+                                <div>
                                     <label>
                                         <input
                                             type="checkbox"
@@ -1540,7 +1538,7 @@ export default function Main(props: ConnectionProps) {
                                 )}
                                 <br />
                                 <br />
-                                <div className="checkbox-wrapper">
+                                <div>
                                     <label>
                                         <input
                                             type="checkbox"
@@ -1571,10 +1569,6 @@ export default function Main(props: ConnectionProps) {
 
                                                     promiseContractInfo
                                                         .then((contractInfo) => {
-                                                            setContractInstanceInfo(contractInfo);
-                                                            setContractNameRead(contractInfo.contractName);
-                                                            setEntryPointReadFunction(contractInfo.methods[0]);
-
                                                             const promise = getEmbeddedSchema(
                                                                 client,
                                                                 contractInfo.sourceModule
@@ -1593,6 +1587,9 @@ export default function Main(props: ConnectionProps) {
                                                                     setEmbeddedModuleSchemaBase64Read(
                                                                         moduleSchemaBase64Embedded
                                                                     );
+                                                                    setContractInstanceInfo(contractInfo);
+                                                                    setContractNameRead(contractInfo.contractName);
+                                                                    setEntryPointReadFunction(contractInfo.methods[0]);
                                                                 })
                                                                 .catch((err: Error) => {
                                                                     setReadError((err as Error).message);
@@ -1644,7 +1641,7 @@ export default function Main(props: ConnectionProps) {
                                                 ref={schemaFileRefRead}
                                                 accept=".bin"
                                                 onChange={async () => {
-                                                    setUploadError2(undefined);
+                                                    setUploadErrorRead(undefined);
                                                     setUploadedModuleSchemaBase64Read(undefined);
 
                                                     const hTMLInputElement =
@@ -1665,7 +1662,7 @@ export default function Main(props: ConnectionProps) {
                                                         );
                                                         setUploadedModuleSchemaBase64Read(schema);
                                                     } else {
-                                                        setUploadError2('Upload schema file is undefined');
+                                                        setUploadErrorRead('Upload schema file is undefined');
                                                     }
                                                 }}
                                             />
@@ -1700,9 +1697,9 @@ export default function Main(props: ConnectionProps) {
                                                 <div>{uploadedModuleSchemaBase64Read.toString().slice(0, 30)} ...</div>
                                             </div>
                                         )}
-                                        {uploadError2 !== undefined && (
+                                        {uploadErrorRead !== undefined && (
                                             <div className="alert alert-danger" role="alert">
-                                                Error: {uploadError2}.
+                                                Error: {uploadErrorRead}.
                                             </div>
                                         )}
                                         {schemaError.readFunction !== undefined && (
@@ -1972,7 +1969,7 @@ export default function Main(props: ConnectionProps) {
                                 </label>
                                 <br />
                                 <br />
-                                <div className="checkbox-wrapper">
+                                <div>
                                     <label>
                                         <input
                                             type="checkbox"
@@ -2003,10 +2000,6 @@ export default function Main(props: ConnectionProps) {
 
                                                     promiseContractInfo
                                                         .then((contractInfo) => {
-                                                            setContractInstanceInfo(contractInfo);
-                                                            setContractNameWrite(contractInfo.contractName);
-                                                            setEntryPointWriteFunction(contractInfo.methods[0]);
-
                                                             const promise = getEmbeddedSchema(
                                                                 client,
                                                                 contractInfo.sourceModule
@@ -2025,6 +2018,9 @@ export default function Main(props: ConnectionProps) {
                                                                     setEmbeddedModuleSchemaBase64Write(
                                                                         moduleSchemaBase64Embedded
                                                                     );
+                                                                    setContractInstanceInfo(contractInfo);
+                                                                    setContractNameWrite(contractInfo.contractName);
+                                                                    setEntryPointWriteFunction(contractInfo.methods[0]);
                                                                 })
                                                                 .catch((err: Error) => {
                                                                     setWriteError((err as Error).message);
@@ -2062,7 +2058,7 @@ export default function Main(props: ConnectionProps) {
                                 )}
                                 <br />
                                 <br />
-                                <div className="checkbox-wrapper">
+                                <div>
                                     <label>
                                         <input
                                             type="checkbox"
@@ -2128,7 +2124,7 @@ export default function Main(props: ConnectionProps) {
                                                     ref={schemaFileRefWrite}
                                                     accept=".bin"
                                                     onChange={async () => {
-                                                        setUploadError2(undefined);
+                                                        setUploadErrorWrite(undefined);
                                                         setUploadedModuleSchemaBase64Write(undefined);
 
                                                         const hTMLInputElement =
@@ -2150,7 +2146,7 @@ export default function Main(props: ConnectionProps) {
 
                                                             setUploadedModuleSchemaBase64Write(schema);
                                                         } else {
-                                                            setUploadError2('Upload schema file is undefined');
+                                                            setUploadErrorWrite('Upload schema file is undefined');
                                                         }
                                                     }}
                                                 />
@@ -2171,9 +2167,9 @@ export default function Main(props: ConnectionProps) {
                                         )}
                                         <br />
                                         <br />
-                                        {uploadError2 !== undefined && (
+                                        {uploadErrorWrite !== undefined && (
                                             <div className="alert alert-danger" role="alert">
-                                                Error: {uploadError2}.
+                                                Error: {uploadErrorWrite}.
                                             </div>
                                         )}
                                         {schemaError.writeFunction !== undefined && (
@@ -2367,6 +2363,8 @@ export default function Main(props: ConnectionProps) {
                                 )}
                                 {writeTransactionOutcome !== undefined && writeTransactionOutcome !== 'Success' && (
                                     <>
+                                        <br />
+                                        <div> Outcome of transaction:</div>
                                         <br />
                                         <div className="alert alert-danger" role="alert">
                                             Error: {writeTransactionOutcome}.

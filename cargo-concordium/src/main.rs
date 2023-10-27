@@ -955,6 +955,7 @@ fn handle_build(
     let success_style = ansi_term::Color::Green.bold();
     let bold_style = ansi_term::Style::new().bold();
     let build_schema = options.schema_build_options();
+    let is_verifiable_build = options.image.is_some();
     let BuildInfo {
         total_module_len,
         schema,
@@ -1083,6 +1084,17 @@ fn handle_build(
             success_style.paint("Finished"),
             bold_style.paint(size)
         );
+    }
+    if !is_verifiable_build {
+        let error_style = ansi_term::Color::Yellow;
+        eprintln!(
+            "{}",
+            error_style.paint(
+                "\n\nThis is not a verifiable build. Consider using the `--verifiable` option \
+                 before deploying the module.\n\nA verifiable build packages sources and makes it \
+                 possible to verify that the sources match the deployed module."
+            )
+        )
     }
     Ok(metadata)
 }

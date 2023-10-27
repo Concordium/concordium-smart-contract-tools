@@ -150,6 +150,8 @@ Will print any embedded build information.
 - The contract sources must be either available remotely on a package
   repository such as [crates.io](https://crates.io) or entirely under the
   package root directory.
+- The `crypto-primitives` feature is not supported. This feature is only needed
+  for running tests and can be disabled for a build.
 
 ## Locally executing contracts
 

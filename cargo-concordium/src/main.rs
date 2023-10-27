@@ -613,7 +613,7 @@ const WARNING_STYLE: ansi_term::Color = ansi_term::Color::Yellow;
 pub fn main() -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
-        ansi_term::enable_ansi_support();
+        let _ = ansi_term::enable_ansi_support();
     }
     let cmd = {
         let app = CargoCommand::clap()

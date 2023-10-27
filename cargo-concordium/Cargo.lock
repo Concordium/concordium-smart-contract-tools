@@ -299,7 +299,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-concordium"
-version = "3.1.2"
+version = "3.1.3"
 dependencies = [
  "ansi_term",
  "anyhow",

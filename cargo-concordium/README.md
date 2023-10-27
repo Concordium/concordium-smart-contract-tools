@@ -93,6 +93,7 @@ of the package root subject to the following
 - the package build directory (typically `target`) will be ignored
 - additional files listed in any `.ignore` files will be ignored. The format
   of this file should be the same as a `.gitignore` file.
+- hidden files are ignored.
 
 Information about the sources and the build will be embedded into
 `contract.wasm.v1` file. This information includes

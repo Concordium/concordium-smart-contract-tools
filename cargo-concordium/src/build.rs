@@ -152,7 +152,7 @@ fn create_archive(
         .git_global(true)
         .git_ignore(true)
         .parents(true)
-        .hidden(false)
+        .hidden(true)
         .sort_by_file_path(std::cmp::Ord::cmp)
         .build();
     let mut lock_file_found = false;
@@ -488,6 +488,13 @@ pub fn build_contract(
             tar_filename.push(".tar");
             tar_filename.into()
         };
+        let mut package_target_dir = metadata.target_directory.as_std_path().to_path_buf();
+        if package_target_dir
+            .try_exists()
+            .context("Unable to check if target directory exists.")?
+        {
+            package_target_dir = package_target_dir.canonicalize()?;
+        };
         let ContainerBuildOutput {
             output_wasm,
             build_info,
@@ -495,11 +502,7 @@ pub fn build_contract(
         } = build_in_container(
             image,
             PackageData {
-                package_target_dir:     metadata
-                    .target_directory
-                    .as_std_path()
-                    .canonicalize()?
-                    .as_path(),
+                package_target_dir:     package_target_dir.as_path(),
                 package_root_path:      package_root_path.as_path(),
                 package_version_string: &package_version_string,
             },

@@ -2,13 +2,10 @@
 
 ## Unreleased changes
 
-## 3.1.5
-
-- Warn about non-verifiable builds.
-
 ## 3.1.4
 
 - Support crate names with uppercase letters.
+- Warn about non-verifiable builds.
 
 ## 3.1.3
 

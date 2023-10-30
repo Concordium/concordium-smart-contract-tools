@@ -1,6 +1,9 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback, useRef } from 'react';
 import { Buffer } from 'buffer';
+import { useForm } from 'react-hook-form';
+import Select from 'react-select';
+import { Alert, Button, Form, Row } from 'react-bootstrap';
 
 import {
     WalletConnectionProps,
@@ -66,6 +69,15 @@ export default function Main(props: ConnectionProps) {
     const { connect, connectError } = useConnect(activeConnector, setConnection);
 
     const client = useGrpcClient(isTestnet ? TESTNET : MAINNET);
+
+    const attributeForm = useForm<{
+        smartContractIndex: number;
+        smartContractName: string | undefined;
+        entryPointName: string | undefined;
+        file: any;
+        hasInputParameter: boolean;
+        deriveFromSmartContractIndex: boolean;
+    }>();
 
     const [viewErrorAccountInfo, setViewErrorAccountInfo] = useState<string | undefined>(undefined);
     const [viewErrorModuleReference, setViewErrorModuleReference] = useState<string | undefined>(undefined);
@@ -1871,6 +1883,293 @@ export default function Main(props: ConnectionProps) {
                                     </div>
                                 )}
                             </Box>
+
+                            <Form className="Box">
+                                <Row>
+                                    <Form.Group className="col-md-4 mb-3">
+                                        <Form.Label>Smart Contract Index</Form.Label>
+                                        <Form.Control
+                                            defaultValue={1}
+                                            type="number"
+                                            min="0"
+                                            {...attributeForm.register('smartContractIndex', { required: true })}
+                                        />
+                                        <Form.Text />
+                                        {attributeForm.formState.errors.smartContractIndex && (
+                                            <Alert key="info" variant="info">
+                                                {' '}
+                                                Smart contract index is required{' '}
+                                            </Alert>
+                                        )}
+                                    </Form.Group>
+
+                                    {attributeForm.getValues('deriveFromSmartContractIndex') &&
+                                    contractInstanceInfo !== undefined &&
+                                    contractInstanceInfo.contractName !== undefined ? (
+                                        <Form.Group className="col-md-4 mb-3">
+                                            <Form.Label>Smart Contract Name</Form.Label>
+                                            <Form.Control
+                                                value={
+                                                    contractInstanceInfo?.contractName
+                                                        ? contractInstanceInfo.contractName
+                                                        : 'undefined'
+                                                }
+                                                disabled
+                                                {...attributeForm.register('smartContractName', { required: true })}
+                                            />
+                                            {attributeForm.formState.errors.smartContractName && (
+                                                <Alert key="info" variant="info">
+                                                    {' '}
+                                                    Smart contract name is required{' '}
+                                                </Alert>
+                                            )}
+                                            <Form.Text />
+                                        </Form.Group>
+                                    ) : (
+                                        <Form.Group className="col-md-4 mb-3">
+                                            <Form.Label>Smart Contract Name</Form.Label>
+                                            <Form.Control
+                                                {...attributeForm.register('smartContractName', { required: true })}
+                                            />
+                                            {attributeForm.formState.errors.smartContractName && (
+                                                <Alert key="info" variant="info">
+                                                    {' '}
+                                                    Smart contract name is required{' '}
+                                                </Alert>
+                                            )}
+                                            <Form.Text />
+                                        </Form.Group>
+                                    )}
+
+                                    {attributeForm.getValues('deriveFromSmartContractIndex') &&
+                                    contractInstanceInfo !== undefined &&
+                                    contractInstanceInfo.methods.length > 0 ? (
+                                        <Form.Group className="col-md-4 mb-3">
+                                            <Form.Label>Entry Point Name</Form.Label>
+                                            <Select
+                                                options={contractInstanceInfo.methods?.map((method) => ({
+                                                    value: method,
+                                                    label: method,
+                                                }))}
+                                                onChange={(e) => {
+                                                    attributeForm.setValue('entryPointName', e?.value);
+                                                }}
+                                            />
+                                            <Form.Text />
+                                        </Form.Group>
+                                    ) : (
+                                        <Form.Group className="col-md-4 mb-3">
+                                            <Form.Label>Entry Point Name</Form.Label>
+                                            <Form.Control
+                                                {...attributeForm.register('entryPointName', { required: true })}
+                                            />
+                                            {attributeForm.formState.errors.entryPointName && (
+                                                <Alert key="info" variant="info">
+                                                    {' '}
+                                                    Entry point name is required{' '}
+                                                </Alert>
+                                            )}
+                                            <Form.Text />
+                                        </Form.Group>
+                                    )}
+                                </Row>
+
+                                <div className="row d-flex justify-content-center">
+                                    <Form.Group className="mb-3 d-flex justify-content-center">
+                                        <Form.Check
+                                            type="checkbox"
+                                            id="attribute-required"
+                                            label="Derive From Smart Contract Index"
+                                            {...attributeForm.register('deriveFromSmartContractIndex')}
+                                            onChange={async (e) => {
+                                                const deriveFromSmartContractIndexRegister =
+                                                    attributeForm.register('deriveFromSmartContractIndex');
+
+                                                deriveFromSmartContractIndexRegister.onChange(e);
+
+                                                setUploadedModuleSchemaBase64Read(undefined);
+                                                setSchemaError({
+                                                    ...schemaError,
+                                                    readFunction: undefined,
+                                                });
+                                                attributeForm.setValue('entryPointName', undefined);
+                                                setContractInstanceInfo(undefined);
+                                                setReadError(undefined);
+                                                setEmbeddedModuleSchemaBase64Read(undefined);
+
+                                                const checkboxElement =
+                                                    attributeForm.getValues('deriveFromSmartContractIndex');
+
+                                                if (checkboxElement) {
+                                                    const promiseContractInfo = getContractInfo(
+                                                        client,
+                                                        BigInt(attributeForm.getValues('smartContractIndex'))
+                                                    );
+
+                                                    promiseContractInfo
+                                                        .then((contractInfo) => {
+                                                            const promise = getEmbeddedSchema(
+                                                                client,
+                                                                contractInfo.sourceModule
+                                                            );
+
+                                                            promise
+                                                                .then((embeddedSchema) => {
+                                                                    const schema = new Uint8Array(embeddedSchema);
+
+                                                                    const moduleSchemaBase64Embedded = btoa(
+                                                                        new Uint8Array(schema).reduce((data, byte) => {
+                                                                            return data + String.fromCharCode(byte);
+                                                                        }, '')
+                                                                    );
+
+                                                                    setEmbeddedModuleSchemaBase64Read(
+                                                                        moduleSchemaBase64Embedded
+                                                                    );
+                                                                    setContractInstanceInfo(contractInfo);
+                                                                    attributeForm.setValue(
+                                                                        'smartContractName',
+                                                                        contractInfo.contractName
+                                                                    );
+                                                                })
+                                                                .catch((err: Error) => {
+                                                                    setReadError((err as Error).message);
+                                                                });
+                                                        })
+                                                        .catch((err: Error) => setReadError((err as Error).message));
+                                                }
+                                            }}
+                                        />
+                                    </Form.Group>
+                                </div>
+
+                                {!attributeForm.getValues('deriveFromSmartContractIndex') && (
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>
+                                            Upload Smart Contract Module Schema File (e.g. schema.bin):
+                                        </Form.Label>
+                                        <Form.Control
+                                            type="file"
+                                            accept=".bin"
+                                            {...attributeForm.register('file')}
+                                            onChange={async (e) => {
+                                                const fileRegister = attributeForm.register('file');
+
+                                                fileRegister.onChange(e);
+
+                                                setUploadErrorRead(undefined);
+                                                setUploadedModuleSchemaBase64Read(undefined);
+
+                                                const files = attributeForm.getValues('file');
+
+                                                if (files !== undefined && files !== null && files.length > 0) {
+                                                    const file = files[0];
+                                                    const arrayBuffer = await file.arrayBuffer();
+
+                                                    const schema = btoa(
+                                                        new Uint8Array(arrayBuffer).reduce((data, byte) => {
+                                                            return data + String.fromCharCode(byte);
+                                                        }, '')
+                                                    );
+                                                    setUploadedModuleSchemaBase64Read(schema);
+                                                    console.log(schema);
+                                                } else {
+                                                    setUploadErrorRead('Upload schema file is undefined');
+                                                }
+                                            }}
+                                        />
+                                        <Form.Text />
+                                    </Form.Group>
+                                )}
+                                {attributeForm.getValues('deriveFromSmartContractIndex') && (
+                                    <>
+                                        <br />
+                                        <div className="alert alert-info" role="alert">
+                                            <div>
+                                                This checkbox autofilled the <code>smart contract name</code>, the{' '}
+                                                <code>entry point name</code>, and the{' '}
+                                                <code>receive return_value/parameter schema</code> from the smart
+                                                contract index.
+                                            </div>
+                                            <br />
+                                            <div>
+                                                <b>Uncheck</b> this box, if you want to manually fill in a{' '}
+                                                <code>smart contract name</code>, an <code>entry point name</code>, or a{' '}
+                                                <code>receive return_value/parameter schema</code>.
+                                            </div>
+                                            <br />
+                                            <div>
+                                                <b>Uncheck</b> and <b>check</b> this box again, if you want to load a
+                                                new smart contract index.
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                <Form.Group className="mb-3 d-flex justify-content-center">
+                                    <Form.Check
+                                        type="checkbox"
+                                        id="attribute-required"
+                                        label="Has Input Parameter"
+                                        {...attributeForm.register('hasInputParameter')}
+                                    />
+                                </Form.Group>
+
+                                <Button
+                                    variant="primary"
+                                    type="button"
+                                    onClick={attributeForm.handleSubmit((data) => {
+                                        setReadError(undefined);
+                                        setReturnValue(undefined);
+                                        const promise = read(
+                                            client,
+                                            data.smartContractName,
+                                            BigInt(data.smartContractIndex),
+                                            data.entryPointName,
+                                            data.deriveFromSmartContractIndex
+                                                ? embeddedModuleSchemaBase64Read
+                                                : uploadedModuleSchemaBase64Read,
+                                            inputParameterRead,
+                                            dropDownRead,
+                                            data.hasInputParameter,
+                                            data.deriveFromSmartContractIndex
+                                        );
+
+                                        promise
+                                            .then((value) => {
+                                                setReturnValue(value);
+                                            })
+                                            .catch((err: Error) => setReadError((err as Error).message));
+                                    })}
+                                >
+                                    Read Smart Contract
+                                </Button>
+                                <br />
+                                <br />
+                                {(attributeForm.getValues('deriveFromSmartContractIndex')
+                                    ? embeddedModuleSchemaBase64Read
+                                    : uploadedModuleSchemaBase64Read) === undefined && (
+                                    <Alert key="warning" variant="warning">
+                                        {' '}
+                                        Warning: ModuleSchema is undefined. Return value might not be correctly decoded.{' '}
+                                    </Alert>
+                                )}
+                                {shouldWarnInputParameterInSchemaIgnored.readFunction && (
+                                    <Alert key="warning" variant="warning">
+                                        {' '}
+                                        Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
+                                        checkbox is unchecked.{' '}
+                                    </Alert>
+                                )}
+                                {readError && <Alert variant="danger"> Error: {readError}. </Alert>}
+                                {returnValue && (
+                                    <div className="actionResultBox">
+                                        Read value:
+                                        <pre>{JSON.stringify(JSON.parse(returnValue), undefined, 2)}</pre>
+                                    </div>
+                                )}
+                            </Form>
+
                             <Box header="Writing to contract">
                                 <label className="field">
                                     Smart Contract Index:

@@ -22,19 +22,31 @@ export async function deploy(connection: WalletConnection, account: string, base
 }
 
 export async function write(
-    connection: WalletConnection,
-    account: string,
+    connection: WalletConnection | undefined,
+    account: string | undefined,
     inputParameter: string | undefined,
     contractName: string | undefined,
     entryPoint: string | undefined,
     hasInputParameter: boolean,
     deriveFromSmartContractIndexWrite: boolean,
     moduleSchema: string | undefined,
-    dropDown: string,
+    inputParameterType: string | undefined,
     maxContractExecutionEnergy: bigint,
     contractIndex: bigint,
     amount: bigint
 ) {
+    if (connection === undefined) {
+        throw new Error(`Connection is undefined`);
+    }
+
+    if (account === undefined) {
+        throw new Error(`Account is undefined`);
+    }
+
+    if (inputParameterType === undefined) {
+        throw new Error(`InputParameterType is undefined`);
+    }
+
     if (contractName === undefined) {
         throw new Error(`Set smart contract name`);
     }
@@ -57,7 +69,7 @@ export async function write(
                 throw new Error(`Set input parameter`);
             }
 
-            switch (dropDown) {
+            switch (inputParameterType) {
                 case 'number':
                     schema = {
                         parameters: Number(inputParameter),

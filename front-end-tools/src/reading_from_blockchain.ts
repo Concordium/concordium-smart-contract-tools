@@ -49,13 +49,14 @@ export async function read(
     entryPoint: string | undefined,
     moduleSchema: string | undefined,
     inputParameter: string | undefined,
-    dropDown: string,
+    inputParameterType: string | undefined,
     hasInputParameter: boolean,
     deriveFromSmartContractIndex: boolean
 ) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
     }
+
     if (contractName === undefined) {
         throw new Error(`Set contract name`);
     }
@@ -73,13 +74,17 @@ export async function read(
             throw new Error(`No embedded module schema found in module`);
         }
 
+        if (inputParameterType === undefined) {
+            throw new Error(`Select input parameter type`);
+        }
+
         let inputParameterFormated;
 
         if (inputParameter === undefined) {
             throw new Error(`Set input parameter`);
         }
 
-        switch (dropDown) {
+        switch (inputParameterType) {
             case 'number':
                 inputParameterFormated = Number(inputParameter);
                 break;
@@ -93,7 +98,7 @@ export async function read(
                 inputParameterFormated = JSON.parse(inputParameter);
                 break;
             default:
-                throw new Error(`Dropdown option does not exist`);
+                throw new Error(`InputParameterType does not exist`);
         }
 
         if (moduleSchema !== undefined) {

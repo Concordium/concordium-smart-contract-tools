@@ -74,7 +74,7 @@ export default function Main(props: ConnectionProps) {
         smartContractIndex: number;
         smartContractName: string | undefined;
         entryPointName: string | undefined;
-        file: any;
+        file: File | undefined;
         hasInputParameter: boolean;
         deriveFromSmartContractIndex: boolean;
         inputParameterType: string | undefined;
@@ -122,10 +122,8 @@ export default function Main(props: ConnectionProps) {
 
     const [accountBalance, setAccountBalance] = useState<string | undefined>(undefined);
     const [inputParameterInit, setInputParameterInit] = useState<string | undefined>(undefined);
-    const [inputParameterRead, setInputParameterRead] = useState<string | undefined>(undefined);
     const [inputParameterWrite, setInputParameterWrite] = useState<string | undefined>(undefined);
     const [contractNameInit, setContractNameInit] = useState<string | undefined>('myContract');
-    const [contractNameRead, setContractNameRead] = useState<string | undefined>('myContract');
     const [contractNameWrite, setContractNameWrite] = useState<string | undefined>('myContract');
     const [moduleReference, setModuleReference] = useState<string | undefined>(
         '91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693'
@@ -141,12 +139,9 @@ export default function Main(props: ConnectionProps) {
         undefined
     );
     const [dropDownInit, setDropDownInit] = useState('number');
-    const [dropDownRead, setDropDownRead] = useState('number');
     const [dropDownWrite, setDropDownWrite] = useState('number');
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
-    const [smartContractIndexReadInputField, setSmartContractIndexReadInputField] = useState<bigint>(1999n);
     const [smartContractIndexWriteInputField, setSmartContractIndexWriteInputField] = useState<bigint>(1999n);
-    const [entryPointReadFunction, setEntryPointReadFunction] = useState<string | undefined>('view');
     const [entryPointWriteFunction, setEntryPointWriteFunction] = useState<string | undefined>('set');
     const [contractInstanceInfo, setContractInstanceInfo] = useState<
         { contractName: string; methods: string[]; sourceModule: ModuleReference } | undefined
@@ -174,10 +169,8 @@ export default function Main(props: ConnectionProps) {
         undefined
     );
 
-    const [deriveFromSmartContractIndexRead, setDeriveFromSmartContractIndexRead] = useState(false);
     const [deriveFromSmartContractIndexWrite, setDeriveFromSmartContractIndexWrite] = useState(false);
     const [hasInputParameterInitFunction, setHasInputParameterInitFunction] = useState(false);
-    const [hasInputParameterReadFunction, setHasInputParameterReadFunction] = useState(false);
     const [hasInputParameterWriteFunction, setHasInputParameterWriteFunction] = useState(false);
     const [isPayableInitFunction, setIsPayableInitFunction] = useState(false);
     const [isPayableWriteFunction, setIsPayableWriteFunction] = useState(false);
@@ -185,20 +178,15 @@ export default function Main(props: ConnectionProps) {
     const moduleFileRef = useRef(null);
     const contractNameDropDownRef = useRef(null);
     const schemaFileRefInit = useRef(null);
-    const schemaFileRefRead = useRef(null);
     const schemaFileRefWrite = useRef(null);
     const inputParameterTextAreaRef = useRef(null);
     const useModuleReferenceFromStep1Ref = useRef(null);
     const moduleReferenceRef = useRef(null);
     const inputParameterFieldRef = useRef(null);
-    const smartContractIndexReadRef = useRef(null);
     const smartContractIndexWriteRef = useRef(null);
-    const inputParameterReadTextAreaRef = useRef(null);
     const inputParameterWriteTextAreaRef = useRef(null);
-    const deriveFromSmartContractIndexReadRef = useRef(null);
     const deriveFromSmartContractIndexWriteRef = useRef(null);
     const inputParameterDropDownInitRef = useRef(null);
-    const inputParameterDropDownReadRef = useRef(null);
     const inputParameterDropDownWriteRef = useRef(null);
 
     const changeModuleReferenceHandler = useCallback((event: ChangeEvent) => {
@@ -603,7 +591,7 @@ export default function Main(props: ConnectionProps) {
 
             setEntryPointTemplateReadFunction(receiveTemplateReadFunction);
         } catch (e) {
-            if (deriveFromSmartContractIndexRead) {
+            if (deriveFromSmartContractIndex) {
                 setSchemaError({
                     ...schemaError,
                     readFunction: `Could not derive the embedded schema from the smart contract index. \nUncheck "Derive From Smart Contract Index" checkbox to manually upload a schema. Original error: ${e}`,
@@ -1469,425 +1457,8 @@ export default function Main(props: ConnectionProps) {
                                     </div>
                                 )}
                             </Box>
+
                             {/* Additional helpers: */}
-                            <Box header="Reading from contract">
-                                <label className="field">
-                                    Smart Contract Index:
-                                    <br />
-                                    <input
-                                        className="inputFieldStyle"
-                                        id="smartContractIndexRead"
-                                        ref={smartContractIndexReadRef}
-                                        type="number"
-                                        value={smartContractIndexReadInputField.toString()}
-                                        onChange={(event) => {
-                                            changeBigIntValue(event, setSmartContractIndexReadInputField);
-                                        }}
-                                    />
-                                </label>
-                                {deriveFromSmartContractIndexRead &&
-                                contractInstanceInfo !== undefined &&
-                                contractInstanceInfo.contractName !== undefined ? (
-                                    <label className="field">
-                                        Smart Contract Name:
-                                        <br />
-                                        <input
-                                            className="inputFieldStyle"
-                                            id="contractName"
-                                            type="text"
-                                            disabled={deriveFromSmartContractIndexRead}
-                                            value={
-                                                contractInstanceInfo?.contractName
-                                                    ? contractInstanceInfo.contractName
-                                                    : 'undefined'
-                                            }
-                                        />
-                                    </label>
-                                ) : (
-                                    <label className="field">
-                                        Smart Contract Name:
-                                        <br />
-                                        <input
-                                            className="inputFieldStyle"
-                                            id="contractName"
-                                            type="text"
-                                            value={contractNameRead}
-                                            onChange={(event) => {
-                                                changeStringValue(event, setContractNameRead);
-                                            }}
-                                        />
-                                    </label>
-                                )}
-                                {deriveFromSmartContractIndexRead &&
-                                contractInstanceInfo !== undefined &&
-                                contractInstanceInfo.methods.length > 0 ? (
-                                    <label className="field">
-                                        Entry Point Name:
-                                        <br />
-                                        <select
-                                            className="dropDownStyle"
-                                            name="entryPoint"
-                                            id="entryPoint"
-                                            onChange={(event) => {
-                                                changeStringValue(event, setEntryPointReadFunction);
-                                            }}
-                                        >
-                                            {contractInstanceInfo.methods?.map((method) => (
-                                                <option key={method}>{method}</option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                ) : (
-                                    <label className="field">
-                                        Entry Point Name:
-                                        <br />
-                                        <input
-                                            className="inputFieldStyle"
-                                            name="entryPoint"
-                                            id="entryPoint"
-                                            type="text"
-                                            value={entryPointReadFunction}
-                                            onChange={(event) => {
-                                                changeStringValue(event, setEntryPointReadFunction);
-                                            }}
-                                        />
-                                    </label>
-                                )}
-                                <br />
-                                <br />
-                                <div>
-                                    <label>
-                                        <input
-                                            type="checkbox"
-                                            id="deriveFromSmartContractIndexRef"
-                                            ref={deriveFromSmartContractIndexReadRef}
-                                            value={deriveFromSmartContractIndexRead.toString()}
-                                            onChange={async () => {
-                                                setUploadedModuleSchemaBase64Read(undefined);
-                                                setSchemaError({
-                                                    ...schemaError,
-                                                    readFunction: undefined,
-                                                });
-                                                setEntryPointReadFunction(undefined);
-                                                setContractInstanceInfo(undefined);
-                                                setReadError(undefined);
-                                                setEmbeddedModuleSchemaBase64Read(undefined);
-
-                                                const checkboxElement =
-                                                    deriveFromSmartContractIndexReadRef.current as unknown as HTMLInputElement;
-
-                                                setDeriveFromSmartContractIndexRead(checkboxElement.checked);
-
-                                                if (checkboxElement.checked) {
-                                                    const promiseContractInfo = getContractInfo(
-                                                        client,
-                                                        smartContractIndexReadInputField
-                                                    );
-
-                                                    promiseContractInfo
-                                                        .then((contractInfo) => {
-                                                            const promise = getEmbeddedSchema(
-                                                                client,
-                                                                contractInfo.sourceModule
-                                                            );
-
-                                                            promise
-                                                                .then((embeddedSchema) => {
-                                                                    const schema = new Uint8Array(embeddedSchema);
-
-                                                                    const moduleSchemaBase64Embedded = btoa(
-                                                                        new Uint8Array(schema).reduce((data, byte) => {
-                                                                            return data + String.fromCharCode(byte);
-                                                                        }, '')
-                                                                    );
-
-                                                                    setEmbeddedModuleSchemaBase64Read(
-                                                                        moduleSchemaBase64Embedded
-                                                                    );
-                                                                    setContractInstanceInfo(contractInfo);
-                                                                    setContractNameRead(contractInfo.contractName);
-                                                                    setEntryPointReadFunction(contractInfo.methods[0]);
-                                                                })
-                                                                .catch((err: Error) => {
-                                                                    setReadError((err as Error).message);
-                                                                });
-                                                        })
-                                                        .catch((err: Error) => setReadError((err as Error).message));
-                                                }
-                                            }}
-                                        />
-                                        <span>{' Derive From Smart Contract Index'}</span>
-                                    </label>
-                                </div>
-                                {deriveFromSmartContractIndexRead && (
-                                    <>
-                                        <br />
-                                        <div className="alert alert-info" role="alert">
-                                            <div>
-                                                This checkbox autofilled the <code>smart contract name</code>, the{' '}
-                                                <code>entry point name</code>, and the{' '}
-                                                <code>receive return_value/parameter schema</code> from the smart
-                                                contract index.
-                                            </div>
-                                            <br />
-                                            <div>
-                                                <b>Uncheck</b> this box, if you want to manually fill in a{' '}
-                                                <code>smart contract name</code>, an <code>entry point name</code>, or a{' '}
-                                                <code>receive return_value/parameter schema</code>.
-                                            </div>
-                                            <br />
-                                            <div>
-                                                <b>Uncheck</b> and <b>check</b> this box again, if you want to load a
-                                                new smart contract index.
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                                {!deriveFromSmartContractIndexRead && (
-                                    <>
-                                        <br />
-                                        <br />
-                                        <label className="field">
-                                            Upload Smart Contract Module Schema File (e.g. schema.bin):
-                                            <br />
-                                            <br />
-                                            <input
-                                                className="btn btn-primary"
-                                                type="file"
-                                                id="schemaFile"
-                                                ref={schemaFileRefRead}
-                                                accept=".bin"
-                                                onChange={async () => {
-                                                    setUploadErrorRead(undefined);
-                                                    setUploadedModuleSchemaBase64Read(undefined);
-
-                                                    const hTMLInputElement =
-                                                        schemaFileRefRead.current as unknown as HTMLInputElement;
-
-                                                    if (
-                                                        hTMLInputElement.files !== undefined &&
-                                                        hTMLInputElement.files !== null &&
-                                                        hTMLInputElement.files.length > 0
-                                                    ) {
-                                                        const file = hTMLInputElement.files[0];
-                                                        const arrayBuffer = await file.arrayBuffer();
-
-                                                        const schema = btoa(
-                                                            new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                                return data + String.fromCharCode(byte);
-                                                            }, '')
-                                                        );
-                                                        setUploadedModuleSchemaBase64Read(schema);
-                                                    } else {
-                                                        setUploadErrorRead('Upload schema file is undefined');
-                                                    }
-                                                }}
-                                            />
-                                        </label>
-                                    </>
-                                )}
-                                <br />
-                                <br />
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        value={hasInputParameterReadFunction.toString()}
-                                        onChange={() => {
-                                            setParsingErrorRead(undefined);
-                                            setInputParameterRead(undefined);
-                                            setDropDownRead('number');
-                                            setHasInputParameterReadFunction(!hasInputParameterReadFunction);
-                                            setEntryPointTemplateReadFunction(undefined);
-                                            setSchemaError({
-                                                ...schemaError,
-                                                readFunction: undefined,
-                                            });
-                                        }}
-                                    />
-                                    <span>{' Has Input Parameter'}</span>
-                                </label>
-                                {hasInputParameterReadFunction && (
-                                    <div className="Box">
-                                        {!deriveFromSmartContractIndexRead && uploadedModuleSchemaBase64Read && (
-                                            <div className="actionResultBox">
-                                                Schema in base64:
-                                                <div>{uploadedModuleSchemaBase64Read.toString().slice(0, 30)} ...</div>
-                                            </div>
-                                        )}
-                                        {uploadErrorRead !== undefined && (
-                                            <div className="alert alert-danger" role="alert">
-                                                Error: {uploadErrorRead}.
-                                            </div>
-                                        )}
-                                        {schemaError.readFunction !== undefined && (
-                                            <div className="alert alert-danger" role="alert">
-                                                Error: {schemaError.readFunction}.
-                                            </div>
-                                        )}
-                                        {entryPointTemplateReadFunction && (
-                                            <>
-                                                <br />
-                                                <br />
-                                                <div className="actionResultBox">
-                                                    Parameter Template:
-                                                    <pre>
-                                                        {JSON.stringify(
-                                                            JSON.parse(entryPointTemplateReadFunction),
-                                                            undefined,
-                                                            2
-                                                        )}
-                                                    </pre>
-                                                </div>
-                                            </>
-                                        )}
-                                        <label className="field">
-                                            Select input parameter type:
-                                            <br />
-                                            <select
-                                                className="dropDownStyle"
-                                                name="inputParameterDropDownRead"
-                                                id="inputParameterDropDownRead"
-                                                ref={inputParameterDropDownReadRef}
-                                                onChange={() =>
-                                                    changeInputParameterDropDownHandler(
-                                                        inputParameterDropDownReadRef,
-                                                        setInputParameterRead,
-                                                        setDropDownRead,
-                                                        setParsingErrorRead
-                                                    )
-                                                }
-                                            >
-                                                <option value="number">number</option>
-                                                <option value="string">string</option>
-                                                <option value="object">JSON object</option>
-                                                <option value="array">array</option>
-                                            </select>
-                                        </label>
-                                        <br />
-                                        {(dropDownRead === 'object' || dropDownRead === 'array') && (
-                                            <>
-                                                <label className="field">
-                                                    Add your input parameter ({dropDownRead}):
-                                                    <br />
-                                                    <br />
-                                                </label>
-                                                {dropDownRead === 'array' && (
-                                                    <textarea
-                                                        id="inputParameterReadTextAreaRef1"
-                                                        ref={inputParameterReadTextAreaRef}
-                                                        onChange={(event) =>
-                                                            changeInputParameterTextAreaHandler(
-                                                                event,
-                                                                setInputParameterRead,
-                                                                setParsingErrorRead
-                                                            )
-                                                        }
-                                                    >
-                                                        {getArrayExample(entryPointTemplateReadFunction)}
-                                                    </textarea>
-                                                )}
-                                                {dropDownRead === 'object' && (
-                                                    <textarea
-                                                        id="inputParameterReadTextAreaRef2"
-                                                        ref={inputParameterReadTextAreaRef}
-                                                        onChange={(event) =>
-                                                            changeInputParameterTextAreaHandler(
-                                                                event,
-                                                                setInputParameterRead,
-                                                                setParsingErrorRead
-                                                            )
-                                                        }
-                                                    >
-                                                        {getObjectExample(entryPointTemplateReadFunction)}
-                                                    </textarea>
-                                                )}
-                                            </>
-                                        )}
-                                        {(dropDownRead === 'string' || dropDownRead === 'number') && (
-                                            <label className="field">
-                                                Add your input parameter ({dropDownRead}):
-                                                <br />
-                                                <input
-                                                    className="inputFieldStyle"
-                                                    id="inputParameterField"
-                                                    ref={inputParameterFieldRef}
-                                                    type="text"
-                                                    placeholder={dropDownRead === 'string' ? 'myString' : '1000000'}
-                                                    onChange={(event) =>
-                                                        changeInputParameterFieldHandler(
-                                                            event,
-                                                            setInputParameterRead,
-                                                            setParsingErrorRead
-                                                        )
-                                                    }
-                                                />
-                                            </label>
-                                        )}
-                                        {parsingErrorRead && (
-                                            <div className="alert alert-danger" role="alert">
-                                                Error: {parsingErrorRead}.
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                <br />
-                                <br />
-                                <button
-                                    className="btn btn-primary"
-                                    type="button"
-                                    onClick={() => {
-                                        setReadError(undefined);
-                                        setReturnValue(undefined);
-                                        const promise = read(
-                                            client,
-                                            contractNameRead,
-                                            smartContractIndexReadInputField,
-                                            entryPointReadFunction,
-                                            deriveFromSmartContractIndexRead
-                                                ? embeddedModuleSchemaBase64Read
-                                                : uploadedModuleSchemaBase64Read,
-                                            inputParameterRead,
-                                            dropDownRead,
-                                            hasInputParameterReadFunction,
-                                            deriveFromSmartContractIndexRead
-                                        );
-
-                                        promise
-                                            .then((value) => {
-                                                setReturnValue(value);
-                                            })
-                                            .catch((err: Error) => setReadError((err as Error).message));
-                                    }}
-                                >
-                                    Read Smart Contract
-                                </button>
-                                <br />
-                                <br />
-                                {(deriveFromSmartContractIndexRead
-                                    ? embeddedModuleSchemaBase64Read
-                                    : uploadedModuleSchemaBase64Read) === undefined && (
-                                    <div className="alert alert-warning" role="alert">
-                                        Warning: ModuleSchema is undefined. Return value might not be correctly decoded.
-                                    </div>
-                                )}
-                                {shouldWarnInputParameterInSchemaIgnored.readFunction && (
-                                    <div className="alert alert-warning" role="alert">
-                                        Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
-                                        checkbox is unchecked.
-                                    </div>
-                                )}
-                                {returnValue && (
-                                    <div className="actionResultBox">
-                                        Read value:
-                                        <pre>{JSON.stringify(JSON.parse(returnValue), undefined, 2)}</pre>
-                                    </div>
-                                )}
-                                {readError && (
-                                    <div className="alert alert-danger" role="alert">
-                                        Error: {readError}.
-                                    </div>
-                                )}
-                            </Box>
 
                             <Form className="Box">
                                 <Row>
@@ -2124,8 +1695,8 @@ export default function Main(props: ConnectionProps) {
                                             hasInputParameterRegister.onChange(e);
 
                                             setParsingErrorRead(undefined);
-                                            setInputParameterRead(undefined);
-                                            setDropDownRead('number');
+                                            attributeForm.setValue('inputParameterType', undefined);
+                                            attributeForm.setValue('inputParameter', undefined);
                                             setEntryPointTemplateReadFunction(undefined);
                                             setSchemaError({
                                                 ...schemaError,

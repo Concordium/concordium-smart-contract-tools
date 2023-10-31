@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2.1.0
+
+- Contains `cargo-concordium` version 3.1.4
+
 ## 2.0.0
 
 - Contains `cargo-concordium` version 3.0.0

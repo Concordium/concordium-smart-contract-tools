@@ -80,6 +80,7 @@ export default function Main(props: ConnectionProps) {
         inputParameterType: string | undefined;
         inputParameter: string | undefined;
     }>();
+    const deriveContractInfo = attributeForm.watch('deriveFromSmartContractIndex');
 
     const [viewErrorAccountInfo, setViewErrorAccountInfo] = useState<string | undefined>(undefined);
     const [viewErrorModuleReference, setViewErrorModuleReference] = useState<string | undefined>(undefined);
@@ -787,9 +788,8 @@ export default function Main(props: ConnectionProps) {
                             <div>
                                 <a
                                     className="link"
-                                    href={`https://${
-                                        isTestnet ? `testnet.` : ``
-                                    }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                                    href={`https://${isTestnet ? `testnet.` : ``
+                                        }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
                                     target="_blank"
                                     rel="noreferrer"
                                 >
@@ -869,8 +869,7 @@ export default function Main(props: ConnectionProps) {
                                                     wasmModule = await WebAssembly.compile(arrayBuffer.slice(slice));
                                                 } catch (e) {
                                                     setUploadError(
-                                                        `You might have not uploaded a Concordium module. Original error: ${
-                                                            (e as Error).message
+                                                        `You might have not uploaded a Concordium module. Original error: ${(e as Error).message
                                                         }`
                                                     );
                                                 }
@@ -967,9 +966,8 @@ export default function Main(props: ConnectionProps) {
                                                 className="link"
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                href={`https://${
-                                                    isTestnet ? `testnet.` : ``
-                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
+                                                href={`https://${isTestnet ? `testnet.` : ``
+                                                    }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
                                             >
                                                 {txHashDeploy}
                                             </a>
@@ -1104,8 +1102,8 @@ export default function Main(props: ConnectionProps) {
                                     />
                                 </label>
                                 {useModuleFromStep1 &&
-                                displayContracts.length > 0 &&
-                                (moduleReferenceDeployed !== undefined || moduleReferenceCalculated !== undefined) ? (
+                                    displayContracts.length > 0 &&
+                                    (moduleReferenceDeployed !== undefined || moduleReferenceCalculated !== undefined) ? (
                                     <label className="field">
                                         Smart Contract Name:
                                         <br />
@@ -1426,9 +1424,8 @@ export default function Main(props: ConnectionProps) {
                                                 className="link"
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                href={`https://${
-                                                    isTestnet ? `testnet.` : ``
-                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
+                                                href={`https://${isTestnet ? `testnet.` : ``
+                                                    }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
                                             >
                                                 {txHashInit}
                                             </a>
@@ -1479,9 +1476,9 @@ export default function Main(props: ConnectionProps) {
                                         )}
                                     </Form.Group>
 
-                                    {attributeForm.watch('deriveFromSmartContractIndex') &&
-                                    contractInstanceInfo !== undefined &&
-                                    contractInstanceInfo.contractName !== undefined ? (
+                                    {deriveContractInfo &&
+                                        contractInstanceInfo !== undefined &&
+                                        contractInstanceInfo.contractName !== undefined ? (
                                         <Form.Group className="col-md-4 mb-3">
                                             <Form.Label>Smart Contract Name</Form.Label>
                                             <Form.Control
@@ -1517,9 +1514,9 @@ export default function Main(props: ConnectionProps) {
                                         </Form.Group>
                                     )}
 
-                                    {attributeForm.watch('deriveFromSmartContractIndex') &&
-                                    contractInstanceInfo !== undefined &&
-                                    contractInstanceInfo.methods.length > 0 ? (
+                                    {deriveContractInfo &&
+                                        contractInstanceInfo !== undefined &&
+                                        contractInstanceInfo.methods.length > 0 ? (
                                         <Form.Group className="col-md-4 mb-3">
                                             <Form.Label>Entry Point Name</Form.Label>
                                             <Select
@@ -1619,7 +1616,7 @@ export default function Main(props: ConnectionProps) {
                                     </Form.Group>
                                 </div>
 
-                                {!attributeForm.watch('deriveFromSmartContractIndex') && (
+                                {!deriveContractInfo && (
                                     <Form.Group className="mb-3">
                                         <Form.Label>
                                             Upload Smart Contract Module Schema File (e.g. schema.bin):
@@ -1657,7 +1654,7 @@ export default function Main(props: ConnectionProps) {
                                         <Form.Text />
                                     </Form.Group>
                                 )}
-                                {attributeForm.watch('deriveFromSmartContractIndex') && (
+                                {deriveContractInfo && (
                                     <>
                                         <br />
                                         <div className="alert alert-info" role="alert">
@@ -1757,97 +1754,97 @@ export default function Main(props: ConnectionProps) {
 
                                         {(attributeForm.watch('inputParameterType') === 'number' ||
                                             attributeForm.watch('inputParameterType') === 'string') && (
-                                            <Form.Group className="mb-3">
-                                                <Form.Label>
-                                                    {' '}
-                                                    Add your input parameter (
-                                                    {attributeForm.watch('inputParameterType')}):
-                                                </Form.Label>
-                                                <Form.Control
-                                                    placeholder={
-                                                        attributeForm.watch('inputParameterType') === 'string'
-                                                            ? 'myString'
-                                                            : '1000000'
-                                                    }
-                                                    {...attributeForm.register('inputParameter', { required: true })}
-                                                    onChange={(e) => {
-                                                        const inputParameterRegister = attributeForm.register(
-                                                            'inputParameter',
-                                                            { required: true }
-                                                        );
-
-                                                        inputParameterRegister.onChange(e);
-
-                                                        setParsingErrorRead(undefined);
-                                                    }}
-                                                />
-                                                {attributeForm.formState.errors.inputParameter && (
-                                                    <Alert key="info" variant="info">
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>
                                                         {' '}
-                                                        Input parameter is required{' '}
-                                                    </Alert>
-                                                )}
-                                                <Form.Text />
-                                            </Form.Group>
-                                        )}
+                                                        Add your input parameter (
+                                                        {attributeForm.watch('inputParameterType')}):
+                                                    </Form.Label>
+                                                    <Form.Control
+                                                        placeholder={
+                                                            attributeForm.watch('inputParameterType') === 'string'
+                                                                ? 'myString'
+                                                                : '1000000'
+                                                        }
+                                                        {...attributeForm.register('inputParameter', { required: true })}
+                                                        onChange={(e) => {
+                                                            const inputParameterRegister = attributeForm.register(
+                                                                'inputParameter',
+                                                                { required: true }
+                                                            );
+
+                                                            inputParameterRegister.onChange(e);
+
+                                                            setParsingErrorRead(undefined);
+                                                        }}
+                                                    />
+                                                    {attributeForm.formState.errors.inputParameter && (
+                                                        <Alert key="info" variant="info">
+                                                            {' '}
+                                                            Input parameter is required{' '}
+                                                        </Alert>
+                                                    )}
+                                                    <Form.Text />
+                                                </Form.Group>
+                                            )}
 
                                         {(attributeForm.watch('inputParameterType') === 'object' ||
                                             attributeForm.watch('inputParameterType') === 'array') && (
-                                            <Form.Group className="mb-3">
-                                                <Form.Label>
-                                                    {' '}
-                                                    Add your input parameter (
-                                                    {attributeForm.watch('inputParameterType')}):
-                                                </Form.Label>
-
-                                                {attributeForm.watch('inputParameterType') === 'array' && (
-                                                    <textarea
-                                                        {...attributeForm.register('inputParameter')}
-                                                        onChange={(event) => {
-                                                            setParsingErrorRead(undefined);
-                                                            const target = event.target as HTMLTextAreaElement;
-
-                                                            try {
-                                                                JSON.parse(target.value);
-                                                            } catch (e) {
-                                                                setParsingErrorRead((e as Error).message);
-                                                                return;
-                                                            }
-                                                            attributeForm.setValue('inputParameter', target.value);
-                                                        }}
-                                                    >
-                                                        {getArrayExample(entryPointTemplateReadFunction)}
-                                                    </textarea>
-                                                )}
-                                                {attributeForm.watch('inputParameterType') === 'object' && (
-                                                    <textarea
-                                                        {...attributeForm.register('inputParameter')}
-                                                        onChange={(event) => {
-                                                            setParsingErrorRead(undefined);
-                                                            const target = event.target as HTMLTextAreaElement;
-
-                                                            try {
-                                                                JSON.parse(target.value);
-                                                            } catch (e) {
-                                                                setParsingErrorRead((e as Error).message);
-                                                                return;
-                                                            }
-                                                            attributeForm.setValue('inputParameter', target.value);
-                                                        }}
-                                                    >
-                                                        {getObjectExample(entryPointTemplateReadFunction)}
-                                                    </textarea>
-                                                )}
-
-                                                {attributeForm.formState.errors.inputParameter && (
-                                                    <Alert key="info" variant="info">
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>
                                                         {' '}
-                                                        Input parameter is required{' '}
-                                                    </Alert>
-                                                )}
-                                                <Form.Text />
-                                            </Form.Group>
-                                        )}
+                                                        Add your input parameter (
+                                                        {attributeForm.watch('inputParameterType')}):
+                                                    </Form.Label>
+
+                                                    {attributeForm.watch('inputParameterType') === 'array' && (
+                                                        <textarea
+                                                            {...attributeForm.register('inputParameter')}
+                                                            onChange={(event) => {
+                                                                setParsingErrorRead(undefined);
+                                                                const target = event.target as HTMLTextAreaElement;
+
+                                                                try {
+                                                                    JSON.parse(target.value);
+                                                                } catch (e) {
+                                                                    setParsingErrorRead((e as Error).message);
+                                                                    return;
+                                                                }
+                                                                attributeForm.setValue('inputParameter', target.value);
+                                                            }}
+                                                        >
+                                                            {getArrayExample(entryPointTemplateReadFunction)}
+                                                        </textarea>
+                                                    )}
+                                                    {attributeForm.watch('inputParameterType') === 'object' && (
+                                                        <textarea
+                                                            {...attributeForm.register('inputParameter')}
+                                                            onChange={(event) => {
+                                                                setParsingErrorRead(undefined);
+                                                                const target = event.target as HTMLTextAreaElement;
+
+                                                                try {
+                                                                    JSON.parse(target.value);
+                                                                } catch (e) {
+                                                                    setParsingErrorRead((e as Error).message);
+                                                                    return;
+                                                                }
+                                                                attributeForm.setValue('inputParameter', target.value);
+                                                            }}
+                                                        >
+                                                            {getObjectExample(entryPointTemplateReadFunction)}
+                                                        </textarea>
+                                                    )}
+
+                                                    {attributeForm.formState.errors.inputParameter && (
+                                                        <Alert key="info" variant="info">
+                                                            {' '}
+                                                            Input parameter is required{' '}
+                                                        </Alert>
+                                                    )}
+                                                    <Form.Text />
+                                                </Form.Group>
+                                            )}
 
                                         {parsingErrorRead !== undefined && (
                                             <Alert variant="danger"> Error: {parsingErrorRead}. </Alert>
@@ -1888,14 +1885,14 @@ export default function Main(props: ConnectionProps) {
                                 </Button>
                                 <br />
                                 <br />
-                                {(attributeForm.getValues('deriveFromSmartContractIndex')
+                                {(deriveContractInfo
                                     ? embeddedModuleSchemaBase64Read
                                     : uploadedModuleSchemaBase64Read) === undefined && (
-                                    <Alert key="warning" variant="warning">
-                                        {' '}
-                                        Warning: ModuleSchema is undefined. Return value might not be correctly decoded.{' '}
-                                    </Alert>
-                                )}
+                                        <Alert key="warning" variant="warning">
+                                            {' '}
+                                            Warning: ModuleSchema is undefined. Return value might not be correctly decoded.{' '}
+                                        </Alert>
+                                    )}
                                 {shouldWarnInputParameterInSchemaIgnored.readFunction && (
                                     <Alert key="warning" variant="warning">
                                         {' '}
@@ -1928,8 +1925,8 @@ export default function Main(props: ConnectionProps) {
                                     />
                                 </label>
                                 {deriveFromSmartContractIndexWrite &&
-                                contractInstanceInfo !== undefined &&
-                                contractInstanceInfo.contractName !== undefined ? (
+                                    contractInstanceInfo !== undefined &&
+                                    contractInstanceInfo.contractName !== undefined ? (
                                     <label className="field">
                                         Smart Contract Name:
                                         <br />
@@ -1961,8 +1958,8 @@ export default function Main(props: ConnectionProps) {
                                     </label>
                                 )}
                                 {deriveFromSmartContractIndexWrite &&
-                                contractInstanceInfo !== undefined &&
-                                contractInstanceInfo.methods.length > 0 ? (
+                                    contractInstanceInfo !== undefined &&
+                                    contractInstanceInfo.methods.length > 0 ? (
                                     <label className="field">
                                         Entry Point Name:
                                         <br />
@@ -2378,9 +2375,8 @@ export default function Main(props: ConnectionProps) {
                                                 className="link"
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                href={`https://${
-                                                    isTestnet ? `testnet.` : ``
-                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashUpdate}`}
+                                                href={`https://${isTestnet ? `testnet.` : ``
+                                                    }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashUpdate}`}
                                             >
                                                 {txHashUpdate}
                                             </a>

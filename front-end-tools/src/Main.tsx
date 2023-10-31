@@ -38,9 +38,9 @@ type BoxProps = PropsWithChildren<{
 
 function Box({ header, children }: BoxProps) {
     return (
-        <fieldset className="Box">
+        <fieldset className="box">
             <legend>{header}</legend>
-            <div className="BoxFields">{children}</div>
+            <div className="boxFields">{children}</div>
             <br />
         </fieldset>
     );
@@ -523,12 +523,12 @@ export default function Main(props: ConnectionProps) {
             if (useModuleFromStep1) {
                 setSchemaError({
                     ...schemaError,
-                    initFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema. Original error: ${e}`,
+                    initFunction: `Could not get embedded schema from the uploaded module. \nUncheck "Use Module from Step 1" checkbox to manually upload a schema or \nUncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter.  Original error: ${e}`,
                 });
             } else {
                 setSchemaError({
                     ...schemaError,
-                    initFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                    initFunction: `Could not get schema from uploaded schema. \nUncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
                 });
             }
         }
@@ -594,12 +594,12 @@ export default function Main(props: ConnectionProps) {
             if (deriveContractInfo) {
                 setSchemaError({
                     ...schemaError,
-                    readFunction: `Could not derive the embedded schema from the smart contract index. \nUncheck "Derive From Smart Contract Index" checkbox to manually upload a schema. Original error: ${e}`,
+                    readFunction: `Could not derive the embedded schema from the smart contract index. \nUncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or \nUncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
                 });
             } else {
                 setSchemaError({
                     ...schemaError,
-                    readFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                    readFunction: `Could not get schema from uploaded schema. \nUncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
                 });
             }
         }
@@ -660,12 +660,12 @@ export default function Main(props: ConnectionProps) {
             if (deriveFromSmartContractIndexWrite) {
                 setSchemaError({
                     ...schemaError,
-                    writeFunction: `Could not derive the embedded schema from the smart contract index. \nUncheck "Derive From Smart Contract Index" checkbox to manually upload a schema. Original error: ${e}`,
+                    writeFunction: `Could not derive the embedded schema from the smart contract index. \nUncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or \nUncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
                 });
             } else {
                 setSchemaError({
                     ...schemaError,
-                    writeFunction: `Could not get schema from uploaded schema. Original error: ${e}`,
+                    writeFunction: `Could not get schema from uploaded schema. \nUncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
                 });
             }
         }
@@ -1153,7 +1153,7 @@ export default function Main(props: ConnectionProps) {
                                     </label>
                                 </div>
                                 {isPayableInitFunction && (
-                                    <div className="Box">
+                                    <div className="box">
                                         <label className="field">
                                             CCD amount (micro):
                                             <br />
@@ -1189,7 +1189,7 @@ export default function Main(props: ConnectionProps) {
                                     <span>{' Has Input Parameter'}</span>
                                 </label>
                                 {hasInputParameterInitFunction && (
-                                    <div className="Box">
+                                    <div className="box">
                                         {!useModuleFromStep1 && (
                                             <>
                                                 <label className="field">
@@ -1454,7 +1454,7 @@ export default function Main(props: ConnectionProps) {
 
                             {/* Additional helpers: */}
 
-                            <Form className="Box">
+                            <Form className="box">
                                 <Row>
                                     <Form.Group className="col-md-4 mb-3">
                                         <Form.Label>Smart Contract Index</Form.Label>
@@ -1701,7 +1701,7 @@ export default function Main(props: ConnectionProps) {
                                 </Form.Group>
 
                                 {hasInputParameter && (
-                                    <div className="Box">
+                                    <div className="box">
                                         {!deriveContractInfo && uploadedModuleSchemaBase64Read && (
                                             <div className="actionResultBox">
                                                 Schema in base64:
@@ -1848,14 +1848,17 @@ export default function Main(props: ConnectionProps) {
                                     onClick={attributeForm.handleSubmit((data) => {
                                         setReadError(undefined);
                                         setReturnValue(undefined);
+
+                                        const schema = data.deriveFromSmartContractIndex
+                                            ? embeddedModuleSchemaBase64Read
+                                            : uploadedModuleSchemaBase64Read;
+
                                         const promise = read(
                                             client,
                                             data.smartContractName,
                                             BigInt(data.smartContractIndex),
                                             data.entryPointName,
-                                            data.deriveFromSmartContractIndex
-                                                ? embeddedModuleSchemaBase64Read
-                                                : uploadedModuleSchemaBase64Read,
+                                            schema,
                                             data.inputParameter,
                                             data.inputParameterType,
                                             data.hasInputParameter,
@@ -1876,13 +1879,13 @@ export default function Main(props: ConnectionProps) {
                                 {(deriveContractInfo
                                     ? embeddedModuleSchemaBase64Read
                                     : uploadedModuleSchemaBase64Read) === undefined && (
-                                    <Alert key="warning" variant="warning">
+                                    <Alert variant="warning">
                                         {' '}
                                         Warning: ModuleSchema is undefined. Return value might not be correctly decoded.{' '}
                                     </Alert>
                                 )}
                                 {shouldWarnInputParameterInSchemaIgnored.readFunction && (
-                                    <Alert key="warning" variant="warning">
+                                    <Alert variant="warning">
                                         {' '}
                                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot;
                                         checkbox is unchecked.{' '}
@@ -2098,7 +2101,7 @@ export default function Main(props: ConnectionProps) {
                                     </label>
                                 </div>
                                 {isPayableWriteFunction && (
-                                    <div className="Box">
+                                    <div className="box">
                                         <label className="field">
                                             CCD amount (micro):
                                             <br />
@@ -2137,7 +2140,7 @@ export default function Main(props: ConnectionProps) {
                                 </label>
                                 <br />
                                 {hasInputParameterWriteFunction && (
-                                    <div className="Box">
+                                    <div className="box">
                                         {!deriveFromSmartContractIndexWrite && (
                                             <label className="field">
                                                 Upload Smart Contract Module Schema File (e.g. schema.bin):

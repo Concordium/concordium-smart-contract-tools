@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, PropsWithChildren, useRef } from 'react';
+import React, { useEffect, useState, PropsWithChildren } from 'react';
 import { Buffer } from 'buffer';
 
 import {
@@ -66,6 +66,10 @@ export default function Main(props: ConnectionProps) {
     const { isConnected, select } = useWalletConnectorSelector(BROWSER_WALLET, connection, {
         ...walletConnectionProps,
     });
+
+    const deployForm = useForm<{
+        file: FileList | undefined;
+    }>();
 
     const initForm = useForm<{
         moduleReference: string | undefined;
@@ -139,8 +143,6 @@ export default function Main(props: ConnectionProps) {
     const [displayContracts, setDisplayContracts] = useState<string[]>([]);
 
     const [embeddedModuleSchemaBase64Init, setEmbeddedModuleSchemaBase64Init] = useState<string | undefined>(undefined);
-
-    const moduleFileRef = useRef(null);
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -458,116 +460,116 @@ export default function Main(props: ConnectionProps) {
                                 </>
                             )}
                             <Box header="Step 1: Deploy Smart Contract Module">
-                                <label className="field">
-                                    Upload Smart Contract Module File (e.g. myContract.wasm.v1):
-                                    <br />
-                                    <br />
-                                    <input
-                                        className="btn btn-primary"
-                                        type="file"
-                                        id="moduleFile"
-                                        ref={moduleFileRef}
-                                        accept=".wasm,.wasm.v0,.wasm.v1"
-                                        onChange={async () => {
-                                            setUploadError(undefined);
-                                            setModuleReferenceDeployed(undefined);
-                                            setTransactionErrorDeploy(undefined);
-                                            setTxHashDeploy(undefined);
+                                <Form>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>
+                                            Upload Smart Contract Module File (e.g. myContract.wasm.v1)
+                                        </Form.Label>
+                                        <Form.Control
+                                            type="file"
+                                            accept=".wasm,.wasm.v0,.wasm.v1"
+                                            {...deployForm.register('file')}
+                                            onChange={async (e) => {
+                                                const register = deployForm.register('file');
 
-                                            const hTMLInputElement =
-                                                moduleFileRef.current as unknown as HTMLInputElement;
+                                                register.onChange(e);
 
-                                            if (
-                                                hTMLInputElement.files !== undefined &&
-                                                hTMLInputElement.files !== null &&
-                                                hTMLInputElement.files.length > 0
-                                            ) {
-                                                const file = hTMLInputElement.files[0];
-                                                const arrayBuffer = await file.arrayBuffer();
+                                                setUploadError(undefined);
+                                                setModuleReferenceDeployed(undefined);
+                                                setTransactionErrorDeploy(undefined);
+                                                setTxHashDeploy(undefined);
 
-                                                const module = btoa(
-                                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                        return data + String.fromCharCode(byte);
-                                                    }, '')
-                                                );
+                                                const files = deployForm.getValues('file');
 
-                                                setBase64Module(module);
-                                                setModuleReferenceCalculated(
-                                                    Buffer.from(sha256([new Uint8Array(arrayBuffer)])).toString('hex')
-                                                );
+                                                if (files !== undefined && files !== null && files.length > 0) {
+                                                    const file = files[0];
+                                                    const arrayBuffer = await file.arrayBuffer();
 
-                                                // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
-                                                // Unversioned modules `.wasm` cannot be created by Concordium's tooling anymore.
-                                                // If the module is versioned, the first 8 bytes are the version, followed by the `magicValue` below.
-                                                // If the module is an old unversioned one, the module starts with the `magicValue` below.
-                                                const magicValue = new Uint8Array([0x00, 0x61, 0x73, 0x6d]);
-                                                let uploadedModuleFirst4Bytes = new Uint8Array([]);
-
-                                                if (arrayBuffer.byteLength >= 4) {
-                                                    uploadedModuleFirst4Bytes = new Uint8Array(arrayBuffer).subarray(
-                                                        0,
-                                                        4
-                                                    );
-                                                } else {
-                                                    setUploadError(`You might have not uploaded a Concordium module.`);
-                                                }
-
-                                                // If we have an unversioned module, we remove no bytes.
-                                                // If we have a versioned module, we remove 8 bytes (remove the versioned 8 bytes at the beginning)
-                                                const slice = arraysEqual(uploadedModuleFirst4Bytes, magicValue)
-                                                    ? 0
-                                                    : 8;
-
-                                                let wasmModule;
-                                                try {
-                                                    wasmModule = await WebAssembly.compile(arrayBuffer.slice(slice));
-                                                } catch (e) {
-                                                    setUploadError(
-                                                        `You might have not uploaded a Concordium module. Original error: ${
-                                                            (e as Error).message
-                                                        }`
-                                                    );
-                                                }
-
-                                                if (wasmModule) {
-                                                    const moduleFunctions = WebAssembly.Module.exports(wasmModule);
-
-                                                    const contractNames = [];
-                                                    for (let i = 0; i < moduleFunctions.length; i += 1) {
-                                                        if (moduleFunctions[i].name.slice(0, 5) === 'init_') {
-                                                            contractNames.push(moduleFunctions[i].name.slice(5));
-                                                        }
-                                                    }
-                                                    setContracts(contractNames);
-
-                                                    const customSection = WebAssembly.Module.customSections(
-                                                        wasmModule,
-                                                        'concordium-schema'
-                                                    );
-
-                                                    const schema = new Uint8Array(customSection[0]);
-
-                                                    const moduleSchemaBase64Embedded = btoa(
-                                                        new Uint8Array(schema).reduce((data, byte) => {
+                                                    const module = btoa(
+                                                        new Uint8Array(arrayBuffer).reduce((data, byte) => {
                                                             return data + String.fromCharCode(byte);
                                                         }, '')
                                                     );
 
-                                                    setEmbeddedModuleSchemaBase64Init(moduleSchemaBase64Embedded);
-                                                } else {
-                                                    setUploadError('Upload module file is undefined');
+                                                    setBase64Module(module);
+                                                    setModuleReferenceCalculated(
+                                                        Buffer.from(sha256([new Uint8Array(arrayBuffer)])).toString(
+                                                            'hex'
+                                                        )
+                                                    );
+
+                                                    // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
+                                                    // Unversioned modules `.wasm` cannot be created by Concordium's tooling anymore.
+                                                    // If the module is versioned, the first 8 bytes are the version, followed by the `magicValue` below.
+                                                    // If the module is an old unversioned one, the module starts with the `magicValue` below.
+                                                    const magicValue = new Uint8Array([0x00, 0x61, 0x73, 0x6d]);
+                                                    let uploadedModuleFirst4Bytes = new Uint8Array([]);
+
+                                                    if (arrayBuffer.byteLength >= 4) {
+                                                        uploadedModuleFirst4Bytes = new Uint8Array(
+                                                            arrayBuffer
+                                                        ).subarray(0, 4);
+                                                    } else {
+                                                        setUploadError(
+                                                            `You might have not uploaded a Concordium module.`
+                                                        );
+                                                    }
+
+                                                    // If we have an unversioned module, we remove no bytes.
+                                                    // If we have a versioned module, we remove 8 bytes (remove the versioned 8 bytes at the beginning)
+                                                    const slice = arraysEqual(uploadedModuleFirst4Bytes, magicValue)
+                                                        ? 0
+                                                        : 8;
+
+                                                    let wasmModule;
+                                                    try {
+                                                        wasmModule = await WebAssembly.compile(
+                                                            arrayBuffer.slice(slice)
+                                                        );
+                                                    } catch (err) {
+                                                        setUploadError(
+                                                            `You might have not uploaded a Concordium module. Original error: ${
+                                                                (err as Error).message
+                                                            }`
+                                                        );
+                                                    }
+
+                                                    if (wasmModule) {
+                                                        const moduleFunctions = WebAssembly.Module.exports(wasmModule);
+
+                                                        const contractNames = [];
+                                                        for (let i = 0; i < moduleFunctions.length; i += 1) {
+                                                            if (moduleFunctions[i].name.slice(0, 5) === 'init_') {
+                                                                contractNames.push(moduleFunctions[i].name.slice(5));
+                                                            }
+                                                        }
+                                                        setContracts(contractNames);
+
+                                                        const customSection = WebAssembly.Module.customSections(
+                                                            wasmModule,
+                                                            'concordium-schema'
+                                                        );
+
+                                                        const schema = new Uint8Array(customSection[0]);
+
+                                                        const moduleSchemaBase64Embedded = btoa(
+                                                            new Uint8Array(schema).reduce((data, byte) => {
+                                                                return data + String.fromCharCode(byte);
+                                                            }, '')
+                                                        );
+
+                                                        setEmbeddedModuleSchemaBase64Init(moduleSchemaBase64Embedded);
+                                                    } else {
+                                                        setUploadError('Upload module file is undefined');
+                                                    }
                                                 }
-                                            }
-                                        }}
-                                    />
-                                    <br />
-                                    <br />
-                                </label>
-                                {uploadError !== undefined && (
-                                    <div className="alert alert-danger" role="alert">
-                                        Error: {uploadError}.
-                                    </div>
-                                )}
+                                            }}
+                                        />
+                                        <Form.Text />
+                                    </Form.Group>
+                                </Form>
+
+                                {uploadError !== undefined && <Alert variant="danger"> Error: {uploadError}. </Alert>}
                                 <br />
                                 {base64Module && moduleReferenceCalculated && (
                                     <>
@@ -580,16 +582,14 @@ export default function Main(props: ConnectionProps) {
                                             <div>{base64Module.toString().slice(0, 30)} ...</div>
                                         </div>
                                         {isModuleReferenceAlreadyDeployedStep1 && (
-                                            <div className="alert alert-danger" role="alert">
-                                                Module reference already deployed.
-                                            </div>
+                                            <Alert variant="warning">Module reference already deployed.</Alert>
                                         )}
                                         <br />
                                         {!isModuleReferenceAlreadyDeployedStep1 && (
-                                            <button
-                                                className="btn btn-primary"
+                                            <Button
+                                                variant="primary"
                                                 type="button"
-                                                onClick={() => {
+                                                onClick={deployForm.handleSubmit(() => {
                                                     setTxHashDeploy(undefined);
                                                     setTransactionErrorDeploy(undefined);
                                                     const tx = deploy(connection, account, base64Module);
@@ -599,19 +599,17 @@ export default function Main(props: ConnectionProps) {
                                                     }).catch((err: Error) =>
                                                         setTransactionErrorDeploy((err as Error).message)
                                                     );
-                                                }}
+                                                })}
                                             >
                                                 Deploy smart contract module
-                                            </button>
+                                            </Button>
                                         )}
                                         <br />
                                         <br />
                                     </>
                                 )}
                                 {!txHashDeploy && transactionErrorDeploy && (
-                                    <div className="alert alert-danger" role="alert">
-                                        Error: {transactionErrorDeploy}.
-                                    </div>
+                                    <Alert variant="danger"> Error: {transactionErrorDeploy}. </Alert>
                                 )}
                                 {txHashDeploy && (
                                     <>
@@ -871,7 +869,7 @@ export default function Main(props: ConnectionProps) {
                                             {!useModuleReferenceFromStep1 && (
                                                 <Form.Group className="mb-3">
                                                     <Form.Label>
-                                                        Upload Smart Contract Module Schema File (e.g. schema.bin):
+                                                        Upload Smart Contract Module Schema File (e.g. schema.bin)
                                                     </Form.Label>
                                                     <Form.Control
                                                         type="file"

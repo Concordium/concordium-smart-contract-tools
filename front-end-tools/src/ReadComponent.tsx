@@ -314,7 +314,7 @@ export default function ReadComponenet(props: ConnectionProps) {
 
                 {!deriveContractInfo && (
                     <Form.Group className="mb-3">
-                        <Form.Label>Upload Smart Contract Module Schema File (e.g. schema.bin):</Form.Label>
+                        <Form.Label>Upload Smart Contract Module Schema File (e.g. schema.bin)</Form.Label>
                         <Form.Control
                             type="file"
                             accept=".bin"

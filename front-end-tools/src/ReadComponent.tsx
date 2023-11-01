@@ -167,13 +167,13 @@ export default function ReadComponenet(props: ConnectionProps) {
     }, [entryPointName, hasInputParameter, smartContractName, uploadedModuleSchemaBase64Read, inputParameterType]);
 
     return (
-        <Box header="Reading from contract">
+        <Box header="Read From Smart Contract">
             <Form>
                 <Row>
                     <Form.Group className="col-md-4 mb-3">
                         <Form.Label>Smart Contract Index</Form.Label>
                         <Form.Control
-                            defaultValue={1}
+                            defaultValue={1999}
                             type="number"
                             min="0"
                             {...readForm.register('smartContractIndex', { required: true })}
@@ -256,7 +256,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                     <Form.Group className="mb-3 d-flex justify-content-center">
                         <Form.Check
                             type="checkbox"
-                            id="attribute-required"
+                            id="deriveContractInfo"
                             label="Derive From Smart Contract Index"
                             {...readForm.register('deriveFromSmartContractIndex')}
                             onChange={async (e) => {
@@ -339,7 +339,6 @@ export default function ReadComponenet(props: ConnectionProps) {
                                         }, '')
                                     );
                                     setUploadedModuleSchemaBase64Read(schema);
-                                    console.log(schema);
                                 } else {
                                     setUploadErrorRead('Upload schema file is undefined');
                                 }
@@ -351,7 +350,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                 {deriveContractInfo && (
                     <>
                         <br />
-                        <div className="alert alert-info" role="alert">
+                        <Alert variant="info">
                             <div>
                                 This checkbox autofilled the <code>smart contract name</code>, the{' '}
                                 <code>entry point name</code>, and the{' '}
@@ -368,14 +367,14 @@ export default function ReadComponenet(props: ConnectionProps) {
                                 <b>Uncheck</b> and <b>check</b> this box again, if you want to load a new smart contract
                                 index.
                             </div>
-                        </div>
+                        </Alert>
                     </>
                 )}
 
                 <Form.Group className="mb-3 d-flex justify-content-center">
                     <Form.Check
                         type="checkbox"
-                        id="attribute-required"
+                        id="hasInputParameter"
                         label="Has Input Parameter"
                         {...readForm.register('hasInputParameter')}
                         onChange={async (e) => {

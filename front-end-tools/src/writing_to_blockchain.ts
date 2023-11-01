@@ -43,10 +43,6 @@ export async function write(
         throw new Error(`Account is undefined`);
     }
 
-    if (inputParameterType === undefined) {
-        throw new Error(`InputParameterType is undefined`);
-    }
-
     if (contractName === undefined) {
         throw new Error(`Set smart contract name`);
     }
@@ -65,6 +61,10 @@ export async function write(
         }
 
         if (moduleSchema !== undefined) {
+            if (inputParameterType === undefined) {
+                throw new Error(`InputParameterType is undefined`);
+            }
+
             if (inputParameter === undefined) {
                 throw new Error(`Set input parameter`);
             }
@@ -95,7 +95,7 @@ export async function write(
                     };
                     break;
                 default:
-                    throw new Error(`Dropdown option does not exist`);
+                    throw new Error(`Input paramter type option does not exist`);
             }
         }
     }
@@ -123,7 +123,7 @@ export async function initialize(
     hasInputParameter: boolean,
     useModuleFromStep1: boolean,
     moduleSchema: string | undefined,
-    dropDown: string,
+    inputParamterType: string | undefined,
     maxContractExecutionEnergy: bigint,
     amount: bigint
 ) {
@@ -149,11 +149,15 @@ export async function initialize(
         }
 
         if (moduleSchema !== undefined) {
+            if (inputParamterType === undefined) {
+                throw new Error(`Set input paramter type`);
+            }
+
             if (inputParameter === undefined) {
                 throw new Error(`Set input parameter`);
             }
 
-            switch (dropDown) {
+            switch (inputParamterType) {
                 case 'number':
                     schema = {
                         parameters: Number(inputParameter),
@@ -179,7 +183,7 @@ export async function initialize(
                     };
                     break;
                 default:
-                    throw new Error(`Dropdown option does not exist`);
+                    throw new Error(`Input paramter type does not exist`);
             }
         }
     }

@@ -217,13 +217,13 @@ export default function WriteComponenet(props: ConnectionProps) {
     }, [entryPointName, hasInputParameter, smartContractName, uploadedModuleSchemaBase64Write, inputParameterType]);
 
     return (
-        <Box header="Writing to contract">
+        <Box header="Write To Smart Contract">
             <Form>
                 <Row>
                     <Form.Group className="col-md-3 mb-3">
                         <Form.Label>Smart Contract Index</Form.Label>
                         <Form.Control
-                            defaultValue={1}
+                            defaultValue={1999}
                             type="number"
                             min="0"
                             {...writeForm.register('smartContractIndex', { required: true })}
@@ -367,7 +367,7 @@ export default function WriteComponenet(props: ConnectionProps) {
                 {deriveContractInfo && (
                     <>
                         <br />
-                        <div className="alert alert-info" role="alert">
+                        <Alert variant="info">
                             <div>
                                 This checkbox autofilled the <code>smart contract name</code>, the{' '}
                                 <code>entry point name</code>, and the <code>receive parameter schema</code> from the
@@ -384,7 +384,7 @@ export default function WriteComponenet(props: ConnectionProps) {
                                 <b>Uncheck</b> and <b>check</b> this box again, if you want to load a new smart contract
                                 index.
                             </div>
-                        </div>
+                        </Alert>
                     </>
                 )}
 
@@ -470,7 +470,6 @@ export default function WriteComponenet(props: ConnectionProps) {
                                                 }, '')
                                             );
                                             setUploadedModuleSchemaBase64Write(schema);
-                                            console.log(schema);
                                         } else {
                                             setUploadErrorWrite('Upload schema file is undefined');
                                         }

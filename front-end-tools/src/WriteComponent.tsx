@@ -191,12 +191,12 @@ export default function WriteComponenet(props: ConnectionProps) {
             if (deriveContractInfo) {
                 setSchemaError({
                     ...schemaError,
-                    writeFunction: `Could not derive the embedded schema from the smart contract index. \nUncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or \nUncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
+                    writeFunction: `Could not derive the embedded schema from the smart contract index. Uncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
                 });
             } else {
                 setSchemaError({
                     ...schemaError,
-                    writeFunction: `Could not get schema from uploaded schema. \nUncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
+                    writeFunction: `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
                 });
             }
         }

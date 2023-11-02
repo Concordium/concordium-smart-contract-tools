@@ -15,11 +15,11 @@ import {
     getInitContractParameterSchema,
 } from '@concordium/web-sdk';
 
-import { initialize } from './writing_to_blockchain';
-import { getObjectExample, getArrayExample } from './utils';
 import { TxHashLink } from './CCDScanLinks';
 import Box from './Box';
-import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from './constants';
+import { initialize } from '../writing_to_blockchain';
+import { getObjectExample, getArrayExample } from '../utils';
+import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
 
 interface ConnectionProps {
     isTestnet: boolean;

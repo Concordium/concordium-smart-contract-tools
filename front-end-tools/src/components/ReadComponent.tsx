@@ -13,10 +13,10 @@ import {
     ConcordiumGRPCClient,
 } from '@concordium/web-sdk';
 
-import { read, getEmbeddedSchema, getContractInfo } from './reading_from_blockchain';
-import { getObjectExample, getArrayExample } from './utils';
 import Box from './Box';
-import { INPUT_PARAMETER_TYPES_OPTIONS } from './constants';
+import { read, getEmbeddedSchema, getContractInfo } from '../reading_from_blockchain';
+import { getObjectExample, getArrayExample } from '../utils';
+import { INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
 
 interface ConnectionProps {
     account: string;

@@ -13,11 +13,11 @@ import {
     TransactionKindString,
 } from '@concordium/web-sdk';
 
-import { deploy } from './writing_to_blockchain';
 import { TxHashLink } from './CCDScanLinks';
-import { arraysEqual } from './utils';
 import Box from './Box';
-import { REFRESH_INTERVAL } from './constants';
+import { deploy } from '../writing_to_blockchain';
+import { arraysEqual } from '../utils';
+import { REFRESH_INTERVAL } from '../constants';
 
 interface ConnectionProps {
     account: string;

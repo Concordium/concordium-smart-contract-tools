@@ -12,13 +12,12 @@ import {
 } from '@concordium/react-components';
 import { AccountAddress } from '@concordium/web-sdk';
 
-import DeployComponent from './DeployComponent';
-import ReadComponent from './ReadComponent';
-import WriteComponent from './WriteComponent';
-import InitComponent from './InitComponent';
-
+import DeployComponent from './components/DeployComponent';
+import ReadComponent from './components/ReadComponent';
+import WriteComponent from './components/WriteComponent';
+import InitComponent from './components/InitComponent';
+import { AccountLink } from './components/CCDScanLinks';
 import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
-import { AccountLink } from './CCDScanLinks';
 
 interface ConnectionProps {
     walletConnectionProps: WalletConnectionProps;

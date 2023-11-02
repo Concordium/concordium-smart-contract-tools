@@ -15,12 +15,12 @@ import {
     ConcordiumGRPCClient,
 } from '@concordium/web-sdk';
 
-import { write } from './writing_to_blockchain';
-import { getEmbeddedSchema, getContractInfo } from './reading_from_blockchain';
-import { getObjectExample, getArrayExample } from './utils';
 import Box from './Box';
 import { TxHashLink } from './CCDScanLinks';
-import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from './constants';
+import { write } from '../writing_to_blockchain';
+import { getEmbeddedSchema, getContractInfo } from '../reading_from_blockchain';
+import { getObjectExample, getArrayExample } from '../utils';
+import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
 
 interface ConnectionProps {
     isTestnet: boolean;

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, PropsWithChildren } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
@@ -18,34 +18,15 @@ import {
 import { write } from './writing_to_blockchain';
 import { getEmbeddedSchema, getContractInfo } from './reading_from_blockchain';
 import { getObjectExample, getArrayExample } from './utils';
-import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from './constants';
+import Box from './Box';
 import { TxHashLink } from './CCDScanLinks';
-
-type BoxProps = PropsWithChildren<{
-    header: string;
-}>;
-
-function Box({ header, children }: BoxProps) {
-    return (
-        <fieldset className="box">
-            <legend>{header}</legend>
-            <div className="boxFields">{children}</div>
-            <br />
-        </fieldset>
-    );
-}
+import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from './constants';
 
 interface ConnectionProps {
     isTestnet: boolean;
     account: string;
     connection: WalletConnection;
     client: ConcordiumGRPCClient | undefined;
-}
-
-interface FunctionState {
-    initFunction: undefined | string;
-    readFunction: undefined | string;
-    writeFunction: undefined | string;
 }
 
 export default function WriteComponenet(props: ConnectionProps) {
@@ -74,17 +55,9 @@ export default function WriteComponenet(props: ConnectionProps) {
 
     const [uploadErrorWrite, setUploadErrorWrite] = useState<string | undefined>(undefined);
     const [parsingErrorWrite, setParsingErrorWrite] = useState<string | undefined>(undefined);
-    const [schemaError, setSchemaError] = useState<FunctionState>({
-        initFunction: undefined,
-        readFunction: undefined,
-        writeFunction: undefined,
-    });
+    const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
-    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState({
-        initFunction: false,
-        readFunction: false,
-        writeFunction: false,
-    });
+    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
 
     const [transactionErrorUpdate, setTransactionErrorUpdate] = useState<string | undefined>(undefined);
     const [txHashUpdate, setTxHashUpdate] = useState<string | undefined>(undefined);
@@ -141,20 +114,14 @@ export default function WriteComponenet(props: ConnectionProps) {
 
     useEffect(() => {
         if (entryPointTemplateWriteFunction !== undefined && hasInputParameter === false) {
-            setShouldWarnInputParameterInSchemaIgnored({
-                ...shouldWarnInputParameterInSchemaIgnored,
-                writeFunction: true,
-            });
+            setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
-            setShouldWarnInputParameterInSchemaIgnored({
-                ...shouldWarnInputParameterInSchemaIgnored,
-                writeFunction: false,
-            });
+            setShouldWarnInputParameterInSchemaIgnored(false);
         }
     }, [entryPointTemplateWriteFunction, hasInputParameter]);
 
     useEffect(() => {
-        setSchemaError({ ...schemaError, writeFunction: undefined });
+        setSchemaError(undefined);
         setEntryPointTemplateWriteFunction(undefined);
 
         let receiveTemplateWriteFunction;
@@ -189,15 +156,13 @@ export default function WriteComponenet(props: ConnectionProps) {
             setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
         } catch (e) {
             if (deriveContractInfo) {
-                setSchemaError({
-                    ...schemaError,
-                    writeFunction: `Could not derive the embedded schema from the smart contract index. Uncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
-                });
+                setSchemaError(
+                    `Could not derive the embedded schema from the smart contract index. Uncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                );
             } else {
-                setSchemaError({
-                    ...schemaError,
-                    writeFunction: `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
-                });
+                setSchemaError(
+                    `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                );
             }
         }
 
@@ -318,10 +283,7 @@ export default function WriteComponenet(props: ConnectionProps) {
                                 deriveFromSmartContractIndexRegister.onChange(e);
 
                                 setUploadedModuleSchemaBase64Write(undefined);
-                                setSchemaError({
-                                    ...schemaError,
-                                    writeFunction: undefined,
-                                });
+                                setSchemaError(undefined);
                                 writeForm.setValue('entryPointName', undefined);
                                 setContractInstanceInfo(undefined);
                                 setWriteError(undefined);
@@ -433,10 +395,7 @@ export default function WriteComponenet(props: ConnectionProps) {
                             writeForm.setValue('inputParameterType', undefined);
                             writeForm.setValue('inputParameter', undefined);
                             setEntryPointTemplateWriteFunction(undefined);
-                            setSchemaError({
-                                ...schemaError,
-                                writeFunction: undefined,
-                            });
+                            setSchemaError(undefined);
                         }}
                     />
                 </Form.Group>
@@ -487,9 +446,7 @@ export default function WriteComponenet(props: ConnectionProps) {
                         )}
                         {uploadErrorWrite !== undefined && <Alert variant="danger"> Error: {uploadErrorWrite}. </Alert>}
                         {writeError && <Alert variant="danger"> Error: {writeError}. </Alert>}
-                        {schemaError.writeFunction !== undefined && (
-                            <Alert variant="danger"> Error: {schemaError.writeFunction}. </Alert>
-                        )}
+                        {schemaError !== undefined && <Alert variant="danger"> Error: {schemaError}. </Alert>}
                         {entryPointTemplateWriteFunction && (
                             <>
                                 <br />
@@ -635,7 +592,7 @@ export default function WriteComponenet(props: ConnectionProps) {
                 </Button>
                 <br />
                 <br />
-                {shouldWarnInputParameterInSchemaIgnored.writeFunction && (
+                {shouldWarnInputParameterInSchemaIgnored && (
                     <div className="alert alert-warning" role="alert">
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.
                     </div>

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, PropsWithChildren } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
@@ -18,21 +18,8 @@ import {
 import { initialize } from './writing_to_blockchain';
 import { getObjectExample, getArrayExample } from './utils';
 import { TxHashLink } from './CCDScanLinks';
+import Box from './Box';
 import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from './constants';
-
-type BoxProps = PropsWithChildren<{
-    header: string;
-}>;
-
-function Box({ header, children }: BoxProps) {
-    return (
-        <fieldset className="box">
-            <legend>{header}</legend>
-            <div className="boxFields">{children}</div>
-            <br />
-        </fieldset>
-    );
-}
 
 interface ConnectionProps {
     isTestnet: boolean;
@@ -43,12 +30,6 @@ interface ConnectionProps {
     embeddedModuleSchemaBase64Init: undefined | string;
     moduleReferenceCalculated: undefined | string;
     moduleReferenceDeployed: undefined | string;
-}
-
-interface FunctionState {
-    initFunction: undefined | string;
-    readFunction: undefined | string;
-    writeFunction: undefined | string;
 }
 
 export default function InitComponenet(props: ConnectionProps) {
@@ -80,6 +61,7 @@ export default function InitComponenet(props: ConnectionProps) {
     const inputParameterType = initForm.watch('inputParameterType');
     const isPayable = initForm.watch('isPayable');
     const hasInputParameter = initForm.watch('hasInputParameter');
+    const moduleReference = initForm.watch('moduleReference');
 
     const [transactionErrorInit, setTransactionErrorInit] = useState<string | undefined>(undefined);
 
@@ -88,25 +70,14 @@ export default function InitComponenet(props: ConnectionProps) {
     const [smartContractIndexError, setSmartContractIndexError] = useState<string | undefined>(undefined);
     const [moduleReferenceError, setModuleReferenceError] = useState<string | undefined>(undefined);
     const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState<string | undefined>(undefined);
-    const [schemaError, setSchemaError] = useState<FunctionState>({
-        initFunction: undefined,
-        readFunction: undefined,
-        writeFunction: undefined,
-    });
+    const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
     const [isModuleReferenceAlreadyDeployedStep2, setIsModuleReferenceAlreadyDeployedStep2] = useState(false);
     const [shouldWarnDifferenceModuleReferences, setShouldWarnDifferenceModuleReferences] = useState(false);
-    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState({
-        initFunction: false,
-        readFunction: false,
-        writeFunction: false,
-    });
+    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
 
     const [txHashInit, setTxHashInit] = useState<string | undefined>(undefined);
 
-    const [moduleReference, setModuleReference] = useState<string | undefined>(
-        '91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693'
-    );
     const [uploadedModuleSchemaBase64Initialization, setUploadedModuleSchemaBase64Initialization] = useState<
         string | undefined
     >(undefined);
@@ -182,20 +153,14 @@ export default function InitComponenet(props: ConnectionProps) {
 
     useEffect(() => {
         if (inputParameterTemplate !== undefined && hasInputParameter === false) {
-            setShouldWarnInputParameterInSchemaIgnored({
-                ...shouldWarnInputParameterInSchemaIgnored,
-                initFunction: true,
-            });
+            setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
-            setShouldWarnInputParameterInSchemaIgnored({
-                ...shouldWarnInputParameterInSchemaIgnored,
-                initFunction: false,
-            });
+            setShouldWarnInputParameterInSchemaIgnored(false);
         }
     }, [inputParameterTemplate, hasInputParameter]);
 
     useEffect(() => {
-        setSchemaError({ ...schemaError, initFunction: undefined });
+        setSchemaError(undefined);
         setInputParameterTemplate(undefined);
 
         let initTemplate;
@@ -226,15 +191,13 @@ export default function InitComponenet(props: ConnectionProps) {
             setInputParameterTemplate(initTemplate);
         } catch (e) {
             if (useModuleReferenceFromStep1) {
-                setSchemaError({
-                    ...schemaError,
-                    initFunction: `Could not get embedded schema from the uploaded module. Uncheck "Use Module from Step 1" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter.  Original error: ${e}`,
-                });
+                setSchemaError(
+                    `Could not get embedded schema from the uploaded module. Uncheck "Use Module from Step 1" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter.  Original error: ${e}`
+                );
             } else {
-                setSchemaError({
-                    ...schemaError,
-                    initFunction: `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
-                });
+                setSchemaError(
+                    `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                );
             }
         }
 
@@ -268,7 +231,8 @@ export default function InitComponenet(props: ConnectionProps) {
                             register.onChange(e);
 
                             setModuleReferenceError(undefined);
-                            setModuleReference(undefined);
+                            initForm.setValue('moduleReference', undefined);
+
                             setUploadedModuleSchemaBase64Initialization(undefined);
 
                             const checkboxElement = initForm.getValues('useModuleReferenceFromStep1');
@@ -451,10 +415,7 @@ export default function InitComponenet(props: ConnectionProps) {
                             initForm.setValue('inputParameter', undefined);
                             setInputParameterTemplate(undefined);
                             setUploadedModuleSchemaBase64Initialization(undefined);
-                            setSchemaError({
-                                ...schemaError,
-                                initFunction: undefined,
-                            });
+                            setSchemaError(undefined);
                         }}
                     />
                 </Form.Group>
@@ -503,9 +464,7 @@ export default function InitComponenet(props: ConnectionProps) {
                             </div>
                         )}
                         {uploadError2 !== undefined && <Alert variant="danger"> Error: {uploadError2}. </Alert>}
-                        {schemaError.writeFunction !== undefined && (
-                            <Alert variant="danger"> Error: {schemaError.writeFunction}. </Alert>
-                        )}
+                        {schemaError !== undefined && <Alert variant="danger"> Error: {schemaError}. </Alert>}
                         {inputParameterTemplate && (
                             <>
                                 <br />
@@ -647,7 +606,7 @@ export default function InitComponenet(props: ConnectionProps) {
                 {shouldWarnDifferenceModuleReferences && (
                     <Alert variant="warning">Warning: Module references in step 1 and step 2 are different.</Alert>
                 )}
-                {shouldWarnInputParameterInSchemaIgnored.initFunction && (
+                {shouldWarnInputParameterInSchemaIgnored && (
                     <Alert variant="warning">
                         {' '}
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, PropsWithChildren } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Button, Form } from 'react-bootstrap';
 import { Buffer } from 'buffer';
@@ -16,21 +16,8 @@ import {
 import { deploy } from './writing_to_blockchain';
 import { TxHashLink } from './CCDScanLinks';
 import { arraysEqual } from './utils';
+import Box from './Box';
 import { REFRESH_INTERVAL } from './constants';
-
-type BoxProps = PropsWithChildren<{
-    header: string;
-}>;
-
-function Box({ header, children }: BoxProps) {
-    return (
-        <fieldset className="box">
-            <legend>{header}</legend>
-            <div className="boxFields">{children}</div>
-            <br />
-        </fieldset>
-    );
-}
 
 interface ConnectionProps {
     account: string;

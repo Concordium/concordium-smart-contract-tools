@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, PropsWithChildren } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
@@ -15,33 +15,13 @@ import {
 
 import { read, getEmbeddedSchema, getContractInfo } from './reading_from_blockchain';
 import { getObjectExample, getArrayExample } from './utils';
-
+import Box from './Box';
 import { INPUT_PARAMETER_TYPES_OPTIONS } from './constants';
-
-type BoxProps = PropsWithChildren<{
-    header: string;
-}>;
-
-function Box({ header, children }: BoxProps) {
-    return (
-        <fieldset className="box">
-            <legend>{header}</legend>
-            <div className="boxFields">{children}</div>
-            <br />
-        </fieldset>
-    );
-}
 
 interface ConnectionProps {
     account: string;
     connection: WalletConnection;
     client: ConcordiumGRPCClient | undefined;
-}
-
-interface FunctionState {
-    initFunction: undefined | string;
-    readFunction: undefined | string;
-    writeFunction: undefined | string;
 }
 
 export default function ReadComponenet(props: ConnectionProps) {
@@ -63,17 +43,10 @@ export default function ReadComponenet(props: ConnectionProps) {
     const smartContractName = readForm.watch('smartContractName');
     const inputParameterType = readForm.watch('inputParameterType');
 
-    const [schemaError, setSchemaError] = useState<FunctionState>({
-        initFunction: undefined,
-        readFunction: undefined,
-        writeFunction: undefined,
-    });
+    const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
-    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState({
-        initFunction: false,
-        readFunction: false,
-        writeFunction: false,
-    });
+    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] =
+        useState<boolean>(false);
     const [uploadErrorRead, setUploadErrorRead] = useState<string | undefined>(undefined);
     const [parsingErrorRead, setParsingErrorRead] = useState<string | undefined>(undefined);
 
@@ -91,20 +64,14 @@ export default function ReadComponenet(props: ConnectionProps) {
 
     useEffect(() => {
         if (entryPointTemplateReadFunction !== undefined && readForm.getValues('hasInputParameter') === false) {
-            setShouldWarnInputParameterInSchemaIgnored({
-                ...shouldWarnInputParameterInSchemaIgnored,
-                readFunction: true,
-            });
+            setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
-            setShouldWarnInputParameterInSchemaIgnored({
-                ...shouldWarnInputParameterInSchemaIgnored,
-                readFunction: false,
-            });
+            setShouldWarnInputParameterInSchemaIgnored(false);
         }
     }, [entryPointTemplateReadFunction, hasInputParameter]);
 
     useEffect(() => {
-        setSchemaError({ ...schemaError, readFunction: undefined });
+        setSchemaError(undefined);
         setEntryPointTemplateReadFunction(undefined);
 
         let receiveTemplateReadFunction;
@@ -139,15 +106,13 @@ export default function ReadComponenet(props: ConnectionProps) {
             setEntryPointTemplateReadFunction(receiveTemplateReadFunction);
         } catch (e) {
             if (deriveContractInfo) {
-                setSchemaError({
-                    ...schemaError,
-                    readFunction: `Could not derive the embedded schema from the smart contract index. Uncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
-                });
+                setSchemaError(
+                    `Could not derive the embedded schema from the smart contract index. Uncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                );
             } else {
-                setSchemaError({
-                    ...schemaError,
-                    readFunction: `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`,
-                });
+                setSchemaError(
+                    `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                );
             }
         }
 
@@ -266,10 +231,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                                 deriveFromSmartContractIndexRegister.onChange(e);
 
                                 setUploadedModuleSchemaBase64Read(undefined);
-                                setSchemaError({
-                                    ...schemaError,
-                                    readFunction: undefined,
-                                });
+                                setSchemaError(undefined);
                                 readForm.setValue('entryPointName', undefined);
                                 setContractInstanceInfo(undefined);
                                 setReadError(undefined);
@@ -386,10 +348,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                             readForm.setValue('inputParameterType', undefined);
                             readForm.setValue('inputParameter', undefined);
                             setEntryPointTemplateReadFunction(undefined);
-                            setSchemaError({
-                                ...schemaError,
-                                readFunction: undefined,
-                            });
+                            setSchemaError(undefined);
                         }}
                     />
                 </Form.Group>
@@ -403,9 +362,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                             </div>
                         )}
                         {uploadErrorRead !== undefined && <Alert variant="danger"> Error: {uploadErrorRead}. </Alert>}
-                        {schemaError.readFunction !== undefined && (
-                            <Alert variant="danger"> Error: {schemaError.readFunction}. </Alert>
-                        )}
+                        {schemaError !== undefined && <Alert variant="danger"> Error: {schemaError}. </Alert>}
                         {entryPointTemplateReadFunction && (
                             <>
                                 <br />
@@ -560,7 +517,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                         Warning: ModuleSchema is undefined. Return value might not be correctly decoded.{' '}
                     </Alert>
                 )}
-                {shouldWarnInputParameterInSchemaIgnored.readFunction && (
+                {shouldWarnInputParameterInSchemaIgnored && (
                     <Alert variant="warning">
                         {' '}
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.{' '}

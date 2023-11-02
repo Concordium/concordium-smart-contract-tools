@@ -18,6 +18,7 @@ import WriteComponent from './WriteComponent';
 import InitComponent from './InitComponent';
 
 import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
+import { AccountLink } from './CCDScanLinks';
 
 interface ConnectionProps {
     walletConnectionProps: WalletConnectionProps;
@@ -25,6 +26,7 @@ interface ConnectionProps {
 }
 
 export default function Main(props: ConnectionProps) {
+    // Network state
     const { walletConnectionProps, isTestnet } = props;
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } =
         walletConnectionProps;
@@ -36,16 +38,16 @@ export default function Main(props: ConnectionProps) {
 
     const client = useGrpcClient(isTestnet ? TESTNET : MAINNET);
 
-    const [contracts, setContracts] = useState<string[]>([]);
-    const [embeddedModuleSchemaBase64Init, setEmbeddedModuleSchemaBase64Init] = useState<string | undefined>(undefined);
-
+    // Account state
     const [viewErrorAccountInfo, setViewErrorAccountInfo] = useState<string | undefined>(undefined);
-
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
+    const [accountBalance, setAccountBalance] = useState<string | undefined>(undefined);
+
+    // Shared state between deploy step and init step
     const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState<string | undefined>(undefined);
     const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState<string | undefined>(undefined);
-
-    const [accountBalance, setAccountBalance] = useState<string | undefined>(undefined);
+    const [contracts, setContracts] = useState<string[]>([]);
+    const [embeddedModuleSchemaBase64Init, setEmbeddedModuleSchemaBase64Init] = useState<string | undefined>(undefined);
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -153,18 +155,7 @@ export default function Main(props: ConnectionProps) {
                             )}
                             <br />
                             <div className="label">Connected account:</div>
-                            <div>
-                                <a
-                                    className="link"
-                                    href={`https://${
-                                        isTestnet ? `testnet.` : ``
-                                    }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    {account}
-                                </a>
-                            </div>
+                            <AccountLink isTestnet={isTestnet} account={account} />
                             <br />
                             {accountBalance && (
                                 <>
@@ -196,8 +187,6 @@ export default function Main(props: ConnectionProps) {
                                 moduleReferenceCalculated={moduleReferenceCalculated}
                                 embeddedModuleSchemaBase64Init={embeddedModuleSchemaBase64Init}
                             />
-
-                            {/* Additional helpers: */}
 
                             <ReadComponent connection={connection} account={account} client={client} />
 

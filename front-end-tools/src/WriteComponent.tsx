@@ -18,8 +18,8 @@ import {
 import { write } from './writing_to_blockchain';
 import { getEmbeddedSchema, getContractInfo } from './reading_from_blockchain';
 import { getObjectExample, getArrayExample } from './utils';
-
 import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from './constants';
+import { TxHashLink } from './CCDScanLinks';
 
 type BoxProps = PropsWithChildren<{
     header: string;
@@ -646,26 +646,11 @@ export default function WriteComponenet(props: ConnectionProps) {
                     </div>
                 )}
                 {txHashUpdate && (
-                    <>
-                        <div>
-                            Transaction hash:{' '}
-                            <a
-                                className="link"
-                                target="_blank"
-                                rel="noreferrer"
-                                href={`https://${
-                                    isTestnet ? `testnet.` : ``
-                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashUpdate}`}
-                            >
-                                {txHashUpdate}
-                            </a>
-                        </div>
-                        <br />
-                        <div>
-                            CCDScan will take a moment to pick up the above transaction, hence the above link will work
-                            in a bit. The outcome of the transaction will be displayed below.
-                        </div>
-                    </>
+                    <TxHashLink
+                        txHash={txHashUpdate}
+                        isTestnet={isTestnet}
+                        message="The outcome of the transaction will be displayed below."
+                    />
                 )}
                 {writeTransactionOutcome === 'Success' && (
                     <>

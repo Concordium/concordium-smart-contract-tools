@@ -17,7 +17,7 @@ import {
 
 import { initialize } from './writing_to_blockchain';
 import { getObjectExample, getArrayExample } from './utils';
-
+import { TxHashLink } from './CCDScanLinks';
 import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from './constants';
 
 type BoxProps = PropsWithChildren<{
@@ -655,27 +655,11 @@ export default function InitComponenet(props: ConnectionProps) {
                 )}
                 {!txHashInit && transactionErrorInit && <Alert variant="danger">Error: {transactionErrorInit}.</Alert>}
                 {txHashInit && (
-                    <>
-                        <div>
-                            Transaction hash:{' '}
-                            <a
-                                className="link"
-                                target="_blank"
-                                rel="noreferrer"
-                                href={`https://${
-                                    isTestnet ? `testnet.` : ``
-                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashInit}`}
-                            >
-                                {txHashInit}
-                            </a>
-                        </div>
-                        <br />
-                        <div>
-                            CCDScan will take a moment to pick up the above transaction, hence the above link will work
-                            in a bit.
-                        </div>
-                        <div>The smart contract index will appear below once the transaction is finalized.</div>
-                    </>
+                    <TxHashLink
+                        txHash={txHashInit}
+                        isTestnet={isTestnet}
+                        message="The smart contract index will appear below once the transaction is finalized."
+                    />
                 )}
                 <br />
                 {smartContractIndexError !== undefined && (

@@ -14,6 +14,7 @@ import {
 } from '@concordium/web-sdk';
 
 import { deploy } from './writing_to_blockchain';
+import { TxHashLink } from './CCDScanLinks';
 import { arraysEqual } from './utils';
 import { REFRESH_INTERVAL } from './constants';
 
@@ -256,27 +257,11 @@ export default function DeployComponenet(props: ConnectionProps) {
                 <Alert variant="danger"> Error: {transactionErrorDeploy}. </Alert>
             )}
             {txHashDeploy && (
-                <>
-                    <div>
-                        Transaction hash:{' '}
-                        <a
-                            className="link"
-                            target="_blank"
-                            rel="noreferrer"
-                            href={`https://${
-                                isTestnet ? `testnet.` : ``
-                            }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHashDeploy}`}
-                        >
-                            {txHashDeploy}
-                        </a>
-                    </div>
-                    <br />
-                    <div>
-                        CCDScan will take a moment to pick up the above transaction, hence the above link will work in a
-                        bit.
-                    </div>
-                    <div>Deployed module reference will appear below once the transaction is finalized.</div>
-                </>
+                <TxHashLink
+                    txHash={txHashDeploy}
+                    isTestnet={isTestnet}
+                    message="Deployed module reference will appear below once the transaction is finalized."
+                />
             )}
             {moduleReferenceDeployed && (
                 <>

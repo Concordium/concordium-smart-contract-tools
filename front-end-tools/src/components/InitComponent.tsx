@@ -27,7 +27,7 @@ interface ConnectionProps {
     connection: WalletConnection;
     client: ConcordiumGRPCClient | undefined;
     contracts: string[];
-    embeddedModuleSchemaBase64Init: undefined | string;
+    embeddedModuleSchemaBase64: undefined | string;
     moduleReferenceCalculated: undefined | string;
     moduleReferenceDeployed: undefined | string;
 }
@@ -40,11 +40,11 @@ export default function InitComponenet(props: ConnectionProps) {
         client,
         moduleReferenceCalculated,
         moduleReferenceDeployed,
-        embeddedModuleSchemaBase64Init,
+        embeddedModuleSchemaBase64,
         contracts,
     } = props;
 
-    const initForm = useForm<{
+    const form = useForm<{
         moduleReference: string | undefined;
         smartContractName: string | undefined;
         file: FileList | undefined;
@@ -56,17 +56,17 @@ export default function InitComponenet(props: ConnectionProps) {
         isPayable: boolean;
         cCDAmount: number;
     }>();
-    const useModuleReferenceFromStep1 = initForm.watch('useModuleReferenceFromStep1');
-    const smartContractName = initForm.watch('smartContractName');
-    const inputParameterType = initForm.watch('inputParameterType');
-    const isPayable = initForm.watch('isPayable');
-    const hasInputParameter = initForm.watch('hasInputParameter');
-    const moduleReference = initForm.watch('moduleReference');
+    const useModuleReferenceFromStep1 = form.watch('useModuleReferenceFromStep1');
+    const smartContractName = form.watch('smartContractName');
+    const inputParameterType = form.watch('inputParameterType');
+    const isPayable = form.watch('isPayable');
+    const hasInputParameter = form.watch('hasInputParameter');
+    const moduleReference = form.watch('moduleReference');
 
-    const [transactionErrorInit, setTransactionErrorInit] = useState<string | undefined>(undefined);
+    const [transactionError, setTransactionError] = useState<string | undefined>(undefined);
 
     const [uploadError2, setUploadError2] = useState<string | undefined>(undefined);
-    const [parsingErrorInit, setParsingErrorInit] = useState<string | undefined>(undefined);
+    const [parsingError, setParsingError] = useState<string | undefined>(undefined);
     const [smartContractIndexError, setSmartContractIndexError] = useState<string | undefined>(undefined);
     const [moduleReferenceError, setModuleReferenceError] = useState<string | undefined>(undefined);
     const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState<string | undefined>(undefined);
@@ -76,11 +76,9 @@ export default function InitComponenet(props: ConnectionProps) {
     const [shouldWarnDifferenceModuleReferences, setShouldWarnDifferenceModuleReferences] = useState(false);
     const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
 
-    const [txHashInit, setTxHashInit] = useState<string | undefined>(undefined);
+    const [txHash, setTxHash] = useState<string | undefined>(undefined);
 
-    const [uploadedModuleSchemaBase64Initialization, setUploadedModuleSchemaBase64Initialization] = useState<
-        string | undefined
-    >(undefined);
+    const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
     const [inputParameterTemplate, setInputParameterTemplate] = useState<string | undefined>(undefined);
@@ -89,11 +87,11 @@ export default function InitComponenet(props: ConnectionProps) {
     // Refresh smartContractIndex periodically.
     // eslint-disable-next-line consistent-return
     useEffect(() => {
-        if (connection && client && account && txHashInit !== undefined) {
+        if (connection && client && account && txHash !== undefined) {
             const interval = setInterval(() => {
                 console.log('refreshing_smartContractIndex');
                 client
-                    .getBlockItemStatus(txHashInit)
+                    .getBlockItemStatus(txHash)
                     .then((report) => {
                         if (report !== undefined) {
                             setSmartContractIndex(undefined);
@@ -120,7 +118,7 @@ export default function InitComponenet(props: ConnectionProps) {
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
         }
-    }, [connection, account, client, txHashInit]);
+    }, [connection, account, client, txHash]);
 
     useEffect(() => {
         if (connection && client && account && moduleReference) {
@@ -173,8 +171,8 @@ export default function InitComponenet(props: ConnectionProps) {
             let schema = '';
 
             const schemaFromModule = useModuleReferenceFromStep1
-                ? embeddedModuleSchemaBase64Init
-                : uploadedModuleSchemaBase64Initialization;
+                ? embeddedModuleSchemaBase64
+                : uploadedModuleSchemaBase64;
 
             if (schemaFromModule !== undefined) {
                 schema = schemaFromModule;
@@ -203,16 +201,16 @@ export default function InitComponenet(props: ConnectionProps) {
 
         if (initTemplate) {
             if (inputParameterType === 'array') {
-                initForm.setValue('inputParameter', JSON.stringify(JSON.parse(initTemplate), undefined, 2));
+                form.setValue('inputParameter', JSON.stringify(JSON.parse(initTemplate), undefined, 2));
             } else if (inputParameterType === 'object') {
-                initForm.setValue('inputParameter', JSON.stringify(JSON.parse(initTemplate), undefined, 2));
+                form.setValue('inputParameter', JSON.stringify(JSON.parse(initTemplate), undefined, 2));
             }
         }
     }, [
         hasInputParameter,
         useModuleReferenceFromStep1,
         smartContractName,
-        uploadedModuleSchemaBase64Initialization,
+        uploadedModuleSchemaBase64,
         inputParameterType,
     ]);
 
@@ -224,20 +222,20 @@ export default function InitComponenet(props: ConnectionProps) {
                         type="checkbox"
                         id="useModuleReferenceFromStep1"
                         label="Use Module From Step 1"
-                        {...initForm.register('useModuleReferenceFromStep1')}
+                        {...form.register('useModuleReferenceFromStep1')}
                         onChange={async (e) => {
-                            const register = initForm.register('useModuleReferenceFromStep1');
+                            const register = form.register('useModuleReferenceFromStep1');
 
                             register.onChange(e);
 
                             setModuleReferenceError(undefined);
-                            initForm.setValue('moduleReference', undefined);
+                            form.setValue('moduleReference', undefined);
 
-                            setUploadedModuleSchemaBase64Initialization(undefined);
+                            setUploadedModuleSchemaBase64(undefined);
 
-                            const checkboxElement = initForm.getValues('useModuleReferenceFromStep1');
+                            const checkboxElement = form.getValues('useModuleReferenceFromStep1');
 
-                            initForm.setValue(
+                            form.setValue(
                                 'moduleReference',
                                 '00000000000000000000000000000000000000000000000000000000000000000'
                             );
@@ -256,7 +254,7 @@ export default function InitComponenet(props: ConnectionProps) {
                                     : moduleReferenceCalculated;
 
                             if (checkboxElement && newModuleReference !== undefined) {
-                                initForm.setValue('moduleReference', newModuleReference);
+                                form.setValue('moduleReference', newModuleReference);
 
                                 setDisplayContracts(contracts);
                             }
@@ -296,9 +294,9 @@ export default function InitComponenet(props: ConnectionProps) {
                         <Form.Control
                             defaultValue="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
                             disabled={!!useModuleReferenceFromStep1}
-                            {...initForm.register('moduleReference', { required: true })}
+                            {...form.register('moduleReference', { required: true })}
                             onChange={(e) => {
-                                const register = initForm.register('moduleReference', {
+                                const register = form.register('moduleReference', {
                                     required: true,
                                 });
 
@@ -306,7 +304,7 @@ export default function InitComponenet(props: ConnectionProps) {
 
                                 setModuleReferenceLengthError(undefined);
 
-                                const moduleRef = initForm.getValues('moduleReference');
+                                const moduleRef = form.getValues('moduleReference');
 
                                 if (moduleRef !== undefined && moduleRef.length !== 64) {
                                     setModuleReferenceLengthError('Module reference has to be of length 64');
@@ -314,7 +312,7 @@ export default function InitComponenet(props: ConnectionProps) {
                             }}
                         />
                         <Form.Text />
-                        {initForm.formState.errors.moduleReference && (
+                        {form.formState.errors.moduleReference && (
                             <Alert variant="info">Module reference is required </Alert>
                         )}
                     </Form.Group>
@@ -329,11 +327,11 @@ export default function InitComponenet(props: ConnectionProps) {
                                     label: contract,
                                 }))}
                                 onChange={(e) => {
-                                    initForm.setValue('smartContractName', e?.value);
+                                    form.setValue('smartContractName', e?.value);
                                 }}
                             />
 
-                            {initForm.formState.errors.smartContractName && (
+                            {form.formState.errors.smartContractName && (
                                 <Alert variant="info"> Smart contract name is required </Alert>
                             )}
                             <Form.Text />
@@ -343,9 +341,9 @@ export default function InitComponenet(props: ConnectionProps) {
                             <Form.Label>Smart Contract Name</Form.Label>
                             <Form.Control
                                 defaultValue="myContractName"
-                                {...initForm.register('smartContractName', { required: true })}
+                                {...form.register('smartContractName', { required: true })}
                             />
-                            {initForm.formState.errors.smartContractName && (
+                            {form.formState.errors.smartContractName && (
                                 <Alert variant="info"> Smart contract name is required </Alert>
                             )}
                             <Form.Text />
@@ -358,10 +356,10 @@ export default function InitComponenet(props: ConnectionProps) {
                             defaultValue={30000}
                             type="number"
                             min="0"
-                            {...initForm.register('maxExecutionEnergy', { required: true })}
+                            {...form.register('maxExecutionEnergy', { required: true })}
                         />
                         <Form.Text />
-                        {initForm.formState.errors.maxExecutionEnergy && (
+                        {form.formState.errors.maxExecutionEnergy && (
                             <Alert variant="info"> Max executiong energy is required </Alert>
                         )}
                     </Form.Group>
@@ -374,29 +372,36 @@ export default function InitComponenet(props: ConnectionProps) {
                         type="checkbox"
                         id="isPayable"
                         label="Is Payable"
-                        {...initForm.register('isPayable')}
+                        {...form.register('isPayable')}
                         onChange={async (e) => {
-                            const isPayableRegister = initForm.register('isPayable');
+                            const isPayableRegister = form.register('isPayable');
 
                             isPayableRegister.onChange(e);
 
-                            initForm.setValue('cCDAmount', 0);
+                            form.setValue('cCDAmount', 0);
                         }}
                     />
                 </Form.Group>
 
                 {isPayable && (
-                    <Form.Group className=" mb-3">
-                        <Form.Label>CCD amount (micro):</Form.Label>
-                        <Form.Control
-                            defaultValue={0}
-                            type="number"
-                            min="0"
-                            {...initForm.register('cCDAmount', { required: true })}
-                        />
-                        <Form.Text />
-                        {initForm.formState.errors.cCDAmount && <Alert variant="info"> cCDAmount is required </Alert>}
-                    </Form.Group>
+                    <>
+                        <div className="box">
+                            <Form.Group className="mb-3">
+                                <Form.Label>CCD amount (micro):</Form.Label>
+                                <Form.Control
+                                    defaultValue={0}
+                                    type="number"
+                                    min="0"
+                                    {...form.register('cCDAmount', { required: true })}
+                                />
+                                <Form.Text />
+                                {form.formState.errors.cCDAmount && (
+                                    <Alert variant="info"> cCDAmount is required </Alert>
+                                )}
+                            </Form.Group>
+                        </div>
+                        <br />
+                    </>
                 )}
 
                 <Form.Group className="mb-3 d-flex justify-content-center">
@@ -404,17 +409,17 @@ export default function InitComponenet(props: ConnectionProps) {
                         type="checkbox"
                         id="hasInputParameter"
                         label="Has Input Parameter"
-                        {...initForm.register('hasInputParameter')}
+                        {...form.register('hasInputParameter')}
                         onChange={async (e) => {
-                            const hasInputParameterRegister = initForm.register('hasInputParameter');
+                            const hasInputParameterRegister = form.register('hasInputParameter');
 
                             hasInputParameterRegister.onChange(e);
 
-                            setParsingErrorInit(undefined);
-                            initForm.setValue('inputParameterType', undefined);
-                            initForm.setValue('inputParameter', undefined);
+                            setParsingError(undefined);
+                            form.setValue('inputParameterType', undefined);
+                            form.setValue('inputParameter', undefined);
                             setInputParameterTemplate(undefined);
-                            setUploadedModuleSchemaBase64Initialization(undefined);
+                            setUploadedModuleSchemaBase64(undefined);
                             setSchemaError(undefined);
                         }}
                     />
@@ -428,16 +433,16 @@ export default function InitComponenet(props: ConnectionProps) {
                                 <Form.Control
                                     type="file"
                                     accept=".bin"
-                                    {...initForm.register('file')}
+                                    {...form.register('file')}
                                     onChange={async (e) => {
-                                        const fileRegister = initForm.register('file');
+                                        const fileRegister = form.register('file');
 
                                         fileRegister.onChange(e);
 
                                         setUploadError2(undefined);
-                                        setUploadedModuleSchemaBase64Initialization(undefined);
+                                        setUploadedModuleSchemaBase64(undefined);
 
-                                        const files = initForm.getValues('file');
+                                        const files = form.getValues('file');
 
                                         if (files !== undefined && files !== null && files.length > 0) {
                                             const file = files[0];
@@ -448,7 +453,7 @@ export default function InitComponenet(props: ConnectionProps) {
                                                     return data + String.fromCharCode(byte);
                                                 }, '')
                                             );
-                                            setUploadedModuleSchemaBase64Initialization(schema);
+                                            setUploadedModuleSchemaBase64(schema);
                                         } else {
                                             setUploadError2('Upload schema file is undefined');
                                         }
@@ -457,10 +462,10 @@ export default function InitComponenet(props: ConnectionProps) {
                                 <Form.Text />
                             </Form.Group>
                         )}
-                        {!useModuleReferenceFromStep1 && uploadedModuleSchemaBase64Initialization && (
+                        {!useModuleReferenceFromStep1 && uploadedModuleSchemaBase64 && (
                             <div className="actionResultBox">
                                 Schema in base64:
-                                <div>{uploadedModuleSchemaBase64Initialization.toString().slice(0, 30)} ...</div>
+                                <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
                             </div>
                         )}
                         {uploadError2 !== undefined && <Alert variant="danger"> Error: {uploadError2}. </Alert>}
@@ -480,12 +485,12 @@ export default function InitComponenet(props: ConnectionProps) {
                             <Form.Label>Select input parameter type:</Form.Label>
                             <Select
                                 options={INPUT_PARAMETER_TYPES_OPTIONS}
-                                {...initForm.register('inputParameterType')}
+                                {...form.register('inputParameterType')}
                                 onChange={(e) => {
-                                    initForm.setValue('inputParameterType', e?.value);
-                                    initForm.setValue('inputParameter', undefined);
+                                    form.setValue('inputParameterType', e?.value);
+                                    form.setValue('inputParameter', undefined);
 
-                                    setParsingErrorInit(undefined);
+                                    setParsingError(undefined);
                                 }}
                             />
                             <Form.Text />
@@ -496,18 +501,18 @@ export default function InitComponenet(props: ConnectionProps) {
                                 <Form.Label> Add your input parameter ({inputParameterType}):</Form.Label>
                                 <Form.Control
                                     placeholder={inputParameterType === 'string' ? 'myString' : '1000000'}
-                                    {...initForm.register('inputParameter', { required: true })}
+                                    {...form.register('inputParameter', { required: true })}
                                     onChange={(e) => {
-                                        const register = initForm.register('inputParameter', {
+                                        const register = form.register('inputParameter', {
                                             required: true,
                                         });
 
                                         register.onChange(e);
 
-                                        setParsingErrorInit(undefined);
+                                        setParsingError(undefined);
                                     }}
                                 />
-                                {initForm.formState.errors.inputParameter && (
+                                {form.formState.errors.inputParameter && (
                                     <Alert variant="info"> Input parameter is required </Alert>
                                 )}
                                 <Form.Text />
@@ -520,18 +525,18 @@ export default function InitComponenet(props: ConnectionProps) {
 
                                 {inputParameterType === 'array' && (
                                     <textarea
-                                        {...initForm.register('inputParameter')}
+                                        {...form.register('inputParameter')}
                                         onChange={(event) => {
-                                            setParsingErrorInit(undefined);
+                                            setParsingError(undefined);
                                             const target = event.target as HTMLTextAreaElement;
 
                                             try {
                                                 JSON.parse(target.value);
                                             } catch (e) {
-                                                setParsingErrorInit((e as Error).message);
+                                                setParsingError((e as Error).message);
                                                 return;
                                             }
-                                            initForm.setValue('inputParameter', target.value);
+                                            form.setValue('inputParameter', target.value);
                                         }}
                                     >
                                         {getArrayExample(inputParameterTemplate)}
@@ -539,32 +544,32 @@ export default function InitComponenet(props: ConnectionProps) {
                                 )}
                                 {inputParameterType === 'object' && (
                                     <textarea
-                                        {...initForm.register('inputParameter')}
+                                        {...form.register('inputParameter')}
                                         onChange={(event) => {
-                                            setParsingErrorInit(undefined);
+                                            setParsingError(undefined);
                                             const target = event.target as HTMLTextAreaElement;
 
                                             try {
                                                 JSON.parse(target.value);
                                             } catch (e) {
-                                                setParsingErrorInit((e as Error).message);
+                                                setParsingError((e as Error).message);
                                                 return;
                                             }
-                                            initForm.setValue('inputParameter', target.value);
+                                            form.setValue('inputParameter', target.value);
                                         }}
                                     >
                                         {getObjectExample(inputParameterTemplate)}
                                     </textarea>
                                 )}
 
-                                {initForm.formState.errors.inputParameter && (
+                                {form.formState.errors.inputParameter && (
                                     <Alert variant="info"> Input parameter is required </Alert>
                                 )}
                                 <Form.Text />
                             </Form.Group>
                         )}
 
-                        {parsingErrorInit !== undefined && <Alert variant="danger"> Error: {parsingErrorInit}. </Alert>}
+                        {parsingError !== undefined && <Alert variant="danger"> Error: {parsingError}. </Alert>}
                     </div>
                 )}
                 <br />
@@ -572,15 +577,15 @@ export default function InitComponenet(props: ConnectionProps) {
                 <Button
                     variant="primary"
                     type="button"
-                    onClick={initForm.handleSubmit((data) => {
-                        setTxHashInit(undefined);
+                    onClick={form.handleSubmit((data) => {
+                        setTxHash(undefined);
                         setSmartContractIndexError(undefined);
                         setSmartContractIndex(undefined);
-                        setTransactionErrorInit(undefined);
+                        setTransactionError(undefined);
 
                         const schema = data.useModuleReferenceFromStep1
-                            ? embeddedModuleSchemaBase64Init
-                            : uploadedModuleSchemaBase64Initialization;
+                            ? embeddedModuleSchemaBase64
+                            : uploadedModuleSchemaBase64;
 
                         const tx = initialize(
                             connection,
@@ -596,7 +601,7 @@ export default function InitComponenet(props: ConnectionProps) {
                             BigInt(data.maxExecutionEnergy),
                             data.cCDAmount ? BigInt(data.cCDAmount) : BigInt(0)
                         );
-                        tx.then(setTxHashInit).catch((err: Error) => setTransactionErrorInit((err as Error).message));
+                        tx.then(setTxHash).catch((err: Error) => setTransactionError((err as Error).message));
                     })}
                 >
                     Initialize Smart Contract
@@ -612,10 +617,10 @@ export default function InitComponenet(props: ConnectionProps) {
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.
                     </Alert>
                 )}
-                {!txHashInit && transactionErrorInit && <Alert variant="danger">Error: {transactionErrorInit}.</Alert>}
-                {txHashInit && (
+                {!txHash && transactionError && <Alert variant="danger">Error: {transactionError}.</Alert>}
+                {txHash && (
                     <TxHashLink
-                        txHash={txHashInit}
+                        txHash={txHash}
                         isTestnet={isTestnet}
                         message="The smart contract index will appear below once the transaction is finalized."
                     />

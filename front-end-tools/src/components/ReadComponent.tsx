@@ -27,7 +27,7 @@ interface ConnectionProps {
 export default function ReadComponenet(props: ConnectionProps) {
     const { client } = props;
 
-    const readForm = useForm<{
+    const form = useForm<{
         smartContractIndex: number;
         smartContractName: string | undefined;
         entryPointName: string | undefined;
@@ -37,44 +37,44 @@ export default function ReadComponenet(props: ConnectionProps) {
         inputParameterType: string | undefined;
         inputParameter: string | undefined;
     }>();
-    const deriveContractInfo = readForm.watch('deriveFromSmartContractIndex');
-    const hasInputParameter = readForm.watch('hasInputParameter');
-    const entryPointName = readForm.watch('entryPointName');
-    const smartContractName = readForm.watch('smartContractName');
-    const inputParameterType = readForm.watch('inputParameterType');
+    const deriveContractInfo = form.watch('deriveFromSmartContractIndex');
+    const hasInputParameter = form.watch('hasInputParameter');
+    const entryPointName = form.watch('entryPointName');
+    const smartContractName = form.watch('smartContractName');
+    const inputParameterType = form.watch('inputParameterType');
 
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
     const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] =
         useState<boolean>(false);
-    const [uploadErrorRead, setUploadErrorRead] = useState<string | undefined>(undefined);
-    const [parsingErrorRead, setParsingErrorRead] = useState<string | undefined>(undefined);
+    const [uploadError, setUploadError] = useState<string | undefined>(undefined);
+    const [parsingError, setParsingError] = useState<string | undefined>(undefined);
 
-    const [uploadedModuleSchemaBase64Read, setUploadedModuleSchemaBase64Read] = useState<string | undefined>(undefined);
+    const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
     const [contractInstanceInfo, setContractInstanceInfo] = useState<
         { contractName: string; methods: string[]; sourceModule: ModuleReference } | undefined
     >(undefined);
     const [returnValue, setReturnValue] = useState<string | undefined>(undefined);
-    const [readError, setReadError] = useState<string | undefined>(undefined);
+    const [error, setError] = useState<string | undefined>(undefined);
 
-    const [entryPointTemplateReadFunction, setEntryPointTemplateReadFunction] = useState<string | undefined>(undefined);
+    const [entryPointTemplate, setEntryPointTemplate] = useState<string | undefined>(undefined);
 
-    const [embeddedModuleSchemaBase64Read, setEmbeddedModuleSchemaBase64Read] = useState<string | undefined>(undefined);
+    const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
     useEffect(() => {
-        if (entryPointTemplateReadFunction !== undefined && readForm.getValues('hasInputParameter') === false) {
+        if (entryPointTemplate !== undefined && form.getValues('hasInputParameter') === false) {
             setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
             setShouldWarnInputParameterInSchemaIgnored(false);
         }
-    }, [entryPointTemplateReadFunction, hasInputParameter]);
+    }, [entryPointTemplate, hasInputParameter]);
 
     useEffect(() => {
         setSchemaError(undefined);
-        setEntryPointTemplateReadFunction(undefined);
+        setEntryPointTemplate(undefined);
 
-        let receiveTemplateReadFunction;
+        let receiveTemplate;
 
         try {
             if (entryPointName === undefined) {
@@ -87,9 +87,7 @@ export default function ReadComponenet(props: ConnectionProps) {
 
             let schema = '';
 
-            const schemaFromModule = deriveContractInfo
-                ? embeddedModuleSchemaBase64Read
-                : uploadedModuleSchemaBase64Read;
+            const schemaFromModule = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
 
             if (schemaFromModule !== undefined) {
                 schema = schemaFromModule;
@@ -101,9 +99,9 @@ export default function ReadComponenet(props: ConnectionProps) {
                 entryPointName
             );
 
-            receiveTemplateReadFunction = displayTypeSchemaTemplate(readFunctionTemplate);
+            receiveTemplate = displayTypeSchemaTemplate(readFunctionTemplate);
 
-            setEntryPointTemplateReadFunction(receiveTemplateReadFunction);
+            setEntryPointTemplate(receiveTemplate);
         } catch (e) {
             if (deriveContractInfo) {
                 setSchemaError(
@@ -116,20 +114,14 @@ export default function ReadComponenet(props: ConnectionProps) {
             }
         }
 
-        if (receiveTemplateReadFunction) {
+        if (receiveTemplate) {
             if (inputParameterType === 'array') {
-                readForm.setValue(
-                    'inputParameter',
-                    JSON.stringify(JSON.parse(receiveTemplateReadFunction), undefined, 2)
-                );
+                form.setValue('inputParameter', JSON.stringify(JSON.parse(receiveTemplate), undefined, 2));
             } else if (inputParameterType === 'object') {
-                readForm.setValue(
-                    'inputParameter',
-                    JSON.stringify(JSON.parse(receiveTemplateReadFunction), undefined, 2)
-                );
+                form.setValue('inputParameter', JSON.stringify(JSON.parse(receiveTemplate), undefined, 2));
             }
         }
-    }, [entryPointName, hasInputParameter, smartContractName, uploadedModuleSchemaBase64Read, inputParameterType]);
+    }, [entryPointName, hasInputParameter, smartContractName, uploadedModuleSchemaBase64, inputParameterType]);
 
     return (
         <Box header="Read From Smart Contract">
@@ -141,10 +133,10 @@ export default function ReadComponenet(props: ConnectionProps) {
                             defaultValue={1999}
                             type="number"
                             min="0"
-                            {...readForm.register('smartContractIndex', { required: true })}
+                            {...form.register('smartContractIndex', { required: true })}
                         />
                         <Form.Text />
-                        {readForm.formState.errors.smartContractIndex && (
+                        {form.formState.errors.smartContractIndex && (
                             <Alert key="info" variant="info">
                                 {' '}
                                 Smart contract index is required{' '}
@@ -162,9 +154,9 @@ export default function ReadComponenet(props: ConnectionProps) {
                                     contractInstanceInfo?.contractName ? contractInstanceInfo.contractName : 'undefined'
                                 }
                                 disabled
-                                {...readForm.register('smartContractName', { required: true })}
+                                {...form.register('smartContractName', { required: true })}
                             />
-                            {readForm.formState.errors.smartContractName && (
+                            {form.formState.errors.smartContractName && (
                                 <Alert key="info" variant="info">
                                     {' '}
                                     Smart contract name is required{' '}
@@ -175,8 +167,8 @@ export default function ReadComponenet(props: ConnectionProps) {
                     ) : (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
-                            <Form.Control {...readForm.register('smartContractName', { required: true })} />
-                            {readForm.formState.errors.smartContractName && (
+                            <Form.Control {...form.register('smartContractName', { required: true })} />
+                            {form.formState.errors.smartContractName && (
                                 <Alert key="info" variant="info">
                                     {' '}
                                     Smart contract name is required{' '}
@@ -197,7 +189,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                                     label: method,
                                 }))}
                                 onChange={(e) => {
-                                    readForm.setValue('entryPointName', e?.value);
+                                    form.setValue('entryPointName', e?.value);
                                 }}
                             />
                             <Form.Text />
@@ -205,8 +197,8 @@ export default function ReadComponenet(props: ConnectionProps) {
                     ) : (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Entry Point Name</Form.Label>
-                            <Form.Control {...readForm.register('entryPointName', { required: true })} />
-                            {readForm.formState.errors.entryPointName && (
+                            <Form.Control {...form.register('entryPointName', { required: true })} />
+                            {form.formState.errors.entryPointName && (
                                 <Alert key="info" variant="info">
                                     {' '}
                                     Entry point name is required{' '}
@@ -223,26 +215,26 @@ export default function ReadComponenet(props: ConnectionProps) {
                             type="checkbox"
                             id="deriveContractInfo"
                             label="Derive From Smart Contract Index"
-                            {...readForm.register('deriveFromSmartContractIndex')}
+                            {...form.register('deriveFromSmartContractIndex')}
                             onChange={async (e) => {
                                 const deriveFromSmartContractIndexRegister =
-                                    readForm.register('deriveFromSmartContractIndex');
+                                    form.register('deriveFromSmartContractIndex');
 
                                 deriveFromSmartContractIndexRegister.onChange(e);
 
-                                setUploadedModuleSchemaBase64Read(undefined);
+                                setUploadedModuleSchemaBase64(undefined);
                                 setSchemaError(undefined);
-                                readForm.setValue('entryPointName', undefined);
+                                form.setValue('entryPointName', undefined);
                                 setContractInstanceInfo(undefined);
-                                setReadError(undefined);
-                                setEmbeddedModuleSchemaBase64Read(undefined);
+                                setError(undefined);
+                                setEmbeddedModuleSchemaBase64(undefined);
 
-                                const checkboxElement = readForm.getValues('deriveFromSmartContractIndex');
+                                const checkboxElement = form.getValues('deriveFromSmartContractIndex');
 
                                 if (checkboxElement) {
                                     const promiseContractInfo = getContractInfo(
                                         client,
-                                        BigInt(readForm.getValues('smartContractIndex'))
+                                        BigInt(form.getValues('smartContractIndex'))
                                     );
 
                                     promiseContractInfo
@@ -259,15 +251,15 @@ export default function ReadComponenet(props: ConnectionProps) {
                                                         }, '')
                                                     );
 
-                                                    setEmbeddedModuleSchemaBase64Read(moduleSchemaBase64Embedded);
+                                                    setEmbeddedModuleSchemaBase64(moduleSchemaBase64Embedded);
                                                     setContractInstanceInfo(contractInfo);
-                                                    readForm.setValue('smartContractName', contractInfo.contractName);
+                                                    form.setValue('smartContractName', contractInfo.contractName);
                                                 })
                                                 .catch((err: Error) => {
-                                                    setReadError((err as Error).message);
+                                                    setError((err as Error).message);
                                                 });
                                         })
-                                        .catch((err: Error) => setReadError((err as Error).message));
+                                        .catch((err: Error) => setError((err as Error).message));
                                 }
                             }}
                         />
@@ -280,16 +272,16 @@ export default function ReadComponenet(props: ConnectionProps) {
                         <Form.Control
                             type="file"
                             accept=".bin"
-                            {...readForm.register('file')}
+                            {...form.register('file')}
                             onChange={async (e) => {
-                                const fileRegister = readForm.register('file');
+                                const fileRegister = form.register('file');
 
                                 fileRegister.onChange(e);
 
-                                setUploadErrorRead(undefined);
-                                setUploadedModuleSchemaBase64Read(undefined);
+                                setUploadError(undefined);
+                                setUploadedModuleSchemaBase64(undefined);
 
-                                const files = readForm.getValues('file');
+                                const files = form.getValues('file');
 
                                 if (files !== undefined && files !== null && files.length > 0) {
                                     const file = files[0];
@@ -300,9 +292,9 @@ export default function ReadComponenet(props: ConnectionProps) {
                                             return data + String.fromCharCode(byte);
                                         }, '')
                                     );
-                                    setUploadedModuleSchemaBase64Read(schema);
+                                    setUploadedModuleSchemaBase64(schema);
                                 } else {
-                                    setUploadErrorRead('Upload schema file is undefined');
+                                    setUploadError('Upload schema file is undefined');
                                 }
                             }}
                         />
@@ -338,16 +330,16 @@ export default function ReadComponenet(props: ConnectionProps) {
                         type="checkbox"
                         id="hasInputParameter"
                         label="Has Input Parameter"
-                        {...readForm.register('hasInputParameter')}
+                        {...form.register('hasInputParameter')}
                         onChange={async (e) => {
-                            const hasInputParameterRegister = readForm.register('hasInputParameter');
+                            const hasInputParameterRegister = form.register('hasInputParameter');
 
                             hasInputParameterRegister.onChange(e);
 
-                            setParsingErrorRead(undefined);
-                            readForm.setValue('inputParameterType', undefined);
-                            readForm.setValue('inputParameter', undefined);
-                            setEntryPointTemplateReadFunction(undefined);
+                            setParsingError(undefined);
+                            form.setValue('inputParameterType', undefined);
+                            form.setValue('inputParameter', undefined);
+                            setEntryPointTemplate(undefined);
                             setSchemaError(undefined);
                         }}
                     />
@@ -355,23 +347,21 @@ export default function ReadComponenet(props: ConnectionProps) {
 
                 {hasInputParameter && (
                     <div className="box">
-                        {!deriveContractInfo && uploadedModuleSchemaBase64Read && (
+                        {!deriveContractInfo && uploadedModuleSchemaBase64 && (
                             <div className="actionResultBox">
                                 Schema in base64:
-                                <div>{uploadedModuleSchemaBase64Read.toString().slice(0, 30)} ...</div>
+                                <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
                             </div>
                         )}
-                        {uploadErrorRead !== undefined && <Alert variant="danger"> Error: {uploadErrorRead}. </Alert>}
+                        {uploadError !== undefined && <Alert variant="danger"> Error: {uploadError}. </Alert>}
                         {schemaError !== undefined && <Alert variant="danger"> Error: {schemaError}. </Alert>}
-                        {entryPointTemplateReadFunction && (
+                        {entryPointTemplate && (
                             <>
                                 <br />
                                 <br />
                                 <div className="actionResultBox">
                                     Parameter Template:
-                                    <pre>
-                                        {JSON.stringify(JSON.parse(entryPointTemplateReadFunction), undefined, 2)}
-                                    </pre>
+                                    <pre>{JSON.stringify(JSON.parse(entryPointTemplate), undefined, 2)}</pre>
                                 </div>
                             </>
                         )}
@@ -380,12 +370,12 @@ export default function ReadComponenet(props: ConnectionProps) {
                             <Form.Label>Select input parameter type:</Form.Label>
                             <Select
                                 options={INPUT_PARAMETER_TYPES_OPTIONS}
-                                {...readForm.register('inputParameterType')}
+                                {...form.register('inputParameterType')}
                                 onChange={(e) => {
-                                    readForm.setValue('inputParameterType', e?.value);
-                                    readForm.setValue('inputParameter', undefined);
+                                    form.setValue('inputParameterType', e?.value);
+                                    form.setValue('inputParameter', undefined);
 
-                                    setParsingErrorRead(undefined);
+                                    setParsingError(undefined);
                                 }}
                             />
                             <Form.Text />
@@ -396,18 +386,18 @@ export default function ReadComponenet(props: ConnectionProps) {
                                 <Form.Label> Add your input parameter ({inputParameterType}):</Form.Label>
                                 <Form.Control
                                     placeholder={inputParameterType === 'string' ? 'myString' : '1000000'}
-                                    {...readForm.register('inputParameter', { required: true })}
+                                    {...form.register('inputParameter', { required: true })}
                                     onChange={(e) => {
-                                        const inputParameterRegister = readForm.register('inputParameter', {
+                                        const inputParameterRegister = form.register('inputParameter', {
                                             required: true,
                                         });
 
                                         inputParameterRegister.onChange(e);
 
-                                        setParsingErrorRead(undefined);
+                                        setParsingError(undefined);
                                     }}
                                 />
-                                {readForm.formState.errors.inputParameter && (
+                                {form.formState.errors.inputParameter && (
                                     <Alert key="info" variant="info">
                                         {' '}
                                         Input parameter is required{' '}
@@ -423,44 +413,44 @@ export default function ReadComponenet(props: ConnectionProps) {
 
                                 {inputParameterType === 'array' && (
                                     <textarea
-                                        {...readForm.register('inputParameter')}
+                                        {...form.register('inputParameter')}
                                         onChange={(event) => {
-                                            setParsingErrorRead(undefined);
+                                            setParsingError(undefined);
                                             const target = event.target as HTMLTextAreaElement;
 
                                             try {
                                                 JSON.parse(target.value);
                                             } catch (e) {
-                                                setParsingErrorRead((e as Error).message);
+                                                setParsingError((e as Error).message);
                                                 return;
                                             }
-                                            readForm.setValue('inputParameter', target.value);
+                                            form.setValue('inputParameter', target.value);
                                         }}
                                     >
-                                        {getArrayExample(entryPointTemplateReadFunction)}
+                                        {getArrayExample(entryPointTemplate)}
                                     </textarea>
                                 )}
                                 {inputParameterType === 'object' && (
                                     <textarea
-                                        {...readForm.register('inputParameter')}
+                                        {...form.register('inputParameter')}
                                         onChange={(event) => {
-                                            setParsingErrorRead(undefined);
+                                            setParsingError(undefined);
                                             const target = event.target as HTMLTextAreaElement;
 
                                             try {
                                                 JSON.parse(target.value);
                                             } catch (e) {
-                                                setParsingErrorRead((e as Error).message);
+                                                setParsingError((e as Error).message);
                                                 return;
                                             }
-                                            readForm.setValue('inputParameter', target.value);
+                                            form.setValue('inputParameter', target.value);
                                         }}
                                     >
-                                        {getObjectExample(entryPointTemplateReadFunction)}
+                                        {getObjectExample(entryPointTemplate)}
                                     </textarea>
                                 )}
 
-                                {readForm.formState.errors.inputParameter && (
+                                {form.formState.errors.inputParameter && (
                                     <Alert key="info" variant="info">
                                         {' '}
                                         Input parameter is required{' '}
@@ -470,7 +460,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                             </Form.Group>
                         )}
 
-                        {parsingErrorRead !== undefined && <Alert variant="danger"> Error: {parsingErrorRead}. </Alert>}
+                        {parsingError !== undefined && <Alert variant="danger"> Error: {parsingError}. </Alert>}
                     </div>
                 )}
 
@@ -479,13 +469,13 @@ export default function ReadComponenet(props: ConnectionProps) {
                 <Button
                     variant="primary"
                     type="button"
-                    onClick={readForm.handleSubmit((data) => {
-                        setReadError(undefined);
+                    onClick={form.handleSubmit((data) => {
+                        setError(undefined);
                         setReturnValue(undefined);
 
                         const schema = data.deriveFromSmartContractIndex
-                            ? embeddedModuleSchemaBase64Read
-                            : uploadedModuleSchemaBase64Read;
+                            ? embeddedModuleSchemaBase64
+                            : uploadedModuleSchemaBase64;
 
                         const promise = read(
                             client,
@@ -503,15 +493,14 @@ export default function ReadComponenet(props: ConnectionProps) {
                             .then((value) => {
                                 setReturnValue(value);
                             })
-                            .catch((err: Error) => setReadError((err as Error).message));
+                            .catch((err: Error) => setError((err as Error).message));
                     })}
                 >
                     Read Smart Contract
                 </Button>
                 <br />
                 <br />
-                {(deriveContractInfo ? embeddedModuleSchemaBase64Read : uploadedModuleSchemaBase64Read) ===
-                    undefined && (
+                {(deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64) === undefined && (
                     <Alert variant="warning">
                         {' '}
                         Warning: ModuleSchema is undefined. Return value might not be correctly decoded.{' '}
@@ -523,7 +512,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.{' '}
                     </Alert>
                 )}
-                {readError && <Alert variant="danger"> Error: {readError}. </Alert>}
+                {error && <Alert variant="danger"> Error: {error}. </Alert>}
                 {returnValue && (
                     <div className="actionResultBox">
                         Read value:

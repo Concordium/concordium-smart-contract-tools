@@ -46,7 +46,7 @@ export default function DeployComponenet(props: ConnectionProps) {
         setEmbeddedModuleSchemaBase64Init,
     } = props;
 
-    const deployForm = useForm<{
+    const form = useForm<{
         file: FileList | undefined;
     }>();
 
@@ -112,9 +112,9 @@ export default function DeployComponenet(props: ConnectionProps) {
                     <Form.Control
                         type="file"
                         accept=".wasm,.wasm.v0,.wasm.v1"
-                        {...deployForm.register('file')}
+                        {...form.register('file')}
                         onChange={async (e) => {
-                            const register = deployForm.register('file');
+                            const register = form.register('file');
 
                             register.onChange(e);
 
@@ -123,7 +123,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                             setTransactionErrorDeploy(undefined);
                             setTxHashDeploy(undefined);
 
-                            const files = deployForm.getValues('file');
+                            const files = form.getValues('file');
 
                             if (files !== undefined && files !== null && files.length > 0) {
                                 const file = files[0];
@@ -223,7 +223,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                         <Button
                             variant="primary"
                             type="button"
-                            onClick={deployForm.handleSubmit(() => {
+                            onClick={form.handleSubmit(() => {
                                 setTxHashDeploy(undefined);
                                 setTransactionErrorDeploy(undefined);
                                 const tx = deploy(connection, account, base64Module);

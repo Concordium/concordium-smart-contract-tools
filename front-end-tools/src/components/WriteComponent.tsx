@@ -32,7 +32,7 @@ interface ConnectionProps {
 export default function WriteComponenet(props: ConnectionProps) {
     const { isTestnet, account, connection, client } = props;
 
-    const writeForm = useForm<{
+    const form = useForm<{
         smartContractIndex: number;
         smartContractName: string | undefined;
         entryPointName: string | undefined;
@@ -45,40 +45,34 @@ export default function WriteComponenet(props: ConnectionProps) {
         isPayable: boolean;
         cCDAmount: number;
     }>();
-    const deriveContractInfo = writeForm.watch('deriveFromSmartContractIndex');
-    const hasInputParameter = writeForm.watch('hasInputParameter');
-    const entryPointName = writeForm.watch('entryPointName');
-    const smartContractName = writeForm.watch('smartContractName');
-    const inputParameterType = writeForm.watch('inputParameterType');
+    const deriveContractInfo = form.watch('deriveFromSmartContractIndex');
+    const hasInputParameter = form.watch('hasInputParameter');
+    const entryPointName = form.watch('entryPointName');
+    const smartContractName = form.watch('smartContractName');
+    const inputParameterType = form.watch('inputParameterType');
 
-    const isPayable = writeForm.watch('isPayable');
+    const isPayable = form.watch('isPayable');
 
-    const [uploadErrorWrite, setUploadErrorWrite] = useState<string | undefined>(undefined);
-    const [parsingErrorWrite, setParsingErrorWrite] = useState<string | undefined>(undefined);
+    const [uploadError, setUploadError] = useState<string | undefined>(undefined);
+    const [parsingError, setParsingError] = useState<string | undefined>(undefined);
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
     const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
 
     const [transactionErrorUpdate, setTransactionErrorUpdate] = useState<string | undefined>(undefined);
     const [txHashUpdate, setTxHashUpdate] = useState<string | undefined>(undefined);
-    const [uploadedModuleSchemaBase64Write, setUploadedModuleSchemaBase64Write] = useState<string | undefined>(
-        undefined
-    );
+    const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
     const [contractInstanceInfo, setContractInstanceInfo] = useState<
         { contractName: string; methods: string[]; sourceModule: ModuleReference } | undefined
     >(undefined);
-    const [writeError, setWriteError] = useState<string | undefined>(undefined);
+    const [error, setError] = useState<string | undefined>(undefined);
 
-    const [entryPointTemplateWriteFunction, setEntryPointTemplateWriteFunction] = useState<string | undefined>(
-        undefined
-    );
+    const [entryPointTemplate, setEntryPointTemplate] = useState<string | undefined>(undefined);
 
-    const [writeTransactionOutcome, setWriteTransactionOutcome] = useState<string | undefined>(undefined);
+    const [transactionOutcome, setTransactionOutcome] = useState<string | undefined>(undefined);
 
-    const [embeddedModuleSchemaBase64Write, setEmbeddedModuleSchemaBase64Write] = useState<string | undefined>(
-        undefined
-    );
+    const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
     // Refresh writeTransactionOutcome periodically.
     // eslint-disable-next-line consistent-return
@@ -95,17 +89,17 @@ export default function WriteComponenet(props: ConnectionProps) {
                                     report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
                                     report.outcome.summary.transactionType === TransactionKindString.Update
                                 ) {
-                                    setWriteTransactionOutcome('Success');
+                                    setTransactionOutcome('Success');
                                     clearInterval(interval);
                                 } else {
-                                    setWriteTransactionOutcome('Fail');
+                                    setTransactionOutcome('Fail');
                                     clearInterval(interval);
                                 }
                             }
                         }
                     })
                     .catch((e) => {
-                        setWriteTransactionOutcome(`Fail; Error: ${(e as Error).message}`);
+                        setTransactionOutcome(`Fail; Error: ${(e as Error).message}`);
                         clearInterval(interval);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
@@ -113,18 +107,18 @@ export default function WriteComponenet(props: ConnectionProps) {
     }, [connection, account, client, txHashUpdate]);
 
     useEffect(() => {
-        if (entryPointTemplateWriteFunction !== undefined && hasInputParameter === false) {
+        if (entryPointTemplate !== undefined && hasInputParameter === false) {
             setShouldWarnInputParameterInSchemaIgnored(true);
         } else {
             setShouldWarnInputParameterInSchemaIgnored(false);
         }
-    }, [entryPointTemplateWriteFunction, hasInputParameter]);
+    }, [entryPointTemplate, hasInputParameter]);
 
     useEffect(() => {
         setSchemaError(undefined);
-        setEntryPointTemplateWriteFunction(undefined);
+        setEntryPointTemplate(undefined);
 
-        let receiveTemplateWriteFunction;
+        let receiveTemplate;
 
         try {
             if (entryPointName === undefined) {
@@ -137,23 +131,21 @@ export default function WriteComponenet(props: ConnectionProps) {
 
             let schema = '';
 
-            const schemaFromModule = deriveContractInfo
-                ? embeddedModuleSchemaBase64Write
-                : uploadedModuleSchemaBase64Write;
+            const schemaFromModule = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
 
             if (schemaFromModule !== undefined) {
                 schema = schemaFromModule;
             }
 
-            const writeFunctionTemplate = getUpdateContractParameterSchema(
+            const functionTemplate = getUpdateContractParameterSchema(
                 toBuffer(schema, 'base64'),
                 smartContractName,
                 entryPointName
             );
 
-            receiveTemplateWriteFunction = displayTypeSchemaTemplate(writeFunctionTemplate);
+            receiveTemplate = displayTypeSchemaTemplate(functionTemplate);
 
-            setEntryPointTemplateWriteFunction(receiveTemplateWriteFunction);
+            setEntryPointTemplate(receiveTemplate);
         } catch (e) {
             if (deriveContractInfo) {
                 setSchemaError(
@@ -166,20 +158,14 @@ export default function WriteComponenet(props: ConnectionProps) {
             }
         }
 
-        if (receiveTemplateWriteFunction) {
+        if (receiveTemplate) {
             if (inputParameterType === 'array') {
-                writeForm.setValue(
-                    'inputParameter',
-                    JSON.stringify(JSON.parse(receiveTemplateWriteFunction), undefined, 2)
-                );
+                form.setValue('inputParameter', JSON.stringify(JSON.parse(receiveTemplate), undefined, 2));
             } else if (inputParameterType === 'object') {
-                writeForm.setValue(
-                    'inputParameter',
-                    JSON.stringify(JSON.parse(receiveTemplateWriteFunction), undefined, 2)
-                );
+                form.setValue('inputParameter', JSON.stringify(JSON.parse(receiveTemplate), undefined, 2));
             }
         }
-    }, [entryPointName, hasInputParameter, smartContractName, uploadedModuleSchemaBase64Write, inputParameterType]);
+    }, [entryPointName, hasInputParameter, smartContractName, uploadedModuleSchemaBase64, inputParameterType]);
 
     return (
         <Box header="Write To Smart Contract">
@@ -191,10 +177,10 @@ export default function WriteComponenet(props: ConnectionProps) {
                             defaultValue={1999}
                             type="number"
                             min="0"
-                            {...writeForm.register('smartContractIndex', { required: true })}
+                            {...form.register('smartContractIndex', { required: true })}
                         />
                         <Form.Text />
-                        {writeForm.formState.errors.smartContractIndex && (
+                        {form.formState.errors.smartContractIndex && (
                             <Alert variant="info"> Smart contract index is required </Alert>
                         )}
                     </Form.Group>
@@ -209,9 +195,9 @@ export default function WriteComponenet(props: ConnectionProps) {
                                     contractInstanceInfo?.contractName ? contractInstanceInfo.contractName : 'undefined'
                                 }
                                 disabled
-                                {...writeForm.register('smartContractName', { required: true })}
+                                {...form.register('smartContractName', { required: true })}
                             />
-                            {writeForm.formState.errors.smartContractName && (
+                            {form.formState.errors.smartContractName && (
                                 <Alert variant="info"> Smart contract name is required </Alert>
                             )}
                             <Form.Text />
@@ -219,8 +205,8 @@ export default function WriteComponenet(props: ConnectionProps) {
                     ) : (
                         <Form.Group className="col-md-3 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
-                            <Form.Control {...writeForm.register('smartContractName', { required: true })} />
-                            {writeForm.formState.errors.smartContractName && (
+                            <Form.Control {...form.register('smartContractName', { required: true })} />
+                            {form.formState.errors.smartContractName && (
                                 <Alert variant="info"> Smart contract name is required </Alert>
                             )}
                             <Form.Text />
@@ -238,7 +224,7 @@ export default function WriteComponenet(props: ConnectionProps) {
                                     label: method,
                                 }))}
                                 onChange={(e) => {
-                                    writeForm.setValue('entryPointName', e?.value);
+                                    form.setValue('entryPointName', e?.value);
                                 }}
                             />
                             <Form.Text />
@@ -246,8 +232,8 @@ export default function WriteComponenet(props: ConnectionProps) {
                     ) : (
                         <Form.Group className="col-md-3 mb-3">
                             <Form.Label>Entry Point Name</Form.Label>
-                            <Form.Control {...writeForm.register('entryPointName', { required: true })} />
-                            {writeForm.formState.errors.entryPointName && (
+                            <Form.Control {...form.register('entryPointName', { required: true })} />
+                            {form.formState.errors.entryPointName && (
                                 <Alert variant="info"> Entry point name is required </Alert>
                             )}
                             <Form.Text />
@@ -260,10 +246,10 @@ export default function WriteComponenet(props: ConnectionProps) {
                             defaultValue={30000}
                             type="number"
                             min="0"
-                            {...writeForm.register('maxExecutionEnergy', { required: true })}
+                            {...form.register('maxExecutionEnergy', { required: true })}
                         />
                         <Form.Text />
-                        {writeForm.formState.errors.maxExecutionEnergy && (
+                        {form.formState.errors.maxExecutionEnergy && (
                             <Alert variant="info"> Max execution energy is required </Alert>
                         )}
                     </Form.Group>
@@ -275,26 +261,26 @@ export default function WriteComponenet(props: ConnectionProps) {
                             type="checkbox"
                             id="attribute-required"
                             label="Derive From Smart Contract Index"
-                            {...writeForm.register('deriveFromSmartContractIndex')}
+                            {...form.register('deriveFromSmartContractIndex')}
                             onChange={async (e) => {
                                 const deriveFromSmartContractIndexRegister =
-                                    writeForm.register('deriveFromSmartContractIndex');
+                                    form.register('deriveFromSmartContractIndex');
 
                                 deriveFromSmartContractIndexRegister.onChange(e);
 
-                                setUploadedModuleSchemaBase64Write(undefined);
+                                setUploadedModuleSchemaBase64(undefined);
                                 setSchemaError(undefined);
-                                writeForm.setValue('entryPointName', undefined);
+                                form.setValue('entryPointName', undefined);
                                 setContractInstanceInfo(undefined);
-                                setWriteError(undefined);
-                                setEmbeddedModuleSchemaBase64Write(undefined);
+                                setError(undefined);
+                                setEmbeddedModuleSchemaBase64(undefined);
 
-                                const checkboxElement = writeForm.getValues('deriveFromSmartContractIndex');
+                                const checkboxElement = form.getValues('deriveFromSmartContractIndex');
 
                                 if (checkboxElement) {
                                     const promiseContractInfo = getContractInfo(
                                         client,
-                                        BigInt(writeForm.getValues('smartContractIndex'))
+                                        BigInt(form.getValues('smartContractIndex'))
                                     );
 
                                     promiseContractInfo
@@ -311,15 +297,15 @@ export default function WriteComponenet(props: ConnectionProps) {
                                                         }, '')
                                                     );
 
-                                                    setEmbeddedModuleSchemaBase64Write(moduleSchemaBase64Embedded);
+                                                    setEmbeddedModuleSchemaBase64(moduleSchemaBase64Embedded);
                                                     setContractInstanceInfo(contractInfo);
-                                                    writeForm.setValue('smartContractName', contractInfo.contractName);
+                                                    form.setValue('smartContractName', contractInfo.contractName);
                                                 })
                                                 .catch((err: Error) => {
-                                                    setWriteError((err as Error).message);
+                                                    setError((err as Error).message);
                                                 });
                                         })
-                                        .catch((err: Error) => setWriteError((err as Error).message));
+                                        .catch((err: Error) => setError((err as Error).message));
                                 }
                             }}
                         />
@@ -355,29 +341,36 @@ export default function WriteComponenet(props: ConnectionProps) {
                         type="checkbox"
                         id="isPayable"
                         label="Is Payable"
-                        {...writeForm.register('isPayable')}
+                        {...form.register('isPayable')}
                         onChange={async (e) => {
-                            const isPayableRegister = writeForm.register('isPayable');
+                            const isPayableRegister = form.register('isPayable');
 
                             isPayableRegister.onChange(e);
 
-                            writeForm.setValue('cCDAmount', 0);
+                            form.setValue('cCDAmount', 0);
                         }}
                     />
                 </Form.Group>
 
                 {isPayable && (
-                    <Form.Group className=" mb-3">
-                        <Form.Label>CCD amount (micro):</Form.Label>
-                        <Form.Control
-                            defaultValue={0}
-                            type="number"
-                            min="0"
-                            {...writeForm.register('cCDAmount', { required: true })}
-                        />
-                        <Form.Text />
-                        {writeForm.formState.errors.cCDAmount && <Alert variant="info"> cCDAmount is required </Alert>}
-                    </Form.Group>
+                    <>
+                        <div className="box">
+                            <Form.Group className="mb-3">
+                                <Form.Label>CCD amount (micro):</Form.Label>
+                                <Form.Control
+                                    defaultValue={0}
+                                    type="number"
+                                    min="0"
+                                    {...form.register('cCDAmount', { required: true })}
+                                />
+                                <Form.Text />
+                                {form.formState.errors.cCDAmount && (
+                                    <Alert variant="info"> cCDAmount is required </Alert>
+                                )}
+                            </Form.Group>
+                        </div>
+                        <br />
+                    </>
                 )}
 
                 <Form.Group className="mb-3 d-flex justify-content-center">
@@ -385,16 +378,16 @@ export default function WriteComponenet(props: ConnectionProps) {
                         type="checkbox"
                         id="hasInputParameter"
                         label="Has Input Parameter"
-                        {...writeForm.register('hasInputParameter')}
+                        {...form.register('hasInputParameter')}
                         onChange={async (e) => {
-                            const hasInputParameterRegister = writeForm.register('hasInputParameter');
+                            const hasInputParameterRegister = form.register('hasInputParameter');
 
                             hasInputParameterRegister.onChange(e);
 
-                            setParsingErrorWrite(undefined);
-                            writeForm.setValue('inputParameterType', undefined);
-                            writeForm.setValue('inputParameter', undefined);
-                            setEntryPointTemplateWriteFunction(undefined);
+                            setParsingError(undefined);
+                            form.setValue('inputParameterType', undefined);
+                            form.setValue('inputParameter', undefined);
+                            setEntryPointTemplate(undefined);
                             setSchemaError(undefined);
                         }}
                     />
@@ -408,16 +401,16 @@ export default function WriteComponenet(props: ConnectionProps) {
                                 <Form.Control
                                     type="file"
                                     accept=".bin"
-                                    {...writeForm.register('file')}
+                                    {...form.register('file')}
                                     onChange={async (e) => {
-                                        const fileRegister = writeForm.register('file');
+                                        const fileRegister = form.register('file');
 
                                         fileRegister.onChange(e);
 
-                                        setUploadErrorWrite(undefined);
-                                        setUploadedModuleSchemaBase64Write(undefined);
+                                        setUploadError(undefined);
+                                        setUploadedModuleSchemaBase64(undefined);
 
-                                        const files = writeForm.getValues('file');
+                                        const files = form.getValues('file');
 
                                         if (files !== undefined && files !== null && files.length > 0) {
                                             const file = files[0];
@@ -428,9 +421,9 @@ export default function WriteComponenet(props: ConnectionProps) {
                                                     return data + String.fromCharCode(byte);
                                                 }, '')
                                             );
-                                            setUploadedModuleSchemaBase64Write(schema);
+                                            setUploadedModuleSchemaBase64(schema);
                                         } else {
-                                            setUploadErrorWrite('Upload schema file is undefined');
+                                            setUploadError('Upload schema file is undefined');
                                         }
                                     }}
                                 />
@@ -438,24 +431,22 @@ export default function WriteComponenet(props: ConnectionProps) {
                             </Form.Group>
                         )}
 
-                        {!deriveContractInfo && uploadedModuleSchemaBase64Write && (
+                        {!deriveContractInfo && uploadedModuleSchemaBase64 && (
                             <div className="actionResultBox">
                                 Schema in base64:
-                                <div>{uploadedModuleSchemaBase64Write.toString().slice(0, 30)} ...</div>
+                                <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
                             </div>
                         )}
-                        {uploadErrorWrite !== undefined && <Alert variant="danger"> Error: {uploadErrorWrite}. </Alert>}
-                        {writeError && <Alert variant="danger"> Error: {writeError}. </Alert>}
+                        {uploadError !== undefined && <Alert variant="danger"> Error: {uploadError}. </Alert>}
+                        {error && <Alert variant="danger"> Error: {error}. </Alert>}
                         {schemaError !== undefined && <Alert variant="danger"> Error: {schemaError}. </Alert>}
-                        {entryPointTemplateWriteFunction && (
+                        {entryPointTemplate && (
                             <>
                                 <br />
                                 <br />
                                 <div className="actionResultBox">
                                     Parameter Template:
-                                    <pre>
-                                        {JSON.stringify(JSON.parse(entryPointTemplateWriteFunction), undefined, 2)}
-                                    </pre>
+                                    <pre>{JSON.stringify(JSON.parse(entryPointTemplate), undefined, 2)}</pre>
                                 </div>
                             </>
                         )}
@@ -464,12 +455,12 @@ export default function WriteComponenet(props: ConnectionProps) {
                             <Form.Label>Select input parameter type:</Form.Label>
                             <Select
                                 options={INPUT_PARAMETER_TYPES_OPTIONS}
-                                {...writeForm.register('inputParameterType')}
+                                {...form.register('inputParameterType')}
                                 onChange={(e) => {
-                                    writeForm.setValue('inputParameterType', e?.value);
-                                    writeForm.setValue('inputParameter', undefined);
+                                    form.setValue('inputParameterType', e?.value);
+                                    form.setValue('inputParameter', undefined);
 
-                                    setParsingErrorWrite(undefined);
+                                    setParsingError(undefined);
                                 }}
                             />
                             <Form.Text />
@@ -480,18 +471,18 @@ export default function WriteComponenet(props: ConnectionProps) {
                                 <Form.Label> Add your input parameter ({inputParameterType}):</Form.Label>
                                 <Form.Control
                                     placeholder={inputParameterType === 'string' ? 'myString' : '1000000'}
-                                    {...writeForm.register('inputParameter', { required: true })}
+                                    {...form.register('inputParameter', { required: true })}
                                     onChange={(e) => {
-                                        const inputParameterRegister = writeForm.register('inputParameter', {
+                                        const inputParameterRegister = form.register('inputParameter', {
                                             required: true,
                                         });
 
                                         inputParameterRegister.onChange(e);
 
-                                        setParsingErrorWrite(undefined);
+                                        setParsingError(undefined);
                                     }}
                                 />
-                                {writeForm.formState.errors.inputParameter && (
+                                {form.formState.errors.inputParameter && (
                                     <Alert variant="info"> Input parameter is required </Alert>
                                 )}
                                 <Form.Text />
@@ -504,53 +495,51 @@ export default function WriteComponenet(props: ConnectionProps) {
 
                                 {inputParameterType === 'array' && (
                                     <textarea
-                                        {...writeForm.register('inputParameter')}
+                                        {...form.register('inputParameter')}
                                         onChange={(event) => {
-                                            setParsingErrorWrite(undefined);
+                                            setParsingError(undefined);
                                             const target = event.target as HTMLTextAreaElement;
 
                                             try {
                                                 JSON.parse(target.value);
                                             } catch (e) {
-                                                setParsingErrorWrite((e as Error).message);
+                                                setParsingError((e as Error).message);
                                                 return;
                                             }
-                                            writeForm.setValue('inputParameter', target.value);
+                                            form.setValue('inputParameter', target.value);
                                         }}
                                     >
-                                        {getArrayExample(entryPointTemplateWriteFunction)}
+                                        {getArrayExample(entryPointTemplate)}
                                     </textarea>
                                 )}
                                 {inputParameterType === 'object' && (
                                     <textarea
-                                        {...writeForm.register('inputParameter')}
+                                        {...form.register('inputParameter')}
                                         onChange={(event) => {
-                                            setParsingErrorWrite(undefined);
+                                            setParsingError(undefined);
                                             const target = event.target as HTMLTextAreaElement;
 
                                             try {
                                                 JSON.parse(target.value);
                                             } catch (e) {
-                                                setParsingErrorWrite((e as Error).message);
+                                                setParsingError((e as Error).message);
                                                 return;
                                             }
-                                            writeForm.setValue('inputParameter', target.value);
+                                            form.setValue('inputParameter', target.value);
                                         }}
                                     >
-                                        {getObjectExample(entryPointTemplateWriteFunction)}
+                                        {getObjectExample(entryPointTemplate)}
                                     </textarea>
                                 )}
 
-                                {writeForm.formState.errors.inputParameter && (
+                                {form.formState.errors.inputParameter && (
                                     <Alert variant="info"> Input parameter is required </Alert>
                                 )}
                                 <Form.Text />
                             </Form.Group>
                         )}
 
-                        {parsingErrorWrite !== undefined && (
-                            <Alert variant="danger"> Error: {parsingErrorWrite}. </Alert>
-                        )}
+                        {parsingError !== undefined && <Alert variant="danger"> Error: {parsingError}. </Alert>}
                     </div>
                 )}
 
@@ -559,14 +548,12 @@ export default function WriteComponenet(props: ConnectionProps) {
                 <Button
                     variant="primary"
                     type="button"
-                    onClick={writeForm.handleSubmit((data) => {
+                    onClick={form.handleSubmit((data) => {
                         setTxHashUpdate(undefined);
                         setTransactionErrorUpdate(undefined);
-                        setWriteTransactionOutcome(undefined);
+                        setTransactionOutcome(undefined);
 
-                        const schema = deriveContractInfo
-                            ? embeddedModuleSchemaBase64Write
-                            : uploadedModuleSchemaBase64Write;
+                        const schema = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
 
                         const tx = write(
                             connection,
@@ -593,14 +580,13 @@ export default function WriteComponenet(props: ConnectionProps) {
                 <br />
                 <br />
                 {shouldWarnInputParameterInSchemaIgnored && (
-                    <div className="alert alert-warning" role="alert">
+                    <Alert variant="warning">
+                        {' '}
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.
-                    </div>
+                    </Alert>
                 )}
                 {!txHashUpdate && transactionErrorUpdate && (
-                    <div className="alert alert-danger" role="alert">
-                        Error: {transactionErrorUpdate}.
-                    </div>
+                    <Alert variant="danger"> Error: {transactionErrorUpdate}. </Alert>
                 )}
                 {txHashUpdate && (
                     <TxHashLink
@@ -609,23 +595,21 @@ export default function WriteComponenet(props: ConnectionProps) {
                         message="The outcome of the transaction will be displayed below."
                     />
                 )}
-                {writeTransactionOutcome === 'Success' && (
+                {transactionOutcome === 'Success' && (
                     <>
                         <br />
                         <div className="actionResultBox">
                             Outcome of transaction:
-                            <div>{writeTransactionOutcome}</div>
+                            <div>{transactionOutcome}</div>
                         </div>
                     </>
                 )}
-                {writeTransactionOutcome !== undefined && writeTransactionOutcome !== 'Success' && (
+                {transactionOutcome !== undefined && transactionOutcome !== 'Success' && (
                     <>
                         <br />
                         <div> Outcome of transaction:</div>
                         <br />
-                        <div className="alert alert-danger" role="alert">
-                            Error: {writeTransactionOutcome}.
-                        </div>
+                        <Alert variant="danger"> Error: {transactionOutcome}. </Alert>
                     </>
                 )}
             </Form>

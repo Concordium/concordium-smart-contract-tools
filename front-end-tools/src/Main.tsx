@@ -184,7 +184,7 @@ export default function Main(props: ConnectionProps) {
                                 contracts={contracts}
                                 moduleReferenceDeployed={moduleReferenceDeployed}
                                 moduleReferenceCalculated={moduleReferenceCalculated}
-                                embeddedModuleSchemaBase64Init={embeddedModuleSchemaBase64Init}
+                                embeddedModuleSchemaBase64={embeddedModuleSchemaBase64Init}
                             />
 
                             <ReadComponent connection={connection} account={account} client={client} />

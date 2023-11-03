@@ -44,7 +44,7 @@ export default function InitComponenet(props: ConnectionProps) {
         contracts,
     } = props;
 
-    const form = useForm<{
+    type FormType = {
         moduleReference: string | undefined;
         smartContractName: string | undefined;
         file: FileList | undefined;
@@ -55,7 +55,9 @@ export default function InitComponenet(props: ConnectionProps) {
         maxExecutionEnergy: number;
         isPayable: boolean;
         cCDAmount: number;
-    }>();
+    };
+
+    const form = useForm<FormType>();
     const useModuleReferenceFromStep1 = form.watch('useModuleReferenceFromStep1');
     const smartContractName = form.watch('smartContractName');
     const inputParameterType = form.watch('inputParameterType');
@@ -122,18 +124,20 @@ export default function InitComponenet(props: ConnectionProps) {
 
     useEffect(() => {
         if (connection && client && account && moduleReference) {
-            client
-                .getModuleSource(new ModuleReference(moduleReference))
-                .then((value) => {
-                    if (value === undefined) {
+            if (moduleReference.length === 64) {
+                client
+                    .getModuleSource(new ModuleReference(moduleReference))
+                    .then((value) => {
+                        if (value === undefined) {
+                            setIsModuleReferenceAlreadyDeployedStep2(false);
+                        } else {
+                            setIsModuleReferenceAlreadyDeployedStep2(true);
+                        }
+                    })
+                    .catch(() => {
                         setIsModuleReferenceAlreadyDeployedStep2(false);
-                    } else {
-                        setIsModuleReferenceAlreadyDeployedStep2(true);
-                    }
-                })
-                .catch(() => {
-                    setIsModuleReferenceAlreadyDeployedStep2(false);
-                });
+                    });
+            }
         }
     }, [connection, account, client, moduleReference]);
 
@@ -214,9 +218,36 @@ export default function InitComponenet(props: ConnectionProps) {
         inputParameterType,
     ]);
 
+    function onSubmit(data: FormType) {
+        setTxHash(undefined);
+        setSmartContractIndexError(undefined);
+        setSmartContractIndex(undefined);
+        setTransactionError(undefined);
+
+        const schema = data.useModuleReferenceFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
+
+        // Send init transaction
+
+        const tx = initialize(
+            connection,
+            account,
+            isModuleReferenceAlreadyDeployedStep2,
+            data.moduleReference,
+            data.inputParameter,
+            data.smartContractName,
+            data.hasInputParameter,
+            data.useModuleReferenceFromStep1,
+            schema,
+            data.inputParameterType,
+            BigInt(data.maxExecutionEnergy),
+            data.cCDAmount ? BigInt(data.cCDAmount) : BigInt(0)
+        );
+        tx.then(setTxHash).catch((err: Error) => setTransactionError((err as Error).message));
+    }
+
     return (
         <Box header="Step 2: Initialize Smart Contract">
-            <Form>
+            <Form onSubmit={form.handleSubmit(onSubmit)}>
                 <Form.Group className="mb-3 d-flex justify-content-center">
                     <Form.Check
                         type="checkbox"
@@ -574,36 +605,7 @@ export default function InitComponenet(props: ConnectionProps) {
                 )}
                 <br />
 
-                <Button
-                    variant="primary"
-                    type="button"
-                    onClick={form.handleSubmit((data) => {
-                        setTxHash(undefined);
-                        setSmartContractIndexError(undefined);
-                        setSmartContractIndex(undefined);
-                        setTransactionError(undefined);
-
-                        const schema = data.useModuleReferenceFromStep1
-                            ? embeddedModuleSchemaBase64
-                            : uploadedModuleSchemaBase64;
-
-                        const tx = initialize(
-                            connection,
-                            account,
-                            isModuleReferenceAlreadyDeployedStep2,
-                            data.moduleReference,
-                            data.inputParameter,
-                            data.smartContractName,
-                            data.hasInputParameter,
-                            data.useModuleReferenceFromStep1,
-                            schema,
-                            data.inputParameterType,
-                            BigInt(data.maxExecutionEnergy),
-                            data.cCDAmount ? BigInt(data.cCDAmount) : BigInt(0)
-                        );
-                        tx.then(setTxHash).catch((err: Error) => setTransactionError((err as Error).message));
-                    })}
-                >
+                <Button variant="primary" type="submit">
                     Initialize Smart Contract
                 </Button>
                 <br />

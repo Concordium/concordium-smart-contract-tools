@@ -32,7 +32,7 @@ interface ConnectionProps {
 export default function WriteComponenet(props: ConnectionProps) {
     const { isTestnet, account, connection, client } = props;
 
-    const form = useForm<{
+    type FormType = {
         smartContractIndex: number;
         smartContractName: string | undefined;
         entryPointName: string | undefined;
@@ -44,7 +44,9 @@ export default function WriteComponenet(props: ConnectionProps) {
         maxExecutionEnergy: number;
         isPayable: boolean;
         cCDAmount: number;
-    }>();
+    };
+
+    const form = useForm<FormType>();
     const deriveContractInfo = form.watch('deriveFromSmartContractIndex');
     const hasInputParameter = form.watch('hasInputParameter');
     const entryPointName = form.watch('entryPointName');
@@ -167,9 +169,36 @@ export default function WriteComponenet(props: ConnectionProps) {
         }
     }, [entryPointName, hasInputParameter, smartContractName, uploadedModuleSchemaBase64, inputParameterType]);
 
+    function onSubmit(data: FormType) {
+        setTxHashUpdate(undefined);
+        setTransactionErrorUpdate(undefined);
+        setTransactionOutcome(undefined);
+
+        const schema = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
+
+        // Send update transaction
+
+        const tx = write(
+            connection,
+            account,
+            data.inputParameter,
+            data.smartContractName,
+            data.entryPointName,
+            data.hasInputParameter,
+            data.deriveFromSmartContractIndex,
+            schema,
+            data.inputParameterType,
+            BigInt(data.maxExecutionEnergy),
+            BigInt(data.smartContractIndex),
+            data.cCDAmount ? BigInt(data.cCDAmount) : BigInt(0)
+        );
+
+        tx.then(setTxHashUpdate).catch((err: Error) => setTransactionErrorUpdate((err as Error).message));
+    }
+
     return (
         <Box header="Write To Smart Contract">
-            <Form>
+            <Form onSubmit={form.handleSubmit(onSubmit)}>
                 <Row>
                     <Form.Group className="col-md-3 mb-3">
                         <Form.Label>Smart Contract Index</Form.Label>
@@ -186,8 +215,8 @@ export default function WriteComponenet(props: ConnectionProps) {
                     </Form.Group>
 
                     {deriveContractInfo &&
-                    contractInstanceInfo !== undefined &&
-                    contractInstanceInfo.contractName !== undefined ? (
+                        contractInstanceInfo !== undefined &&
+                        contractInstanceInfo.contractName !== undefined ? (
                         <Form.Group className="col-md-3 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
                             <Form.Control
@@ -214,8 +243,8 @@ export default function WriteComponenet(props: ConnectionProps) {
                     )}
 
                     {deriveContractInfo &&
-                    contractInstanceInfo !== undefined &&
-                    contractInstanceInfo.methods.length > 0 ? (
+                        contractInstanceInfo !== undefined &&
+                        contractInstanceInfo.methods.length > 0 ? (
                         <Form.Group className="col-md-3 mb-3">
                             <Form.Label>Entry Point Name</Form.Label>
                             <Select
@@ -545,36 +574,7 @@ export default function WriteComponenet(props: ConnectionProps) {
 
                 <br />
 
-                <Button
-                    variant="primary"
-                    type="button"
-                    onClick={form.handleSubmit((data) => {
-                        setTxHashUpdate(undefined);
-                        setTransactionErrorUpdate(undefined);
-                        setTransactionOutcome(undefined);
-
-                        const schema = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
-
-                        const tx = write(
-                            connection,
-                            account,
-                            data.inputParameter,
-                            data.smartContractName,
-                            data.entryPointName,
-                            data.hasInputParameter,
-                            data.deriveFromSmartContractIndex,
-                            schema,
-                            data.inputParameterType,
-                            BigInt(data.maxExecutionEnergy),
-                            BigInt(data.smartContractIndex),
-                            data.cCDAmount ? BigInt(data.cCDAmount) : BigInt(0)
-                        );
-
-                        tx.then(setTxHashUpdate).catch((err: Error) =>
-                            setTransactionErrorUpdate((err as Error).message)
-                        );
-                    })}
-                >
+                <Button variant="primary" type="submit">
                     Write Smart Contract
                 </Button>
                 <br />

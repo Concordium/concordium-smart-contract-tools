@@ -12,6 +12,7 @@ import {
 } from '@concordium/react-components';
 import { AccountAddress } from '@concordium/web-sdk';
 
+import { Alert } from 'react-bootstrap';
 import DeployComponent from './components/DeployComponent';
 import ReadComponent from './components/ReadComponent';
 import WriteComponent from './components/WriteComponent';
@@ -103,21 +104,13 @@ export default function Main(props: ConnectionProps) {
         <main className="container">
             <div className="textCenter">
                 <br />
-                {activeConnectorError && (
-                    <p className="alert alert-danger" role="alert">
-                        Connector Error: {activeConnectorError}.
-                    </p>
-                )}
+                {activeConnectorError && <Alert variant="dager">Connector Error: {activeConnectorError}.</Alert>}
                 {!activeConnectorError && activeConnectorType && !activeConnector && (
                     <p>
                         <i>Loading connector...</i>
                     </p>
                 )}
-                {connectError && (
-                    <p className="alert alert-danger" role="alert">
-                        Connect Error: {connectError}.
-                    </p>
-                )}
+                {connectError && <Alert variant="dager">Connect Error: {connectError}.</Alert>}
                 {!isConnected && (
                     <button
                         className="btn btn-primary me-1"

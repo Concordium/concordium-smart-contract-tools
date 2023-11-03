@@ -6,7 +6,7 @@ import Main from './Main';
 import { version } from '../package.json';
 
 /**
- * Connect to wallet, setup application state context, and render children when the wallet API is ready for use.
+ * Select mainnet/testnet and display WithWalletConnector component for respective network.
  */
 export default function Root() {
     const [isTestnet, setIsTestnet] = useState(true);
@@ -34,9 +34,17 @@ export default function Root() {
                     <div>Mainnet</div>
                 </div>
                 <br />
-                <WithWalletConnector network={isTestnet ? TESTNET : MAINNET}>
-                    {(props) => <Main walletConnectionProps={props} isTestnet={isTestnet} />}
-                </WithWalletConnector>
+                {/* Changes to the network value will remove the activeConnector. We switch between components here without changing the network value. */}
+                {isTestnet && (
+                    <WithWalletConnector network={TESTNET}>
+                        {(props) => <Main walletConnectionProps={props} isTestnet={isTestnet} />}
+                    </WithWalletConnector>
+                )}
+                {!isTestnet && (
+                    <WithWalletConnector network={MAINNET}>
+                        {(props) => <Main walletConnectionProps={props} isTestnet={isTestnet} />}
+                    </WithWalletConnector>
+                )}
             </main>
         </div>
     );

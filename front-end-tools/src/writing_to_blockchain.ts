@@ -11,7 +11,7 @@ import { WalletConnection } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
 import { CONTRACT_SUB_INDEX } from './constants';
 
-export async function deploy(connection: WalletConnection, account: string, base64Module: string) {
+export async function deploy(connection: WalletConnection, account: string, base64Module: string | undefined) {
     if (base64Module === undefined) {
         throw new Error(`Upload a smart contract module first`);
     }

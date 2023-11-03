@@ -46,9 +46,10 @@ export default function DeployComponenet(props: ConnectionProps) {
         setEmbeddedModuleSchemaBase64Init,
     } = props;
 
-    const form = useForm<{
+    type FormType = {
         file: FileList | undefined;
-    }>();
+    };
+    const form = useForm<FormType>();
 
     const [transactionErrorDeploy, setTransactionErrorDeploy] = useState<string | undefined>(undefined);
     const [uploadError, setUploadError] = useState<string | undefined>(undefined);
@@ -104,9 +105,22 @@ export default function DeployComponenet(props: ConnectionProps) {
         }
     }, [connection, account, client, moduleReferenceCalculated]);
 
+    function onSubmit() {
+        setTxHashDeploy(undefined);
+        setTransactionErrorDeploy(undefined);
+
+        // Send deploy transaction
+
+        const tx = deploy(connection, account, base64Module);
+        tx.then((txHash) => {
+            setModuleReferenceDeployed(undefined);
+            setTxHashDeploy(txHash);
+        }).catch((err: Error) => setTransactionErrorDeploy((err as Error).message));
+    }
+
     return (
         <Box header="Step 1: Deploy Smart Contract Module">
-            <Form>
+            <Form onSubmit={form.handleSubmit(onSubmit)}>
                 <Form.Group className="mb-3">
                     <Form.Label>Upload Smart Contract Module File (e.g. myContract.wasm.v1)</Form.Label>
                     <Form.Control
@@ -201,45 +215,33 @@ export default function DeployComponenet(props: ConnectionProps) {
                     />
                     <Form.Text />
                 </Form.Group>
+                {uploadError !== undefined && <Alert variant="danger"> Error: {uploadError}. </Alert>}
+                <br />
+                {base64Module && moduleReferenceCalculated && (
+                    <>
+                        <div className="actionResultBox">
+                            Calculated module reference:
+                            <div>{moduleReferenceCalculated}</div>
+                        </div>
+                        <div className="actionResultBox">
+                            Module in base64:
+                            <div>{base64Module.toString().slice(0, 30)} ...</div>
+                        </div>
+                        {isModuleReferenceAlreadyDeployedStep1 && (
+                            <Alert variant="warning">Module reference already deployed.</Alert>
+                        )}
+                        <br />
+                        {!isModuleReferenceAlreadyDeployedStep1 && (
+                            <Button variant="primary" type="submit">
+                                Deploy smart contract module
+                            </Button>
+                        )}
+                        <br />
+                        <br />
+                    </>
+                )}
             </Form>
 
-            {uploadError !== undefined && <Alert variant="danger"> Error: {uploadError}. </Alert>}
-            <br />
-            {base64Module && moduleReferenceCalculated && (
-                <>
-                    <div className="actionResultBox">
-                        Calculated module reference:
-                        <div>{moduleReferenceCalculated}</div>
-                    </div>
-                    <div className="actionResultBox">
-                        Module in base64:
-                        <div>{base64Module.toString().slice(0, 30)} ...</div>
-                    </div>
-                    {isModuleReferenceAlreadyDeployedStep1 && (
-                        <Alert variant="warning">Module reference already deployed.</Alert>
-                    )}
-                    <br />
-                    {!isModuleReferenceAlreadyDeployedStep1 && (
-                        <Button
-                            variant="primary"
-                            type="button"
-                            onClick={form.handleSubmit(() => {
-                                setTxHashDeploy(undefined);
-                                setTransactionErrorDeploy(undefined);
-                                const tx = deploy(connection, account, base64Module);
-                                tx.then((txHash) => {
-                                    setModuleReferenceDeployed(undefined);
-                                    setTxHashDeploy(txHash);
-                                }).catch((err: Error) => setTransactionErrorDeploy((err as Error).message));
-                            })}
-                        >
-                            Deploy smart contract module
-                        </Button>
-                    )}
-                    <br />
-                    <br />
-                </>
-            )}
             {!txHashDeploy && transactionErrorDeploy && (
                 <Alert variant="danger"> Error: {transactionErrorDeploy}. </Alert>
             )}

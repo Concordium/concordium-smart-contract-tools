@@ -27,7 +27,7 @@ interface ConnectionProps {
 export default function ReadComponenet(props: ConnectionProps) {
     const { client } = props;
 
-    const form = useForm<{
+    type FormType = {
         smartContractIndex: number;
         smartContractName: string | undefined;
         entryPointName: string | undefined;
@@ -36,7 +36,9 @@ export default function ReadComponenet(props: ConnectionProps) {
         deriveFromSmartContractIndex: boolean;
         inputParameterType: string | undefined;
         inputParameter: string | undefined;
-    }>();
+    };
+
+    const form = useForm<FormType>();
     const deriveContractInfo = form.watch('deriveFromSmartContractIndex');
     const hasInputParameter = form.watch('hasInputParameter');
     const entryPointName = form.watch('entryPointName');
@@ -123,9 +125,36 @@ export default function ReadComponenet(props: ConnectionProps) {
         }
     }, [entryPointName, hasInputParameter, smartContractName, uploadedModuleSchemaBase64, inputParameterType]);
 
+    function onSubmit(data: FormType) {
+        setError(undefined);
+        setReturnValue(undefined);
+
+        const schema = data.deriveFromSmartContractIndex ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
+
+        // Invoke smart contract (read)
+
+        const promise = read(
+            client,
+            data.smartContractName,
+            BigInt(data.smartContractIndex),
+            data.entryPointName,
+            schema,
+            data.inputParameter,
+            data.inputParameterType,
+            data.hasInputParameter,
+            data.deriveFromSmartContractIndex
+        );
+
+        promise
+            .then((value) => {
+                setReturnValue(value);
+            })
+            .catch((err: Error) => setError((err as Error).message));
+    }
+
     return (
         <Box header="Read From Smart Contract">
-            <Form>
+            <Form onSubmit={form.handleSubmit(onSubmit)}>
                 <Row>
                     <Form.Group className="col-md-4 mb-3">
                         <Form.Label>Smart Contract Index</Form.Label>
@@ -145,8 +174,8 @@ export default function ReadComponenet(props: ConnectionProps) {
                     </Form.Group>
 
                     {deriveContractInfo &&
-                    contractInstanceInfo !== undefined &&
-                    contractInstanceInfo.contractName !== undefined ? (
+                        contractInstanceInfo !== undefined &&
+                        contractInstanceInfo.contractName !== undefined ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
                             <Form.Control
@@ -179,8 +208,8 @@ export default function ReadComponenet(props: ConnectionProps) {
                     )}
 
                     {deriveContractInfo &&
-                    contractInstanceInfo !== undefined &&
-                    contractInstanceInfo.methods.length > 0 ? (
+                        contractInstanceInfo !== undefined &&
+                        contractInstanceInfo.methods.length > 0 ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Entry Point Name</Form.Label>
                             <Select
@@ -466,36 +495,7 @@ export default function ReadComponenet(props: ConnectionProps) {
 
                 <br />
 
-                <Button
-                    variant="primary"
-                    type="button"
-                    onClick={form.handleSubmit((data) => {
-                        setError(undefined);
-                        setReturnValue(undefined);
-
-                        const schema = data.deriveFromSmartContractIndex
-                            ? embeddedModuleSchemaBase64
-                            : uploadedModuleSchemaBase64;
-
-                        const promise = read(
-                            client,
-                            data.smartContractName,
-                            BigInt(data.smartContractIndex),
-                            data.entryPointName,
-                            schema,
-                            data.inputParameter,
-                            data.inputParameterType,
-                            data.hasInputParameter,
-                            data.deriveFromSmartContractIndex
-                        );
-
-                        promise
-                            .then((value) => {
-                                setReturnValue(value);
-                            })
-                            .catch((err: Error) => setError((err as Error).message));
-                    })}
-                >
+                <Button variant="primary" type="submit">
                     Read Smart Contract
                 </Button>
                 <br />

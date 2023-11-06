@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Button, Form } from 'react-bootstrap';
@@ -32,6 +31,10 @@ interface ConnectionProps {
     moduleReferenceCalculated: string | undefined;
 }
 
+/**
+ * A component that manages the input fields and corresponding state to deploy a new smart contract wasm module on chain.
+ *  This components creates a `DeployModule` transaction.
+ */
 export default function DeployComponenet(props: ConnectionProps) {
     const {
         isTestnet,
@@ -61,9 +64,8 @@ export default function DeployComponenet(props: ConnectionProps) {
     // Refresh moduleReference periodically.
     // eslint-disable-next-line consistent-return
     useEffect(() => {
-        if (connection && client && account && txHashDeploy !== undefined) {
+        if (connection && client && txHashDeploy !== undefined) {
             const interval = setInterval(() => {
-                console.log('refreshing_moduleReference');
                 client
                     .getBlockItemStatus(txHashDeploy)
                     .then((report) => {
@@ -86,10 +88,10 @@ export default function DeployComponenet(props: ConnectionProps) {
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
         }
-    }, [connection, account, client, txHashDeploy]);
+    }, [connection, client, txHashDeploy]);
 
     useEffect(() => {
-        if (connection && client && account && moduleReferenceCalculated) {
+        if (connection && client && moduleReferenceCalculated) {
             client
                 .getModuleSource(new ModuleReference(moduleReferenceCalculated))
                 .then((value) => {
@@ -103,7 +105,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                     setIsModuleReferenceAlreadyDeployedStep1(false);
                 });
         }
-    }, [connection, account, client, moduleReferenceCalculated]);
+    }, [connection, client, moduleReferenceCalculated]);
 
     function onSubmit() {
         setTxHashDeploy(undefined);

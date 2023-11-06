@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Select from 'react-select';
@@ -32,7 +31,11 @@ interface ConnectionProps {
     moduleReferenceDeployed: undefined | string;
 }
 
-export default function InitComponenet(props: ConnectionProps) {
+/**
+ * A component that manages the input fields and corresponding state to initialize a new smart contract instance on chain.
+ * This components creates an `InitContract` transaction.
+ */
+export default function InitComponent(props: ConnectionProps) {
     const {
         isTestnet,
         account,
@@ -89,9 +92,8 @@ export default function InitComponenet(props: ConnectionProps) {
     // Refresh smartContractIndex periodically.
     // eslint-disable-next-line consistent-return
     useEffect(() => {
-        if (connection && client && account && txHash !== undefined) {
+        if (connection && client && txHash !== undefined) {
             const interval = setInterval(() => {
-                console.log('refreshing_smartContractIndex');
                 client
                     .getBlockItemStatus(txHash)
                     .then((report) => {
@@ -120,10 +122,10 @@ export default function InitComponenet(props: ConnectionProps) {
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
         }
-    }, [connection, account, client, txHash]);
+    }, [connection, client, txHash]);
 
     useEffect(() => {
-        if (connection && client && account && moduleReference) {
+        if (connection && client && moduleReference) {
             if (moduleReference.length === 64) {
                 client
                     .getModuleSource(new ModuleReference(moduleReference))
@@ -139,7 +141,7 @@ export default function InitComponenet(props: ConnectionProps) {
                     });
             }
         }
-    }, [connection, account, client, moduleReference]);
+    }, [connection, client, moduleReference]);
 
     useEffect(() => {
         if (

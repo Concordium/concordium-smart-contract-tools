@@ -44,21 +44,17 @@ export async function getEmbeddedSchema(
 
 export async function read(
     rpcClient: ConcordiumGRPCClient | undefined,
-    contractName: string | undefined,
+    contractName: string,
     contractIndex: bigint,
     entryPoint: string | undefined,
     moduleSchema: string | undefined,
     inputParameter: string | undefined,
     inputParameterType: string | undefined,
     hasInputParameter: boolean,
-    deriveFromSmartContractIndex: boolean
+    deriveContractInfo: boolean
 ) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
-    }
-
-    if (contractName === undefined) {
-        throw new Error(`Set contract name`);
     }
 
     if (entryPoint === undefined) {
@@ -68,9 +64,9 @@ export async function read(
     let param = toBuffer('', 'hex');
 
     if (hasInputParameter) {
-        if (!deriveFromSmartContractIndex && moduleSchema === undefined) {
+        if (!deriveContractInfo && moduleSchema === undefined) {
             throw new Error(`Set schema`);
-        } else if (deriveFromSmartContractIndex && moduleSchema === undefined) {
+        } else if (deriveContractInfo && moduleSchema === undefined) {
             throw new Error(`No embedded module schema found in module`);
         }
 
@@ -119,7 +115,7 @@ export async function read(
 
     if (!res || res.tag === 'failure' || !res.returnValue) {
         throw new Error(
-            `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' failed`
+            `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' failed. Original response: ${res}`
         );
     }
 

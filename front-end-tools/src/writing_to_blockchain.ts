@@ -21,32 +21,20 @@ export async function deploy(connection: WalletConnection, account: string, base
     } as DeployModulePayload);
 }
 
-export async function write(
-    connection: WalletConnection | undefined,
-    account: string | undefined,
+export async function update(
+    connection: WalletConnection,
+    account: string,
     inputParameter: string | undefined,
-    contractName: string | undefined,
+    contractName: string,
     entryPoint: string | undefined,
     hasInputParameter: boolean,
-    deriveFromSmartContractIndexWrite: boolean,
+    deriveContractInfo: boolean,
     moduleSchema: string | undefined,
     inputParameterType: string | undefined,
     maxContractExecutionEnergy: bigint,
     contractIndex: bigint,
     amount: bigint
 ) {
-    if (connection === undefined) {
-        throw new Error(`Connection is undefined`);
-    }
-
-    if (account === undefined) {
-        throw new Error(`Account is undefined`);
-    }
-
-    if (contractName === undefined) {
-        throw new Error(`Set smart contract name`);
-    }
-
     if (entryPoint === undefined) {
         throw new Error(`Set entry point name`);
     }
@@ -54,9 +42,9 @@ export async function write(
     let schema;
 
     if (hasInputParameter) {
-        if (!deriveFromSmartContractIndexWrite && moduleSchema === undefined) {
+        if (!deriveContractInfo && moduleSchema === undefined) {
             throw new Error(`Set schema`);
-        } else if (deriveFromSmartContractIndexWrite && moduleSchema === undefined) {
+        } else if (deriveContractInfo && moduleSchema === undefined) {
             throw new Error(`No embedded module schema found in module`);
         }
 

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Select from 'react-select';
@@ -17,7 +16,7 @@ import {
 
 import Box from './Box';
 import { TxHashLink } from './CCDScanLinks';
-import { write } from '../writing_to_blockchain';
+import { update } from '../writing_to_blockchain';
 import { getEmbeddedSchema, getContractInfo } from '../reading_from_blockchain';
 import { getObjectExample, getArrayExample } from '../utils';
 import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
@@ -29,12 +28,15 @@ interface ConnectionProps {
     client: ConcordiumGRPCClient | undefined;
 }
 
-export default function WriteComponenet(props: ConnectionProps) {
+/* A component that manages the input fields and corresponding state to update a smart contract instance on the chain.
+ * This components creates an `Update` transaction.
+ */
+export default function UpdateComponenet(props: ConnectionProps) {
     const { isTestnet, account, connection, client } = props;
 
     type FormType = {
         smartContractIndex: number;
-        smartContractName: string | undefined;
+        smartContractName: string;
         entryPointName: string | undefined;
         file: FileList | undefined;
         hasInputParameter: boolean;
@@ -76,12 +78,11 @@ export default function WriteComponenet(props: ConnectionProps) {
 
     const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
-    // Refresh writeTransactionOutcome periodically.
+    // Refresh transactionOutcome periodically.
     // eslint-disable-next-line consistent-return
     useEffect(() => {
-        if (connection && client && account && txHashUpdate !== undefined) {
+        if (connection && client && txHashUpdate !== undefined) {
             const interval = setInterval(() => {
-                console.log('refreshing_writeTransactionOutcome');
                 client
                     .getBlockItemStatus(txHashUpdate)
                     .then((report) => {
@@ -106,7 +107,7 @@ export default function WriteComponenet(props: ConnectionProps) {
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
         }
-    }, [connection, account, client, txHashUpdate]);
+    }, [connection, client, txHashUpdate]);
 
     useEffect(() => {
         if (entryPointTemplate !== undefined && hasInputParameter === false) {
@@ -178,7 +179,7 @@ export default function WriteComponenet(props: ConnectionProps) {
 
         // Send update transaction
 
-        const tx = write(
+        const tx = update(
             connection,
             account,
             data.inputParameter,
@@ -197,7 +198,7 @@ export default function WriteComponenet(props: ConnectionProps) {
     }
 
     return (
-        <Box header="Write To Smart Contract">
+        <Box header="Update Smart Contract Instance">
             <Form onSubmit={form.handleSubmit(onSubmit)}>
                 <Row>
                     <Form.Group className="col-md-3 mb-3">
@@ -215,8 +216,8 @@ export default function WriteComponenet(props: ConnectionProps) {
                     </Form.Group>
 
                     {deriveContractInfo &&
-                        contractInstanceInfo !== undefined &&
-                        contractInstanceInfo.contractName !== undefined ? (
+                    contractInstanceInfo !== undefined &&
+                    contractInstanceInfo.contractName !== undefined ? (
                         <Form.Group className="col-md-3 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
                             <Form.Control
@@ -243,8 +244,8 @@ export default function WriteComponenet(props: ConnectionProps) {
                     )}
 
                     {deriveContractInfo &&
-                        contractInstanceInfo !== undefined &&
-                        contractInstanceInfo.methods.length > 0 ? (
+                    contractInstanceInfo !== undefined &&
+                    contractInstanceInfo.methods.length > 0 ? (
                         <Form.Group className="col-md-3 mb-3">
                             <Form.Label>Entry Point Name</Form.Label>
                             <Select
@@ -575,7 +576,7 @@ export default function WriteComponenet(props: ConnectionProps) {
                 <br />
 
                 <Button variant="primary" type="submit">
-                    Write Smart Contract
+                    Update Smart Contract
                 </Button>
                 <br />
                 <br />

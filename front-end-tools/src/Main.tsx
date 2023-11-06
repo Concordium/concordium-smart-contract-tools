@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import React, { useEffect, useState } from 'react';
 
 import {
@@ -15,7 +14,7 @@ import { AccountAddress } from '@concordium/web-sdk';
 import { Alert } from 'react-bootstrap';
 import DeployComponent from './components/DeployComponent';
 import ReadComponent from './components/ReadComponent';
-import WriteComponent from './components/WriteComponent';
+import UpdateComponent from './components/UpdateComponent';
 import InitComponent from './components/InitComponent';
 import { AccountLink } from './components/CCDScanLinks';
 import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
@@ -25,6 +24,11 @@ interface ConnectionProps {
     isTestnet: boolean;
 }
 
+/**
+ * The main component manages the connection to the browser wallet and
+ * combines the rest of the components (DeployComponent, InitComponent, ReadComponent, and UpdateComponent) to form the page.
+ * The connected account address, and its balance are displayed at the top. Links for further reading are displayed at the bottom.
+ */
 export default function Main(props: ConnectionProps) {
     // Network state
     const { walletConnectionProps, isTestnet } = props;
@@ -54,7 +58,6 @@ export default function Main(props: ConnectionProps) {
     useEffect(() => {
         if (connection && client && account) {
             setInterval(() => {
-                console.log('refreshing_accountInfo');
                 client
                     .getAccountInfo(new AccountAddress(account))
                     .then((value) => {
@@ -182,7 +185,7 @@ export default function Main(props: ConnectionProps) {
 
                             <ReadComponent connection={connection} account={account} client={client} />
 
-                            <WriteComponent
+                            <UpdateComponent
                                 isTestnet={isTestnet}
                                 connection={connection}
                                 account={account}

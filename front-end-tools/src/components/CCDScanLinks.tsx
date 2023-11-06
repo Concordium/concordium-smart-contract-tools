@@ -1,11 +1,21 @@
 import React from 'react';
 
+function ccdScanUrl(isTestnet: boolean): string {
+    return `https://${isTestnet ? `testnet.` : ``}ccdscan.io`;
+}
+
 interface TxHashLinkProps {
     isTestnet: boolean;
     txHash: string;
     message: string;
 }
 
+/**
+ * A component that displays the CCDScan link of a transaction hash.
+ * A message at the bottom can be used to add some custom description to the link.
+ * If `isTestnet` is true, the testnet CCDScan link is displayed.
+ * If `isTestnet` is false, the mainnet CCDScan link is displayed.
+ */
 export const TxHashLink = function TxHashLink(props: TxHashLinkProps) {
     const { isTestnet, txHash, message } = props;
 
@@ -17,9 +27,7 @@ export const TxHashLink = function TxHashLink(props: TxHashLinkProps) {
                     className="link"
                     target="_blank"
                     rel="noreferrer"
-                    href={`https://${
-                        isTestnet ? `testnet.` : ``
-                    }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
+                    href={`${ccdScanUrl(isTestnet)}/?dcount=1&dentity=transaction&dhash=${txHash}`}
                 >
                     {txHash}
                 </a>
@@ -38,6 +46,11 @@ interface AccountLinkProps {
     account: string;
 }
 
+/**
+ * A component that displays the CCDScan link to an account address.
+ * If `isTestnet` is true, the testnet CCDScan link is displayed.
+ * If `isTestnet` is false, the mainnet CCDScan link is displayed.
+ */
 export const AccountLink = function AccountLink(props: AccountLinkProps) {
     const { isTestnet, account } = props;
 
@@ -45,7 +58,7 @@ export const AccountLink = function AccountLink(props: AccountLinkProps) {
         <div>
             <a
                 className="link"
-                href={`https://${isTestnet ? `testnet.` : ``}ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                href={`${ccdScanUrl(isTestnet)}/?dcount=1&dentity=account&daddress=${account}`}
                 target="_blank"
                 rel="noreferrer"
             >

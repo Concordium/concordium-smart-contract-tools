@@ -1,10 +1,12 @@
-/* eslint-disable no-console */
 import React, { PropsWithChildren } from 'react';
 
 type BoxProps = PropsWithChildren<{
     header: string;
 }>;
 
+/**
+ * A component that creates a box with a header and background/borderLine styling.
+ */
 export default function Box(props: BoxProps) {
     const { children, header } = props;
 

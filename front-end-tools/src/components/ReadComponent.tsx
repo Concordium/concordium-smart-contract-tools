@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Select from 'react-select';
@@ -24,12 +23,16 @@ interface ConnectionProps {
     client: ConcordiumGRPCClient | undefined;
 }
 
+/**
+ * A component that manages the input fields and corresponding state to read from a smart contract instance on the chain.
+ * The `invoke` action is used in this component which does not create a transaction.
+ */
 export default function ReadComponenet(props: ConnectionProps) {
     const { client } = props;
 
     type FormType = {
         smartContractIndex: number;
-        smartContractName: string | undefined;
+        smartContractName: string;
         entryPointName: string | undefined;
         file: FileList | undefined;
         hasInputParameter: boolean;
@@ -174,8 +177,8 @@ export default function ReadComponenet(props: ConnectionProps) {
                     </Form.Group>
 
                     {deriveContractInfo &&
-                        contractInstanceInfo !== undefined &&
-                        contractInstanceInfo.contractName !== undefined ? (
+                    contractInstanceInfo !== undefined &&
+                    contractInstanceInfo.contractName !== undefined ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
                             <Form.Control
@@ -208,8 +211,8 @@ export default function ReadComponenet(props: ConnectionProps) {
                     )}
 
                     {deriveContractInfo &&
-                        contractInstanceInfo !== undefined &&
-                        contractInstanceInfo.methods.length > 0 ? (
+                    contractInstanceInfo !== undefined &&
+                    contractInstanceInfo.methods.length > 0 ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Entry Point Name</Form.Label>
                             <Select

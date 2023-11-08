@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
@@ -61,8 +61,6 @@ export default function UpdateComponenet(props: ConnectionProps) {
     const [parsingError, setParsingError] = useState<string | undefined>(undefined);
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
-    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
-
     const [transactionErrorUpdate, setTransactionErrorUpdate] = useState<string | undefined>(undefined);
     const [txHashUpdate, setTxHashUpdate] = useState<string | undefined>(undefined);
     const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState<string | undefined>(undefined);
@@ -106,15 +104,15 @@ export default function UpdateComponenet(props: ConnectionProps) {
                         clearInterval(interval);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
         }
     }, [connection, client, txHashUpdate]);
 
-    useEffect(() => {
+    const shouldWarnInputParameterInSchemaIgnored = useMemo(() => {
         if (entryPointTemplate !== undefined && hasInputParameter === false) {
-            setShouldWarnInputParameterInSchemaIgnored(true);
-        } else {
-            setShouldWarnInputParameterInSchemaIgnored(false);
+            return true;
         }
+        return false;
     }, [entryPointTemplate, hasInputParameter]);
 
     useEffect(() => {

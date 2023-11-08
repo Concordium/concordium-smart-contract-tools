@@ -56,7 +56,7 @@ export default function Main(props: ConnectionProps) {
     // eslint-disable-next-line consistent-return
     useEffect(() => {
         if (connection && client && account) {
-            setInterval(() => {
+            const interval = setInterval(() => {
                 client
                     .getAccountInfo(new AccountAddress(account))
                     .then((value) => {
@@ -74,6 +74,7 @@ export default function Main(props: ConnectionProps) {
                         setAccountExistsOnNetwork(false);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
         }
     }, [connection, account, client]);
 

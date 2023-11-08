@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
@@ -78,8 +78,6 @@ export default function InitComponent(props: ConnectionProps) {
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
     const [isModuleReferenceAlreadyDeployedStep2, setIsModuleReferenceAlreadyDeployedStep2] = useState(false);
-    const [shouldWarnDifferenceModuleReferences, setShouldWarnDifferenceModuleReferences] = useState(false);
-    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] = useState(false);
 
     const [txHash, setTxHash] = useState<string | undefined>(undefined);
 
@@ -121,6 +119,7 @@ export default function InitComponent(props: ConnectionProps) {
                         clearInterval(interval);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
         }
     }, [connection, client, txHash]);
 
@@ -143,24 +142,22 @@ export default function InitComponent(props: ConnectionProps) {
         }
     }, [connection, client, moduleReference]);
 
-    useEffect(() => {
+    const shouldWarnDifferenceModuleReferences = useMemo(() => {
         if (
             moduleReference !== undefined &&
             moduleReferenceCalculated !== undefined &&
             moduleReferenceCalculated !== moduleReference
         ) {
-            setShouldWarnDifferenceModuleReferences(true);
-        } else {
-            setShouldWarnDifferenceModuleReferences(false);
+            return true;
         }
+        return false;
     }, [moduleReference, moduleReferenceCalculated]);
 
-    useEffect(() => {
+    const shouldWarnInputParameterInSchemaIgnored = useMemo(() => {
         if (inputParameterTemplate !== undefined && hasInputParameter === false) {
-            setShouldWarnInputParameterInSchemaIgnored(true);
-        } else {
-            setShouldWarnInputParameterInSchemaIgnored(false);
+            return true;
         }
+        return false;
     }, [inputParameterTemplate, hasInputParameter]);
 
     useEffect(() => {

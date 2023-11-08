@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
@@ -50,8 +50,6 @@ export default function ReadComponenet(props: ConnectionProps) {
 
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
-    const [shouldWarnInputParameterInSchemaIgnored, setShouldWarnInputParameterInSchemaIgnored] =
-        useState<boolean>(false);
     const [uploadError, setUploadError] = useState<string | undefined>(undefined);
     const [parsingError, setParsingError] = useState<string | undefined>(undefined);
 
@@ -67,12 +65,11 @@ export default function ReadComponenet(props: ConnectionProps) {
 
     const [embeddedModuleSchemaBase64, setEmbeddedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
-    useEffect(() => {
+    const shouldWarnInputParameterInSchemaIgnored = useMemo(() => {
         if (entryPointTemplate !== undefined && form.getValues('hasInputParameter') === false) {
-            setShouldWarnInputParameterInSchemaIgnored(true);
-        } else {
-            setShouldWarnInputParameterInSchemaIgnored(false);
+            return true;
         }
+        return false;
     }, [entryPointTemplate, hasInputParameter]);
 
     useEffect(() => {

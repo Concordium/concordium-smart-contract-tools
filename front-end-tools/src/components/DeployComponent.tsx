@@ -23,10 +23,10 @@ interface ConnectionProps {
     connection: WalletConnection;
     client: ConcordiumGRPCClient | undefined;
     isTestnet: boolean;
-    setContracts: (arg0: string[]) => void;
-    setEmbeddedModuleSchemaBase64Init: (arg0: string) => void;
-    setModuleReferenceDeployed: (arg0: string | undefined) => void;
-    setModuleReferenceCalculated: (arg0: string) => void;
+    setContracts: (contracts: string[]) => void;
+    setEmbeddedModuleSchemaBase64Init: (embeddedModuleSchemaBase64Init: string) => void;
+    setModuleReferenceDeployed: (moduleReferenceDeployed: string | undefined) => void;
+    setModuleReferenceCalculated: (moduleReferenceCalculated: string) => void;
     moduleReferenceCalculated: string | undefined;
 }
 
@@ -88,6 +88,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                         clearInterval(interval);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
         }
     }, [connection, client, txHashDeploy]);
 

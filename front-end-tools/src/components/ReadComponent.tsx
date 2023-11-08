@@ -245,7 +245,6 @@ export default function ReadComponenet(props: ConnectionProps) {
                     <Form.Group className="mb-3 d-flex justify-content-center">
                         <Form.Check
                             type="checkbox"
-                            id="deriveContractInfo"
                             label="Derive From Smart Contract Index"
                             {...form.register('deriveFromSmartContractIndex')}
                             onChange={async (e) => {
@@ -277,6 +276,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                                                 .then((embeddedSchema) => {
                                                     const schema = new Uint8Array(embeddedSchema);
 
+                                                    // Use `reduce` to be able to convert large modules.
                                                     const moduleSchemaBase64Embedded = btoa(
                                                         new Uint8Array(schema).reduce((data, byte) => {
                                                             return data + String.fromCharCode(byte);
@@ -319,6 +319,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                                     const file = files[0];
                                     const arrayBuffer = await file.arrayBuffer();
 
+                                    // Use `reduce` to be able to convert large schemas.
                                     const schema = btoa(
                                         new Uint8Array(arrayBuffer).reduce((data, byte) => {
                                             return data + String.fromCharCode(byte);
@@ -360,7 +361,6 @@ export default function ReadComponenet(props: ConnectionProps) {
                 <Form.Group className="mb-3 d-flex justify-content-center">
                     <Form.Check
                         type="checkbox"
-                        id="hasInputParameter"
                         label="Has Input Parameter"
                         {...form.register('hasInputParameter')}
                         onChange={async (e) => {
@@ -506,7 +506,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                 {(deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64) === undefined && (
                     <Alert variant="warning">
                         {' '}
-                        Warning: ModuleSchema is undefined. Return value might not be correctly decoded.{' '}
+                        Warning: There is no module schema, so the return value cannot be decoded.{' '}
                     </Alert>
                 )}
                 {shouldWarnInputParameterInSchemaIgnored && (

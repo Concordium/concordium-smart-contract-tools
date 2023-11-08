@@ -18,7 +18,7 @@ import { TxHashLink } from './CCDScanLinks';
 import Box from './Box';
 import { initialize } from '../writing_to_blockchain';
 import { getObjectExample, getArrayExample } from '../utils';
-import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
+import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS, REG_MODULE_REF } from '../constants';
 
 interface ConnectionProps {
     isTestnet: boolean;
@@ -126,7 +126,7 @@ export default function InitComponent(props: ConnectionProps) {
 
     useEffect(() => {
         if (connection && client && moduleReference) {
-            if (moduleReference.length === 64) {
+            if (REG_MODULE_REF.test(moduleReference)) {
                 client
                     .getModuleSource(new ModuleReference(moduleReference))
                     .then((value) => {
@@ -253,7 +253,6 @@ export default function InitComponent(props: ConnectionProps) {
                 <Form.Group className="mb-3 d-flex justify-content-center">
                     <Form.Check
                         type="checkbox"
-                        id="useModuleReferenceFromStep1"
                         label="Use Module From Step 1"
                         {...form.register('useModuleReferenceFromStep1')}
                         onChange={async (e) => {
@@ -268,10 +267,7 @@ export default function InitComponent(props: ConnectionProps) {
 
                             const checkboxElement = form.getValues('useModuleReferenceFromStep1');
 
-                            form.setValue(
-                                'moduleReference',
-                                '00000000000000000000000000000000000000000000000000000000000000000'
-                            );
+                            form.setValue('moduleReference', undefined);
 
                             if (
                                 checkboxElement &&
@@ -290,6 +286,7 @@ export default function InitComponent(props: ConnectionProps) {
                                 form.setValue('moduleReference', newModuleReference);
 
                                 setDisplayContracts(contracts);
+                                form.setValue('smartContractName', contracts[0]);
                             }
                         }}
                     />
@@ -339,8 +336,10 @@ export default function InitComponent(props: ConnectionProps) {
 
                                 const moduleRef = form.getValues('moduleReference');
 
-                                if (moduleRef !== undefined && moduleRef.length !== 64) {
-                                    setModuleReferenceLengthError('Module reference has to be of length 64');
+                                if (moduleRef !== undefined && !REG_MODULE_REF.test(moduleRef)) {
+                                    setModuleReferenceLengthError(
+                                        'Module reference has to be a valid hex string `[0-9A-Fa-f]` of length 64'
+                                    );
                                 }
                             }}
                         />
@@ -359,6 +358,7 @@ export default function InitComponent(props: ConnectionProps) {
                                     value: contract,
                                     label: contract,
                                 }))}
+                                placeholder={displayContracts[0]}
                                 onChange={(e) => {
                                     form.setValue('smartContractName', e?.value);
                                 }}
@@ -403,7 +403,6 @@ export default function InitComponent(props: ConnectionProps) {
                 <Form.Group className="mb-3 d-flex justify-content-center">
                     <Form.Check
                         type="checkbox"
-                        id="isPayable"
                         label="Is Payable"
                         {...form.register('isPayable')}
                         onChange={async (e) => {
@@ -440,7 +439,6 @@ export default function InitComponent(props: ConnectionProps) {
                 <Form.Group className="mb-3 d-flex justify-content-center">
                     <Form.Check
                         type="checkbox"
-                        id="hasInputParameter"
                         label="Has Input Parameter"
                         {...form.register('hasInputParameter')}
                         onChange={async (e) => {
@@ -481,6 +479,7 @@ export default function InitComponent(props: ConnectionProps) {
                                             const file = files[0];
                                             const arrayBuffer = await file.arrayBuffer();
 
+                                            // Use `reduce` to be able to convert large schemas.
                                             const schema = btoa(
                                                 new Uint8Array(arrayBuffer).reduce((data, byte) => {
                                                     return data + String.fromCharCode(byte);

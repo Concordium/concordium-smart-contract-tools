@@ -4,10 +4,13 @@ import {
     deserializeReceiveReturnValue,
     serializeUpdateContractParameters,
     ModuleReference,
+    InvokeContractFailedResult,
+    RejectedReceive,
 } from '@concordium/web-sdk';
 
 import { CONTRACT_SUB_INDEX } from './constants';
 
+/** This function gets the contract info of a smart contract index. */
 export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefined, contractIndex: bigint) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
@@ -28,6 +31,7 @@ export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefine
     return returnValue;
 }
 
+/** This function gets the embedded schema of a module reference. */
 export async function getEmbeddedSchema(
     rpcClient: ConcordiumGRPCClient | undefined,
     moduleRef: ModuleReference | undefined
@@ -42,6 +46,12 @@ export async function getEmbeddedSchema(
     return rpcClient.getEmbeddedSchema(moduleRef);
 }
 
+/** This function invokes a smart contract entry point and returns its return_value.
+ * This function expects that the entry point is a `typical` smart contract view/read/getter function that returns a return_value.
+ * This function throws an error if the entry point does not return a return_value.
+ * If the moduleSchema parameter is undefined, the return_value is in raw bytes.
+ * If a valid moduleSchema is provided, the return_value is deserialized.
+ */
 export async function read(
     rpcClient: ConcordiumGRPCClient | undefined,
     contractName: string,
@@ -113,9 +123,17 @@ export async function read(
         parameter: param,
     });
 
-    if (!res || res.tag === 'failure' || !res.returnValue) {
+    if (!res || res.tag === 'failure') {
         throw new Error(
-            `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' failed. Original response: ${res}`
+            `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' failed. 
+            Reject reason: ${JSON.stringify(
+                ((res as InvokeContractFailedResult)?.reason as RejectedReceive)?.rejectReason
+            )}`
+        );
+    }
+    if (!res.returnValue) {
+        throw new Error(
+            `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' returned no return_value`
         );
     }
 
@@ -124,17 +142,25 @@ export async function read(
         return JSON.stringify(res.returnValue);
     }
 
-    // If schema is provided deserialize return value
-    const returnValue = deserializeReceiveReturnValue(
-        toBuffer(res.returnValue, 'hex'),
-        toBuffer(moduleSchema, 'base64'),
-        contractName,
-        entryPoint
-    );
+    let returnValue;
+
+    try {
+        // If schema is provided deserialize return value
+        returnValue = deserializeReceiveReturnValue(
+            toBuffer(res.returnValue, 'hex'),
+            toBuffer(moduleSchema, 'base64'),
+            contractName,
+            entryPoint
+        );
+    } catch (e) {
+        throw new Error(
+            `Deserializing the returnValue from the '${contractName}.${entryPoint}' method of contract '${contractIndex}' failed. Original error: ${e}`
+        );
+    }
 
     if (returnValue === undefined) {
         throw new Error(
-            `Deserializing the returnValue from the '${contractName}.${entryPoint}' method of contract '${contractIndex}' failed`
+            `Deserializing the returnValue from the '${contractName}.${entryPoint}' method of contract '${contractIndex}' failed.`
         );
     } else {
         return JSON.stringify(returnValue);

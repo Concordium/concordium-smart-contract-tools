@@ -11,6 +11,8 @@ import { WalletConnection } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
 import { CONTRACT_SUB_INDEX } from './constants';
 
+/** This function signs and sends a `DeployModule` transaction.
+ */
 export async function deploy(connection: WalletConnection, account: string, base64Module: string | undefined) {
     if (base64Module === undefined) {
         throw new Error(`Upload a smart contract module first`);
@@ -21,6 +23,10 @@ export async function deploy(connection: WalletConnection, account: string, base
     } as DeployModulePayload);
 }
 
+/** This function signs and sends an `Update` transaction.
+ * If the transaction should include an input parameter, `hasInputParameter` needs to be true
+ * and the `inputParameter`, its `inputParameterType`, and the contract `moduleSchema` have to be provided.
+ */
 export async function update(
     connection: WalletConnection,
     account: string,
@@ -101,6 +107,11 @@ export async function update(
     );
 }
 
+/** This function signs and sends an `InitContract` transaction.
+ * If the transaction should include an input parameter,
+ * `hasInputParameter` needs to be true and the `inputParameter`,
+ * its `inputParameterType`, and the contract `moduleSchema` have to be provided.
+ */
 export async function initialize(
     connection: WalletConnection,
     account: string,

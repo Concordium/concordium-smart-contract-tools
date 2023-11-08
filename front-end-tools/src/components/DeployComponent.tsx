@@ -27,7 +27,6 @@ interface ConnectionProps {
     setEmbeddedModuleSchemaBase64Init: (arg0: string) => void;
     setModuleReferenceDeployed: (arg0: string | undefined) => void;
     setModuleReferenceCalculated: (arg0: string) => void;
-    moduleReferenceDeployed: string | undefined;
     moduleReferenceCalculated: string | undefined;
 }
 
@@ -43,7 +42,6 @@ export default function DeployComponenet(props: ConnectionProps) {
         account,
         setContracts,
         setModuleReferenceDeployed,
-        moduleReferenceDeployed,
         setModuleReferenceCalculated,
         moduleReferenceCalculated,
         setEmbeddedModuleSchemaBase64Init,
@@ -59,7 +57,7 @@ export default function DeployComponenet(props: ConnectionProps) {
     const [isModuleReferenceAlreadyDeployedStep1, setIsModuleReferenceAlreadyDeployedStep1] = useState(false);
     const [txHashDeploy, setTxHashDeploy] = useState<string | undefined>(undefined);
     const [base64Module, setBase64Module] = useState<string | undefined>(undefined);
-    const [viewErrorModuleReference, setViewErrorModuleReference] = useState<string | undefined>(undefined);
+    const [transactionOutcome, setTransactionOutcome] = useState<string | undefined>(undefined);
 
     // Refresh moduleReference periodically.
     // eslint-disable-next-line consistent-return
@@ -70,20 +68,23 @@ export default function DeployComponenet(props: ConnectionProps) {
                     .getBlockItemStatus(txHashDeploy)
                     .then((report) => {
                         if (report !== undefined) {
-                            setViewErrorModuleReference(undefined);
                             if (
                                 report.status === 'finalized' &&
                                 report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
                                 report.outcome.summary.transactionType === TransactionKindString.DeployModule
                             ) {
+                                setTransactionOutcome('Success');
                                 setModuleReferenceDeployed(report.outcome.summary.moduleDeployed.contents);
+                                clearInterval(interval);
+                            } else {
+                                setTransactionOutcome('Fail');
                                 clearInterval(interval);
                             }
                         }
                     })
                     .catch((e) => {
                         setModuleReferenceDeployed(undefined);
-                        setViewErrorModuleReference((e as Error).message);
+                        setTransactionOutcome(`Fail; Error: ${(e as Error).message}`);
                         clearInterval(interval);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
@@ -110,6 +111,7 @@ export default function DeployComponenet(props: ConnectionProps) {
     function onSubmit() {
         setTxHashDeploy(undefined);
         setTransactionErrorDeploy(undefined);
+        setTransactionOutcome(undefined);
 
         // Send deploy transaction
 
@@ -145,6 +147,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                                 const file = files[0];
                                 const arrayBuffer = await file.arrayBuffer();
 
+                                // Use `reduce` to be able to convert large modules.
                                 const module = btoa(
                                     new Uint8Array(arrayBuffer).reduce((data, byte) => {
                                         return data + String.fromCharCode(byte);
@@ -158,19 +161,22 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                 // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
                                 // Unversioned modules `.wasm` cannot be created by Concordium's tooling anymore.
-                                // If the module is versioned, the first 8 bytes are the version, followed by the `magicValue` below.
+                                // If the module is versioned, the first 4 bytes are the version, the next 4 bytes are the length, followed by the `magicValue` below.
                                 // If the module is an old unversioned one, the module starts with the `magicValue` below.
+                                // The `magicValue` is the magic value for Wasm modules as specified by the Wasm spec.
                                 const magicValue = new Uint8Array([0x00, 0x61, 0x73, 0x6d]);
                                 let uploadedModuleFirst4Bytes = new Uint8Array([]);
 
                                 if (arrayBuffer.byteLength >= 4) {
                                     uploadedModuleFirst4Bytes = new Uint8Array(arrayBuffer).subarray(0, 4);
                                 } else {
-                                    setUploadError(`You might have not uploaded a Concordium module.`);
+                                    setUploadError(
+                                        `You might have not uploaded a valid Wasm module. Byte length of a Wasm module needs to be at least 4.`
+                                    );
                                 }
 
                                 // If we have an unversioned module, we remove no bytes.
-                                // If we have a versioned module, we remove 8 bytes (remove the versioned 8 bytes at the beginning)
+                                // If we have a versioned module, we remove 8 bytes at the beginning (version and length information).
                                 const slice = arraysEqual(uploadedModuleFirst4Bytes, magicValue) ? 0 : 8;
 
                                 let wasmModule;
@@ -189,7 +195,7 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                     const contractNames = [];
                                     for (let i = 0; i < moduleFunctions.length; i += 1) {
-                                        if (moduleFunctions[i].name.slice(0, 5) === 'init_') {
+                                        if (moduleFunctions[i].name.startsWith('init_')) {
                                             contractNames.push(moduleFunctions[i].name.slice(5));
                                         }
                                     }
@@ -202,6 +208,7 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                     const schema = new Uint8Array(customSection[0]);
 
+                                    // Use `reduce` to be able to convert large schema.
                                     const moduleSchemaBase64Embedded = btoa(
                                         new Uint8Array(schema).reduce((data, byte) => {
                                             return data + String.fromCharCode(byte);
@@ -251,20 +258,26 @@ export default function DeployComponenet(props: ConnectionProps) {
                 <TxHashLink
                     txHash={txHashDeploy}
                     isTestnet={isTestnet}
-                    message="Deployed module reference will appear below once the transaction is finalized."
+                    message="The outcome of the transaction will be displayed below."
                 />
             )}
-            {moduleReferenceDeployed && (
+            {transactionOutcome === 'Success' && (
                 <>
                     <br />
-                    <br />
                     <div className="actionResultBox">
-                        Module Reference deployed:
-                        <div>{moduleReferenceDeployed}</div>
+                        Outcome of transaction:
+                        <div>{transactionOutcome}</div>
                     </div>
                 </>
             )}
-            {viewErrorModuleReference && <Alert variant="danger"> Error: {viewErrorModuleReference}. </Alert>}
+            {transactionOutcome !== undefined && transactionOutcome !== 'Success' && (
+                <>
+                    <br />
+                    <div> Outcome of transaction:</div>
+                    <br />
+                    <Alert variant="danger">Error: {transactionOutcome}. </Alert>
+                </>
+            )}
         </Box>
     );
 }

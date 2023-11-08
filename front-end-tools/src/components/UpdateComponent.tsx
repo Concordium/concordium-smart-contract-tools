@@ -289,7 +289,6 @@ export default function UpdateComponenet(props: ConnectionProps) {
                     <Form.Group className="mb-3 d-flex justify-content-center">
                         <Form.Check
                             type="checkbox"
-                            id="attribute-required"
                             label="Derive From Smart Contract Index"
                             {...form.register('deriveFromSmartContractIndex')}
                             onChange={async (e) => {
@@ -321,6 +320,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
                                                 .then((embeddedSchema) => {
                                                     const schema = new Uint8Array(embeddedSchema);
 
+                                                    // Use `reduce` to be able to convert large modules.
                                                     const moduleSchemaBase64Embedded = btoa(
                                                         new Uint8Array(schema).reduce((data, byte) => {
                                                             return data + String.fromCharCode(byte);
@@ -369,7 +369,6 @@ export default function UpdateComponenet(props: ConnectionProps) {
                 <Form.Group className="mb-3 d-flex justify-content-center">
                     <Form.Check
                         type="checkbox"
-                        id="isPayable"
                         label="Is Payable"
                         {...form.register('isPayable')}
                         onChange={async (e) => {
@@ -406,7 +405,6 @@ export default function UpdateComponenet(props: ConnectionProps) {
                 <Form.Group className="mb-3 d-flex justify-content-center">
                     <Form.Check
                         type="checkbox"
-                        id="hasInputParameter"
                         label="Has Input Parameter"
                         {...form.register('hasInputParameter')}
                         onChange={async (e) => {

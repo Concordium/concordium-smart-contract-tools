@@ -24,8 +24,7 @@ interface ConnectionProps {
     isTestnet: boolean;
 }
 
-/**
- * The main component manages the connection to the browser wallet and
+/** The main component manages the connection to the browser wallet and
  * combines the rest of the components (DeployComponent, InitComponent, ReadComponent, and UpdateComponent) to form the page.
  * The connected account address, and its balance are displayed at the top. Links for further reading are displayed at the bottom.
  */
@@ -165,7 +164,6 @@ export default function Main(props: ConnectionProps) {
                                 account={account}
                                 client={client}
                                 setContracts={setContracts}
-                                moduleReferenceDeployed={moduleReferenceDeployed}
                                 moduleReferenceCalculated={moduleReferenceCalculated}
                                 setModuleReferenceDeployed={setModuleReferenceDeployed}
                                 setModuleReferenceCalculated={setModuleReferenceCalculated}

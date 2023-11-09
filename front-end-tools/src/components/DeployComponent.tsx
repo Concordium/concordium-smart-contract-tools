@@ -67,9 +67,8 @@ export default function DeployComponenet(props: ConnectionProps) {
                 client
                     .getBlockItemStatus(txHashDeploy)
                     .then((report) => {
-                        if (report !== undefined) {
+                        if (report !== undefined && report.status === 'finalized') {
                             if (
-                                report.status === 'finalized' &&
                                 report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
                                 report.outcome.summary.transactionType === TransactionKindString.DeployModule
                             ) {
@@ -238,7 +237,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                             <div>{base64Module.toString().slice(0, 30)} ...</div>
                         </div>
                         {isModuleReferenceAlreadyDeployedStep1 && (
-                            <Alert variant="warning">Module reference already deployed.</Alert>
+                            <Alert variant="warning">Module is already deployed.</Alert>
                         )}
                         <br />
                         {!isModuleReferenceAlreadyDeployedStep1 && (

@@ -90,18 +90,16 @@ export default function UpdateComponenet(props: ConnectionProps) {
                 client
                     .getBlockItemStatus(txHashUpdate)
                     .then((report) => {
-                        if (report !== undefined) {
-                            if (report.status === 'finalized') {
-                                if (
-                                    report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
-                                    report.outcome.summary.transactionType === TransactionKindString.Update
-                                ) {
-                                    setTransactionOutcome('Success');
-                                    clearInterval(interval);
-                                } else {
-                                    setTransactionOutcome('Fail');
-                                    clearInterval(interval);
-                                }
+                        if (report !== undefined && report.status === 'finalized') {
+                            if (
+                                report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
+                                report.outcome.summary.transactionType === TransactionKindString.Update
+                            ) {
+                                setTransactionOutcome('Success');
+                                clearInterval(interval);
+                            } else {
+                                setTransactionOutcome('Fail');
+                                clearInterval(interval);
                             }
                         }
                     })
@@ -337,6 +335,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
                                                     form.setValue('smartContractName', contractInfo.contractName);
                                                 })
                                                 .catch((err: Error) => {
+                                                    setContractInstanceInfo(contractInfo);
                                                     setError((err as Error).message);
                                                 });
                                         })

@@ -292,6 +292,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                                                     form.setValue('smartContractName', contractInfo.contractName);
                                                 })
                                                 .catch((err: Error) => {
+                                                    setContractInstanceInfo(contractInfo);
                                                     setError((err as Error).message);
                                                 });
                                         })

@@ -284,7 +284,7 @@ export default function InitComponent(props: ConnectionProps) {
                                 moduleReferenceDeployed === undefined &&
                                 moduleReferenceCalculated === undefined
                             ) {
-                                setModuleReferenceError('Module reference is not set in step 1');
+                                setModuleReferenceError('No module is uploaded in step 1');
                             }
 
                             const newModuleReference =

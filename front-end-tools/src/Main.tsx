@@ -9,7 +9,6 @@ import {
     MAINNET,
     useWalletConnectorSelector,
 } from '@concordium/react-components';
-import { AccountAddress } from '@concordium/web-sdk';
 
 import { Alert } from 'react-bootstrap';
 import DeployComponent from './components/DeployComponent';
@@ -17,6 +16,8 @@ import ReadComponent from './components/ReadComponent';
 import UpdateComponent from './components/UpdateComponent';
 import InitComponent from './components/InitComponent';
 import { AccountLink } from './components/CCDScanLinks';
+import { getAccountInfo } from './reading_from_blockchain';
+
 import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
 
 interface ConnectionProps {
@@ -57,22 +58,7 @@ export default function Main(props: ConnectionProps) {
     useEffect(() => {
         if (connection && client && account) {
             const interval = setInterval(() => {
-                client
-                    .getAccountInfo(new AccountAddress(account))
-                    .then((value) => {
-                        if (value !== undefined) {
-                            setAccountBalance(value.accountAmount.toString());
-                            setAccountExistsOnNetwork(true);
-                        } else {
-                            setAccountExistsOnNetwork(false);
-                        }
-                        setViewErrorAccountInfo(undefined);
-                    })
-                    .catch((e) => {
-                        setAccountBalance(undefined);
-                        setViewErrorAccountInfo((e as Error).message.replaceAll('%20', ' '));
-                        setAccountExistsOnNetwork(false);
-                    });
+                getAccountInfo(client, account, setAccountBalance, setAccountExistsOnNetwork, setViewErrorAccountInfo);
             }, REFRESH_INTERVAL.asMilliseconds());
             return () => clearInterval(interval);
         }
@@ -80,22 +66,7 @@ export default function Main(props: ConnectionProps) {
 
     useEffect(() => {
         if (connection && client && account) {
-            client
-                .getAccountInfo(new AccountAddress(account))
-                .then((value) => {
-                    if (value !== undefined) {
-                        setAccountBalance(value.accountAmount.toString());
-                        setAccountExistsOnNetwork(true);
-                    } else {
-                        setAccountExistsOnNetwork(false);
-                    }
-                    setViewErrorAccountInfo(undefined);
-                })
-                .catch((e) => {
-                    setViewErrorAccountInfo((e as Error).message.replaceAll('%20', ' '));
-                    setAccountBalance(undefined);
-                    setAccountExistsOnNetwork(false);
-                });
+            getAccountInfo(client, account, setAccountBalance, setAccountExistsOnNetwork, setViewErrorAccountInfo);
         }
     }, [connection, account, client]);
 

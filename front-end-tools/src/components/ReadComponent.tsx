@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
 
@@ -41,12 +41,18 @@ export default function ReadComponenet(props: ConnectionProps) {
         inputParameter: string | undefined;
     };
 
-    const form = useForm<FormType>();
-    const deriveContractInfo = form.watch('deriveFromSmartContractIndex');
-    const hasInputParameter = form.watch('hasInputParameter');
-    const entryPointName = form.watch('entryPointName');
-    const smartContractName = form.watch('smartContractName');
-    const inputParameterType = form.watch('inputParameterType');
+    const form = useForm<FormType>({ mode: 'all' });
+
+    const [deriveContractInfo, smartContractName, inputParameterType, entryPointName, hasInputParameter] = useWatch({
+        control: form.control,
+        name: [
+            'deriveFromSmartContractIndex',
+            'smartContractName',
+            'inputParameterType',
+            'entryPointName',
+            'hasInputParameter',
+        ],
+    });
 
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
@@ -213,6 +219,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Entry Point Name</Form.Label>
                             <Select
+                                {...form.register('entryPointName', { required: true })}
                                 options={contractInstanceInfo.methods?.map((method) => ({
                                     value: method,
                                     label: method,

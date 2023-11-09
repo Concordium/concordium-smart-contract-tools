@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
 
@@ -60,13 +60,26 @@ export default function InitComponent(props: ConnectionProps) {
         cCDAmount: number;
     };
 
-    const form = useForm<FormType>();
-    const useModuleReferenceFromStep1 = form.watch('useModuleReferenceFromStep1');
-    const smartContractName = form.watch('smartContractName');
-    const inputParameterType = form.watch('inputParameterType');
-    const isPayable = form.watch('isPayable');
-    const hasInputParameter = form.watch('hasInputParameter');
-    const moduleReference = form.watch('moduleReference');
+    const form = useForm<FormType>({ mode: 'all' });
+
+    const [
+        useModuleReferenceFromStep1,
+        smartContractName,
+        inputParameterType,
+        isPayable,
+        hasInputParameter,
+        moduleReference,
+    ] = useWatch({
+        control: form.control,
+        name: [
+            'useModuleReferenceFromStep1',
+            'smartContractName',
+            'inputParameterType',
+            'isPayable',
+            'hasInputParameter',
+            'moduleReference',
+        ],
+    });
 
     const [transactionError, setTransactionError] = useState<string | undefined>(undefined);
 
@@ -351,6 +364,7 @@ export default function InitComponent(props: ConnectionProps) {
                             <Form.Label>Smart Contract Name</Form.Label>
 
                             <Select
+                                {...form.register('smartContractName', { required: true })}
                                 options={displayContracts?.map((contract) => ({
                                     value: contract,
                                     label: contract,
@@ -360,7 +374,6 @@ export default function InitComponent(props: ConnectionProps) {
                                     form.setValue('smartContractName', e?.value);
                                 }}
                             />
-
                             {form.formState.errors.smartContractName && (
                                 <Alert variant="info"> Smart contract name is required </Alert>
                             )}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
 
@@ -48,14 +48,20 @@ export default function UpdateComponenet(props: ConnectionProps) {
         cCDAmount: number;
     };
 
-    const form = useForm<FormType>();
-    const deriveContractInfo = form.watch('deriveFromSmartContractIndex');
-    const hasInputParameter = form.watch('hasInputParameter');
-    const entryPointName = form.watch('entryPointName');
-    const smartContractName = form.watch('smartContractName');
-    const inputParameterType = form.watch('inputParameterType');
+    const form = useForm<FormType>({ mode: 'all' });
 
-    const isPayable = form.watch('isPayable');
+    const [deriveContractInfo, hasInputParameter, inputParameterType, isPayable, smartContractName, entryPointName] =
+        useWatch({
+            control: form.control,
+            name: [
+                'deriveFromSmartContractIndex',
+                'hasInputParameter',
+                'inputParameterType',
+                'isPayable',
+                'smartContractName',
+                'entryPointName',
+            ],
+        });
 
     const [uploadError, setUploadError] = useState<string | undefined>(undefined);
     const [parsingError, setParsingError] = useState<string | undefined>(undefined);
@@ -247,6 +253,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
                         <Form.Group className="col-md-3 mb-3">
                             <Form.Label>Entry Point Name</Form.Label>
                             <Select
+                                {...form.register('entryPointName', { required: true })}
                                 options={contractInstanceInfo.methods?.map((method) => ({
                                     value: method,
                                     label: method,

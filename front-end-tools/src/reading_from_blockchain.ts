@@ -6,6 +6,8 @@ import {
     ModuleReference,
     InvokeContractFailedResult,
     RejectedReceive,
+    AccountAddress,
+    AccountInfo,
 } from '@concordium/web-sdk';
 
 import { CONTRACT_SUB_INDEX } from './constants';
@@ -44,6 +46,32 @@ export async function getEmbeddedSchema(
     }
 
     return rpcClient.getEmbeddedSchema(moduleRef);
+}
+
+/** This function gets the account info and its balance. */
+export function getAccountInfo(
+    client: ConcordiumGRPCClient,
+    account: string,
+    setAccountBalance: (arg0: undefined | string) => void,
+    setAccountExistsOnNetwork: (arg0: boolean) => void,
+    setViewErrorAccountInfo: (arg0: undefined | string) => void
+) {
+    client
+        .getAccountInfo(new AccountAddress(account))
+        .then((value: AccountInfo) => {
+            if (value !== undefined) {
+                setAccountBalance(value.accountAmount.toString());
+                setAccountExistsOnNetwork(true);
+            } else {
+                setAccountExistsOnNetwork(false);
+            }
+            setViewErrorAccountInfo(undefined);
+        })
+        .catch((e) => {
+            setAccountBalance(undefined);
+            setViewErrorAccountInfo((e as Error).message.replaceAll('%20', ' '));
+            setAccountExistsOnNetwork(false);
+        });
 }
 
 /** This function invokes a smart contract entry point and returns its return_value.

@@ -50,7 +50,7 @@ export default function DeployComponenet(props: ConnectionProps) {
     type FormType = {
         file: FileList | undefined;
     };
-    const form = useForm<FormType>();
+    const form = useForm<FormType>({ mode: 'all' });
 
     const [transactionErrorDeploy, setTransactionErrorDeploy] = useState<string | undefined>(undefined);
     const [uploadError, setUploadError] = useState<string | undefined>(undefined);

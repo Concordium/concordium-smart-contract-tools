@@ -152,11 +152,13 @@ export async function read(
     });
 
     if (!res || res.tag === 'failure') {
+        const rejectReason = JSON.stringify(
+            ((res as InvokeContractFailedResult)?.reason as RejectedReceive)?.rejectReason
+        );
+
         throw new Error(
             `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' failed. 
-            Reject reason: ${JSON.stringify(
-                ((res as InvokeContractFailedResult)?.reason as RejectedReceive)?.rejectReason
-            )}`
+            ${rejectReason !== undefined ? `Reject reason: ${rejectReason}` : ''}`
         );
     }
     if (!res.returnValue) {

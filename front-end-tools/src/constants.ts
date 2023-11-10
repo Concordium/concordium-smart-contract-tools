@@ -33,4 +33,4 @@ export const INPUT_PARAMETER_TYPES_OPTIONS = [
 export const CONTRACT_SUB_INDEX = 0n;
 
 // Regular expression of a valid module reference which has to be a hex string `[0-9A-Fa-f]` of length 64.
-export const REG_MODULE_REF = /[0-9A-Fa-f]{64}/g;
+export const REG_MODULE_REF = /^[0-9A-Fa-f]{64}$/;

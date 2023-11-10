@@ -336,6 +336,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
                                                 })
                                                 .catch((err: Error) => {
                                                     setContractInstanceInfo(contractInfo);
+                                                    form.setValue('smartContractName', contractInfo.contractName);
                                                     setError((err as Error).message);
                                                 });
                                         })
@@ -419,6 +420,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
                             setParsingError(undefined);
                             form.setValue('inputParameterType', undefined);
                             form.setValue('inputParameter', undefined);
+                            setUploadedModuleSchemaBase64(undefined);
                             setEntryPointTemplate(undefined);
                             setSchemaError(undefined);
                         }}

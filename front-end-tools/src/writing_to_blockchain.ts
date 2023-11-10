@@ -127,7 +127,7 @@ export async function initialize(
     amount: bigint
 ) {
     if (moduleReferenceAlreadyDeployed === false) {
-        throw new Error(`Module reference does not exist on chain. First, deploy your module in step 1.`);
+        throw new Error(`Module reference does not exist on chain. First, deploy your module in step 1 and change/refresh the module reference field in step 2 to remove this error.`);
     }
 
     if (moduleReference === undefined) {

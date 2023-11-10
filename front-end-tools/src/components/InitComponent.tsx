@@ -278,6 +278,7 @@ export default function InitComponent(props: ConnectionProps) {
                             const checkboxElement = form.getValues('useModuleReferenceFromStep1');
 
                             form.setValue('moduleReference', undefined);
+                            setModuleReferenceLengthError(undefined);
 
                             if (
                                 checkboxElement &&

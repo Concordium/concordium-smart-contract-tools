@@ -12,6 +12,11 @@ import {
     toBuffer,
     ConcordiumGRPCClient,
     getInitContractParameterSchema,
+    TransactionHash,
+    ContractName,
+    AccountAddress,
+    Energy,
+    CcdAmount,
 } from '@concordium/web-sdk';
 
 import { TxHashLink } from './CCDScanLinks';
@@ -106,7 +111,7 @@ export default function InitComponent(props: ConnectionProps) {
         if (connection && client && txHash !== undefined) {
             const interval = setInterval(() => {
                 client
-                    .getBlockItemStatus(txHash)
+                    .getBlockItemStatus(TransactionHash.fromHexString(txHash))
                     .then((report) => {
                         if (report !== undefined) {
                             setSmartContractIndex(undefined);
@@ -140,7 +145,7 @@ export default function InitComponent(props: ConnectionProps) {
         if (connection && client && moduleReference) {
             if (REG_MODULE_REF.test(moduleReference)) {
                 client
-                    .getModuleSource(new ModuleReference(moduleReference))
+                    .getModuleSource(ModuleReference.fromHexString(moduleReference))
                     .then((value) => {
                         if (value === undefined) {
                             setIsModuleReferenceAlreadyDeployedStep2(false);
@@ -196,7 +201,7 @@ export default function InitComponent(props: ConnectionProps) {
 
             const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
                 toBuffer(schema, 'base64'),
-                smartContractName,
+                ContractName.fromString(smartContractName),
                 2
             );
 
@@ -242,17 +247,17 @@ export default function InitComponent(props: ConnectionProps) {
 
         const tx = initialize(
             connection,
-            account,
+            AccountAddress.fromBase58(account),
             isModuleReferenceAlreadyDeployedStep2,
-            data.moduleReference,
+            data.moduleReference ? ModuleReference.fromHexString(data.moduleReference) : undefined,
             data.inputParameter,
-            data.smartContractName,
+            data.smartContractName ? ContractName.fromString(data.smartContractName) : undefined,
             data.hasInputParameter,
             data.useModuleReferenceFromStep1,
             schema,
             data.inputParameterType,
-            BigInt(data.maxExecutionEnergy),
-            data.cCDAmount ? BigInt(data.cCDAmount) : BigInt(0)
+            Energy.create(data.maxExecutionEnergy),
+            CcdAmount.fromMicroCcd(data.cCDAmount ?? 0),
         );
         tx.then(setTxHash).catch((err: Error) => setTransactionError((err as Error).message));
     }
@@ -492,9 +497,7 @@ export default function InitComponent(props: ConnectionProps) {
 
                                             // Use `reduce` to be able to convert large schemas.
                                             const schema = btoa(
-                                                new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                    return data + String.fromCharCode(byte);
-                                                }, '')
+                                                new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
                                             );
                                             setUploadedModuleSchemaBase64(schema);
                                         } else {

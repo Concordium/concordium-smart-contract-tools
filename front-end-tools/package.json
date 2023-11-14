@@ -52,7 +52,7 @@
         "fmt-check": "prettier . --check",
         "type:check": "yarn run tsc --noEmit",
         "build": "tsc && vite build",
-        "watch": "cross-env WATCH=1 yarn build",
-        "start": "live-server ./dist"
+        "watch": "vite",
+        "start": "vite preview"
     }
 }

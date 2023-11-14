@@ -1,13 +1,13 @@
 module.exports = {
     parser: '@typescript-eslint/parser',
-    extends: ['airbnb', 'airbnb-typescript', 'plugin:prettier/recommended', 'plugin:@typescript-eslint/recommended'],
+    extends: ['airbnb', 'airbnb-typescript', 'plugin:@typescript-eslint/recommended', 'prettier'],
     parserOptions: {
         ecmaVersion: 2020,
         sourceType: 'module',
         ecmaFeatures: {
             jsx: true,
         },
-        project: 'tsconfig.json',
+        project: 'tsconfig.node.json',
         createDefaultProgram: true,
     },
     env: {
@@ -42,15 +42,6 @@ module.exports = {
                 required: {
                     some: ['nesting', 'id'],
                 },
-            },
-        ],
-        'prettier/prettier': [
-            'error',
-            {
-                trailingComma: 'es5',
-                singleQuote: true,
-                printWidth: 120,
-                tabWidth: 4,
             },
         ],
     },

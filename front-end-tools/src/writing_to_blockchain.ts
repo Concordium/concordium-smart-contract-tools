@@ -20,7 +20,11 @@ import { CONTRACT_SUB_INDEX } from './constants';
 
 /** This function signs and sends a `DeployModule` transaction.
  */
-export async function deploy(connection: WalletConnection, account: AccountAddress.Type, base64Module: string | undefined) {
+export async function deploy(
+    connection: WalletConnection,
+    account: AccountAddress.Type,
+    base64Module: string | undefined
+) {
     if (base64Module === undefined) {
         throw new Error(`Upload a smart contract module first`);
     }
@@ -106,7 +110,7 @@ export async function update(
         AccountTransactionType.Update,
         {
             amount,
-            address: ContractAddress.create(contractIndex,CONTRACT_SUB_INDEX),
+            address: ContractAddress.create(contractIndex, CONTRACT_SUB_INDEX),
             receiveName: ReceiveName.create(contractName, entryPoint),
             maxContractExecutionEnergy,
         } as UpdateContractPayload,
@@ -134,7 +138,9 @@ export async function initialize(
     amount: CcdAmount.Type
 ) {
     if (moduleReferenceAlreadyDeployed === false) {
-        throw new Error(`Module reference does not exist on chain. First, deploy your module in step 1 and change/refresh the module reference field in step 2 to remove this error.`);
+        throw new Error(
+            `Module reference does not exist on chain. First, deploy your module in step 1 and change/refresh the module reference field in step 2 to remove this error.`
+        );
     }
 
     if (moduleReference === undefined) {

@@ -257,7 +257,7 @@ export default function InitComponent(props: ConnectionProps) {
             schema,
             data.inputParameterType,
             Energy.create(data.maxExecutionEnergy),
-            CcdAmount.fromMicroCcd(data.cCDAmount ?? 0),
+            CcdAmount.fromMicroCcd(data.cCDAmount ?? 0)
         );
         tx.then(setTxHash).catch((err: Error) => setTransactionError((err as Error).message));
     }
@@ -497,7 +497,10 @@ export default function InitComponent(props: ConnectionProps) {
 
                                             // Use `reduce` to be able to convert large schemas.
                                             const schema = btoa(
-                                                new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+                                                new Uint8Array(arrayBuffer).reduce(
+                                                    (data, byte) => data + String.fromCharCode(byte),
+                                                    ''
+                                                )
                                             );
                                             setUploadedModuleSchemaBase64(schema);
                                         } else {

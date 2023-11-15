@@ -9,7 +9,7 @@
         "strict": true,
         "noFallthroughCasesInSwitch": true,
         "module": "esnext",
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "resolveJsonModule": true,
         "isolatedModules": true,
         "downlevelIteration": true,
@@ -17,10 +17,5 @@
         "noEmit": true,
         "jsx": "react"
     },
-    "ts-node": {
-        "compilerOptions": {
-            "module": "CommonJS"
-        }
-    },
-    "include": ["./**/*"]
+    "include": ["./src"]
 }

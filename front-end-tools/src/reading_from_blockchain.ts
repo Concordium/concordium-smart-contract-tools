@@ -8,6 +8,12 @@ import {
     RejectedReceive,
     AccountAddress,
     AccountInfo,
+    ContractAddress,
+    ContractName,
+    EntrypointName,
+    ReceiveName,
+    Parameter,
+    ReturnValue,
 } from '@concordium/web-sdk';
 
 import { CONTRACT_SUB_INDEX } from './constants';
@@ -21,13 +27,13 @@ export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefine
         throw new Error(`Set smart contract index`);
     }
 
-    const info = await rpcClient.getInstanceInfo({ index: contractIndex, subindex: CONTRACT_SUB_INDEX });
+    const info = await rpcClient.getInstanceInfo(ContractAddress.create(contractIndex, CONTRACT_SUB_INDEX));
 
     // Removing the `init_` prefix.
-    const contractName = info.name.substring(5);
+    const contractName = ContractName.fromInitName(info.name);
 
     // Removing the `contractName.` prefix.
-    const methods = info.methods.map((element) => element.substring(contractName.length + 1));
+    const methods = info.methods.map(ReceiveName.toEntrypointName);
 
     const returnValue = { contractName, methods, sourceModule: info.sourceModule };
     return returnValue;
@@ -36,7 +42,7 @@ export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefine
 /** This function gets the embedded schema of a module reference. */
 export async function getEmbeddedSchema(
     rpcClient: ConcordiumGRPCClient | undefined,
-    moduleRef: ModuleReference | undefined
+    moduleRef: ModuleReference.Type | undefined
 ) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
@@ -57,10 +63,10 @@ export function getAccountInfo(
     setViewErrorAccountInfo: (arg0: undefined | string) => void
 ) {
     client
-        .getAccountInfo(new AccountAddress(account))
+        .getAccountInfo(AccountAddress.fromBase58(account))
         .then((value: AccountInfo) => {
             if (value !== undefined) {
-                setAccountBalance(value.accountAmount.toString());
+                setAccountBalance(value.accountAmount.microCcdAmount.toString());
                 setAccountExistsOnNetwork(true);
             } else {
                 setAccountExistsOnNetwork(false);
@@ -82,9 +88,9 @@ export function getAccountInfo(
  */
 export async function read(
     rpcClient: ConcordiumGRPCClient | undefined,
-    contractName: string,
+    contractName: ContractName.Type,
     contractIndex: bigint,
-    entryPoint: string | undefined,
+    entryPoint: EntrypointName.Type | undefined,
     moduleSchema: string | undefined,
     inputParameter: string | undefined,
     inputParameterType: string | undefined,
@@ -99,7 +105,7 @@ export async function read(
         throw new Error(`Set entry point name`);
     }
 
-    let param = toBuffer('', 'hex');
+    let param = Parameter.empty();
 
     if (hasInputParameter) {
         if (!deriveContractInfo && moduleSchema === undefined) {
@@ -112,7 +118,7 @@ export async function read(
             throw new Error(`Select input parameter type`);
         }
 
-        let inputParameterFormated;
+        let inputParameterFormatted;
 
         if (inputParameter === undefined) {
             throw new Error(`Set input parameter`);
@@ -120,16 +126,16 @@ export async function read(
 
         switch (inputParameterType) {
             case 'number':
-                inputParameterFormated = Number(inputParameter);
+                inputParameterFormatted = Number(inputParameter);
                 break;
             case 'string':
-                inputParameterFormated = inputParameter;
+                inputParameterFormatted = inputParameter;
                 break;
             case 'object':
-                inputParameterFormated = JSON.parse(inputParameter);
+                inputParameterFormatted = JSON.parse(inputParameter);
                 break;
             case 'array':
-                inputParameterFormated = JSON.parse(inputParameter);
+                inputParameterFormatted = JSON.parse(inputParameter);
                 break;
             default:
                 throw new Error(`InputParameterType does not exist`);
@@ -139,15 +145,15 @@ export async function read(
             param = serializeUpdateContractParameters(
                 contractName,
                 entryPoint,
-                inputParameterFormated,
+                inputParameterFormatted,
                 toBuffer(moduleSchema, 'base64')
             );
         }
     }
 
     const res = await rpcClient.invokeContract({
-        method: `${contractName}.${entryPoint}`,
-        contract: { index: contractIndex, subindex: CONTRACT_SUB_INDEX },
+        method: ReceiveName.create(contractName, entryPoint),
+        contract: ContractAddress.create(contractIndex, CONTRACT_SUB_INDEX),
         parameter: param,
     });
 
@@ -157,7 +163,7 @@ export async function read(
         );
 
         throw new Error(
-            `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' failed. 
+            `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' failed.
             ${rejectReason !== undefined ? `Reject reason: ${rejectReason}` : ''}`
         );
     }
@@ -177,7 +183,7 @@ export async function read(
     try {
         // If schema is provided deserialize return value
         returnValue = deserializeReceiveReturnValue(
-            toBuffer(res.returnValue, 'hex'),
+            ReturnValue.toBuffer(res.returnValue),
             toBuffer(moduleSchema, 'base64'),
             contractName,
             entryPoint

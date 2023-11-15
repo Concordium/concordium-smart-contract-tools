@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 3.0.1
+
+- Upgrade dependencies @concordium/web-sdk and @concordium/react-components
+
 ## 3.0.0
 
 - Add reading from smart contract and writing to smart contract feature

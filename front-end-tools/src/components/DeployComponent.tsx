@@ -10,6 +10,8 @@ import {
     sha256,
     TransactionSummaryType,
     TransactionKindString,
+    TransactionHash,
+    AccountAddress,
 } from '@concordium/web-sdk';
 
 import { TxHashLink } from './CCDScanLinks';
@@ -65,7 +67,7 @@ export default function DeployComponenet(props: ConnectionProps) {
         if (connection && client && txHashDeploy !== undefined) {
             const interval = setInterval(() => {
                 client
-                    .getBlockItemStatus(txHashDeploy)
+                    .getBlockItemStatus(TransactionHash.fromHexString(txHashDeploy))
                     .then((report) => {
                         if (report !== undefined && report.status === 'finalized') {
                             if (
@@ -94,7 +96,7 @@ export default function DeployComponenet(props: ConnectionProps) {
     useEffect(() => {
         if (connection && client && moduleReferenceCalculated) {
             client
-                .getModuleSource(new ModuleReference(moduleReferenceCalculated))
+                .getModuleSource(ModuleReference.fromHexString(moduleReferenceCalculated))
                 .then((value) => {
                     if (value === undefined) {
                         setIsModuleReferenceAlreadyDeployedStep1(false);
@@ -115,7 +117,7 @@ export default function DeployComponenet(props: ConnectionProps) {
 
         // Send deploy transaction
 
-        const tx = deploy(connection, account, base64Module);
+        const tx = deploy(connection, AccountAddress.fromBase58(account), base64Module);
         tx.then((txHash) => {
             setModuleReferenceDeployed(undefined);
             setTxHashDeploy(txHash);
@@ -149,9 +151,10 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                 // Use `reduce` to be able to convert large modules.
                                 const module = btoa(
-                                    new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                        return data + String.fromCharCode(byte);
-                                    }, '')
+                                    new Uint8Array(arrayBuffer).reduce(
+                                        (data, byte) => data + String.fromCharCode(byte),
+                                        ''
+                                    )
                                 );
 
                                 setBase64Module(module);
@@ -210,9 +213,10 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                     // Use `reduce` to be able to convert large schema.
                                     const moduleSchemaBase64Embedded = btoa(
-                                        new Uint8Array(schema).reduce((data, byte) => {
-                                            return data + String.fromCharCode(byte);
-                                        }, '')
+                                        new Uint8Array(schema).reduce(
+                                            (data, byte) => data + String.fromCharCode(byte),
+                                            ''
+                                        )
                                     );
 
                                     setEmbeddedModuleSchemaBase64Init(moduleSchemaBase64Embedded);

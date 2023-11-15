@@ -1,24 +1,35 @@
 import {
+    AccountAddress,
     AccountTransactionType,
     CcdAmount,
+    ContractAddress,
+    ContractName,
     DeployModulePayload,
+    Energy,
+    EntrypointName,
     InitContractPayload,
     ModuleReference,
+    Parameter,
+    ReceiveName,
     UpdateContractPayload,
     toBuffer,
 } from '@concordium/web-sdk';
-import { WalletConnection } from '@concordium/react-components';
+import { TypedSmartContractParameters, WalletConnection } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
 import { CONTRACT_SUB_INDEX } from './constants';
 
 /** This function signs and sends a `DeployModule` transaction.
  */
-export async function deploy(connection: WalletConnection, account: string, base64Module: string | undefined) {
+export async function deploy(
+    connection: WalletConnection,
+    account: AccountAddress.Type,
+    base64Module: string | undefined
+) {
     if (base64Module === undefined) {
         throw new Error(`Upload a smart contract module first`);
     }
 
-    return connection.signAndSendTransaction(account, AccountTransactionType.DeployModule, {
+    return connection.signAndSendTransaction(AccountAddress.toBase58(account), AccountTransactionType.DeployModule, {
         source: toBuffer(base64Module, 'base64'),
     } as DeployModulePayload);
 }
@@ -29,23 +40,23 @@ export async function deploy(connection: WalletConnection, account: string, base
  */
 export async function update(
     connection: WalletConnection,
-    account: string,
+    account: AccountAddress.Type,
     inputParameter: string | undefined,
-    contractName: string,
-    entryPoint: string | undefined,
+    contractName: ContractName.Type,
+    entryPoint: EntrypointName.Type | undefined,
     hasInputParameter: boolean,
     deriveContractInfo: boolean,
     moduleSchema: string | undefined,
     inputParameterType: string | undefined,
-    maxContractExecutionEnergy: bigint,
+    maxContractExecutionEnergy: Energy.Type,
     contractIndex: bigint,
-    amount: bigint
+    amount: CcdAmount.Type
 ) {
     if (entryPoint === undefined) {
         throw new Error(`Set entry point name`);
     }
 
-    let schema;
+    let params: TypedSmartContractParameters | undefined;
 
     if (hasInputParameter) {
         if (!deriveContractInfo && moduleSchema === undefined) {
@@ -65,25 +76,25 @@ export async function update(
 
             switch (inputParameterType) {
                 case 'number':
-                    schema = {
+                    params = {
                         parameters: Number(inputParameter),
                         schema: moduleSchemaFromBase64(moduleSchema),
                     };
                     break;
                 case 'string':
-                    schema = {
+                    params = {
                         parameters: inputParameter,
                         schema: moduleSchemaFromBase64(moduleSchema),
                     };
                     break;
                 case 'object':
-                    schema = {
+                    params = {
                         parameters: JSON.parse(inputParameter),
                         schema: moduleSchemaFromBase64(moduleSchema),
                     };
                     break;
                 case 'array':
-                    schema = {
+                    params = {
                         parameters: JSON.parse(inputParameter),
                         schema: moduleSchemaFromBase64(moduleSchema),
                     };
@@ -95,15 +106,15 @@ export async function update(
     }
 
     return connection.signAndSendTransaction(
-        account,
+        AccountAddress.toBase58(account),
         AccountTransactionType.Update,
         {
-            amount: new CcdAmount(amount),
-            address: { index: contractIndex, subindex: CONTRACT_SUB_INDEX },
-            receiveName: `${contractName}.${entryPoint}`,
+            amount,
+            address: ContractAddress.create(contractIndex, CONTRACT_SUB_INDEX),
+            receiveName: ReceiveName.create(contractName, entryPoint),
             maxContractExecutionEnergy,
         } as UpdateContractPayload,
-        schema
+        params
     );
 }
 
@@ -114,20 +125,22 @@ export async function update(
  */
 export async function initialize(
     connection: WalletConnection,
-    account: string,
+    account: AccountAddress.Type,
     moduleReferenceAlreadyDeployed: boolean,
-    moduleReference: string | undefined,
+    moduleReference: ModuleReference.Type | undefined,
     inputParameter: string | undefined,
-    contractName: string | undefined,
+    contractName: ContractName.Type | undefined,
     hasInputParameter: boolean,
     useModuleFromStep1: boolean,
     moduleSchema: string | undefined,
     inputParamterType: string | undefined,
-    maxContractExecutionEnergy: bigint,
-    amount: bigint
+    maxContractExecutionEnergy: Energy.Type,
+    amount: CcdAmount.Type
 ) {
     if (moduleReferenceAlreadyDeployed === false) {
-        throw new Error(`Module reference does not exist on chain. First, deploy your module in step 1 and change/refresh the module reference field in step 2 to remove this error.`);
+        throw new Error(
+            `Module reference does not exist on chain. First, deploy your module in step 1 and change/refresh the module reference field in step 2 to remove this error.`
+        );
     }
 
     if (moduleReference === undefined) {
@@ -138,7 +151,7 @@ export async function initialize(
         throw new Error(`Set smart contract name`);
     }
 
-    let schema;
+    let params: TypedSmartContractParameters | undefined;
 
     if (hasInputParameter) {
         if (!useModuleFromStep1 && moduleSchema === undefined) {
@@ -158,25 +171,25 @@ export async function initialize(
 
             switch (inputParamterType) {
                 case 'number':
-                    schema = {
+                    params = {
                         parameters: Number(inputParameter),
                         schema: moduleSchemaFromBase64(moduleSchema),
                     };
                     break;
                 case 'string':
-                    schema = {
+                    params = {
                         parameters: inputParameter,
                         schema: moduleSchemaFromBase64(moduleSchema),
                     };
                     break;
                 case 'object':
-                    schema = {
+                    params = {
                         parameters: JSON.parse(inputParameter),
                         schema: moduleSchemaFromBase64(moduleSchema),
                     };
                     break;
                 case 'array':
-                    schema = {
+                    params = {
                         parameters: JSON.parse(inputParameter),
                         schema: moduleSchemaFromBase64(moduleSchema),
                     };
@@ -188,15 +201,15 @@ export async function initialize(
     }
 
     return connection.signAndSendTransaction(
-        account,
+        AccountAddress.toBase58(account),
         AccountTransactionType.InitContract,
         {
-            amount: new CcdAmount(amount),
-            moduleRef: new ModuleReference(moduleReference),
+            amount,
+            moduleRef: moduleReference,
             initName: contractName,
-            param: toBuffer(''),
+            param: Parameter.empty(),
             maxContractExecutionEnergy,
         } as InitContractPayload,
-        schema
+        params
     );
 }

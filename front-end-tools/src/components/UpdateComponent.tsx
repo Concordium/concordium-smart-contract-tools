@@ -12,6 +12,12 @@ import {
     toBuffer,
     getUpdateContractParameterSchema,
     ConcordiumGRPCClient,
+    TransactionHash,
+    ContractName,
+    EntrypointName,
+    AccountAddress,
+    Energy,
+    CcdAmount,
 } from '@concordium/web-sdk';
 
 import Box from './Box';
@@ -72,7 +78,8 @@ export default function UpdateComponenet(props: ConnectionProps) {
     const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
     const [contractInstanceInfo, setContractInstanceInfo] = useState<
-        { contractName: string; methods: string[]; sourceModule: ModuleReference } | undefined
+        | { contractName: ContractName.Type; methods: EntrypointName.Type[]; sourceModule: ModuleReference.Type }
+        | undefined
     >(undefined);
     const [error, setError] = useState<string | undefined>(undefined);
 
@@ -88,7 +95,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
         if (connection && client && txHashUpdate !== undefined) {
             const interval = setInterval(() => {
                 client
-                    .getBlockItemStatus(txHashUpdate)
+                    .getBlockItemStatus(TransactionHash.fromHexString(txHashUpdate))
                     .then((report) => {
                         if (report !== undefined && report.status === 'finalized') {
                             if (
@@ -144,8 +151,8 @@ export default function UpdateComponenet(props: ConnectionProps) {
 
             const functionTemplate = getUpdateContractParameterSchema(
                 toBuffer(schema, 'base64'),
-                smartContractName,
-                entryPointName
+                ContractName.fromString(smartContractName),
+                EntrypointName.fromString(entryPointName)
             );
 
             receiveTemplate = displayTypeSchemaTemplate(functionTemplate);
@@ -183,17 +190,17 @@ export default function UpdateComponenet(props: ConnectionProps) {
 
         const tx = update(
             connection,
-            account,
+            AccountAddress.fromBase58(account),
             data.inputParameter,
-            data.smartContractName,
-            data.entryPointName,
+            ContractName.fromString(data.smartContractName),
+            data.entryPointName ? EntrypointName.fromString(data.entryPointName) : undefined,
             data.hasInputParameter,
             data.deriveFromSmartContractIndex,
             schema,
             data.inputParameterType,
-            BigInt(data.maxExecutionEnergy),
+            Energy.create(data.maxExecutionEnergy),
             BigInt(data.smartContractIndex),
-            data.cCDAmount ? BigInt(data.cCDAmount) : BigInt(0)
+            CcdAmount.fromMicroCcd(data.cCDAmount ?? 0)
         );
 
         tx.then(setTxHashUpdate).catch((err: Error) => setTransactionErrorUpdate((err as Error).message));
@@ -224,7 +231,9 @@ export default function UpdateComponenet(props: ConnectionProps) {
                             <Form.Label>Smart Contract Name</Form.Label>
                             <Form.Control
                                 value={
-                                    contractInstanceInfo?.contractName ? contractInstanceInfo.contractName : 'undefined'
+                                    contractInstanceInfo?.contractName
+                                        ? ContractName.toString(contractInstanceInfo.contractName)
+                                        : 'undefined'
                                 }
                                 disabled
                                 {...form.register('smartContractName', { required: true })}
@@ -252,7 +261,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
                             <Form.Label>Entry Point Name</Form.Label>
                             <Select
                                 {...form.register('entryPointName', { required: true })}
-                                options={contractInstanceInfo.methods?.map((method) => ({
+                                options={contractInstanceInfo.methods?.map(EntrypointName.toString).map((method) => ({
                                     value: method,
                                     label: method,
                                 }))}
@@ -325,18 +334,25 @@ export default function UpdateComponenet(props: ConnectionProps) {
 
                                                     // Use `reduce` to be able to convert large modules.
                                                     const moduleSchemaBase64Embedded = btoa(
-                                                        new Uint8Array(schema).reduce((data, byte) => {
-                                                            return data + String.fromCharCode(byte);
-                                                        }, '')
+                                                        new Uint8Array(schema).reduce(
+                                                            (data, byte) => data + String.fromCharCode(byte),
+                                                            ''
+                                                        )
                                                     );
 
                                                     setEmbeddedModuleSchemaBase64(moduleSchemaBase64Embedded);
                                                     setContractInstanceInfo(contractInfo);
-                                                    form.setValue('smartContractName', contractInfo.contractName);
+                                                    form.setValue(
+                                                        'smartContractName',
+                                                        ContractName.toString(contractInfo.contractName)
+                                                    );
                                                 })
                                                 .catch((err: Error) => {
                                                     setContractInstanceInfo(contractInfo);
-                                                    form.setValue('smartContractName', contractInfo.contractName);
+                                                    form.setValue(
+                                                        'smartContractName',
+                                                        ContractName.toString(contractInfo.contractName)
+                                                    );
                                                     setError((err as Error).message);
                                                 });
                                         })
@@ -451,9 +467,10 @@ export default function UpdateComponenet(props: ConnectionProps) {
                                             const arrayBuffer = await file.arrayBuffer();
 
                                             const schema = btoa(
-                                                new Uint8Array(arrayBuffer).reduce((data, byte) => {
-                                                    return data + String.fromCharCode(byte);
-                                                }, '')
+                                                new Uint8Array(arrayBuffer).reduce(
+                                                    (data, byte) => data + String.fromCharCode(byte),
+                                                    ''
+                                                )
                                             );
                                             setUploadedModuleSchemaBase64(schema);
                                         } else {

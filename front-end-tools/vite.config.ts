@@ -17,10 +17,4 @@ export default defineConfig({
     wasm(),
     topLevelAwait(), // For legacy browser compatibility
   ],
-  define: {
-    global: "globalThis",
-    "process.env": {
-      BACKEND_API: process.env.BACKEND_API,
-    },
-  },
 });

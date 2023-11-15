@@ -50,7 +50,6 @@
         "lint": "eslint . --cache --max-warnings 0 --ext .ts,.tsx",
         "fmt": "prettier . --write",
         "fmt-check": "prettier . --check",
-        "type:check": "yarn run tsc --noEmit",
         "build": "tsc && vite build",
         "watch": "vite",
         "start": "vite preview"

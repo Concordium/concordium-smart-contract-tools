@@ -183,8 +183,8 @@ export default function ReadComponenet(props: ConnectionProps) {
                     </Form.Group>
 
                     {deriveContractInfo &&
-                        contractInstanceInfo !== undefined &&
-                        contractInstanceInfo.contractName !== undefined ? (
+                    contractInstanceInfo !== undefined &&
+                    contractInstanceInfo.contractName !== undefined ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
                             <Form.Control
@@ -219,8 +219,8 @@ export default function ReadComponenet(props: ConnectionProps) {
                     )}
 
                     {deriveContractInfo &&
-                        contractInstanceInfo !== undefined &&
-                        contractInstanceInfo.methods.length > 0 ? (
+                    contractInstanceInfo !== undefined &&
+                    contractInstanceInfo.methods.length > 0 ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Entry Point Name</Form.Label>
                             <Select

@@ -27,7 +27,7 @@ export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefine
         throw new Error(`Set smart contract index`);
     }
 
-    const info = await rpcClient.getInstanceInfo(ContractAddress.create(contractIndex,CONTRACT_SUB_INDEX));
+    const info = await rpcClient.getInstanceInfo(ContractAddress.create(contractIndex, CONTRACT_SUB_INDEX));
 
     // Removing the `init_` prefix.
     const contractName = ContractName.fromInitName(info.name);
@@ -153,7 +153,7 @@ export async function read(
 
     const res = await rpcClient.invokeContract({
         method: ReceiveName.create(contractName, entryPoint),
-        contract: ContractAddress.create(contractIndex,CONTRACT_SUB_INDEX),
+        contract: ContractAddress.create(contractIndex, CONTRACT_SUB_INDEX),
         parameter: param,
     });
 

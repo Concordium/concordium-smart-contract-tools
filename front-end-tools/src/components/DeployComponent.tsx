@@ -151,7 +151,10 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                 // Use `reduce` to be able to convert large modules.
                                 const module = btoa(
-                                    new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+                                    new Uint8Array(arrayBuffer).reduce(
+                                        (data, byte) => data + String.fromCharCode(byte),
+                                        ''
+                                    )
                                 );
 
                                 setBase64Module(module);
@@ -210,7 +213,10 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                     // Use `reduce` to be able to convert large schema.
                                     const moduleSchemaBase64Embedded = btoa(
-                                        new Uint8Array(schema).reduce((data, byte) => data + String.fromCharCode(byte), '')
+                                        new Uint8Array(schema).reduce(
+                                            (data, byte) => data + String.fromCharCode(byte),
+                                            ''
+                                        )
                                     );
 
                                     setEmbeddedModuleSchemaBase64Init(moduleSchemaBase64Embedded);

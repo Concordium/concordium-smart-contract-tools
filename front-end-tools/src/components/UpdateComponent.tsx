@@ -78,7 +78,8 @@ export default function UpdateComponenet(props: ConnectionProps) {
     const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState<string | undefined>(undefined);
 
     const [contractInstanceInfo, setContractInstanceInfo] = useState<
-        { contractName: ContractName.Type; methods: EntrypointName.Type[]; sourceModule: ModuleReference.Type } | undefined
+        | { contractName: ContractName.Type; methods: EntrypointName.Type[]; sourceModule: ModuleReference.Type }
+        | undefined
     >(undefined);
     const [error, setError] = useState<string | undefined>(undefined);
 
@@ -230,7 +231,9 @@ export default function UpdateComponenet(props: ConnectionProps) {
                             <Form.Label>Smart Contract Name</Form.Label>
                             <Form.Control
                                 value={
-                                    contractInstanceInfo?.contractName ? ContractName.toString(contractInstanceInfo.contractName) : 'undefined'
+                                    contractInstanceInfo?.contractName
+                                        ? ContractName.toString(contractInstanceInfo.contractName)
+                                        : 'undefined'
                                 }
                                 disabled
                                 {...form.register('smartContractName', { required: true })}
@@ -331,16 +334,25 @@ export default function UpdateComponenet(props: ConnectionProps) {
 
                                                     // Use `reduce` to be able to convert large modules.
                                                     const moduleSchemaBase64Embedded = btoa(
-                                                        new Uint8Array(schema).reduce((data, byte) => data + String.fromCharCode(byte), '')
+                                                        new Uint8Array(schema).reduce(
+                                                            (data, byte) => data + String.fromCharCode(byte),
+                                                            ''
+                                                        )
                                                     );
 
                                                     setEmbeddedModuleSchemaBase64(moduleSchemaBase64Embedded);
                                                     setContractInstanceInfo(contractInfo);
-                                                    form.setValue('smartContractName', ContractName.toString(contractInfo.contractName));
+                                                    form.setValue(
+                                                        'smartContractName',
+                                                        ContractName.toString(contractInfo.contractName)
+                                                    );
                                                 })
                                                 .catch((err: Error) => {
                                                     setContractInstanceInfo(contractInfo);
-                                                    form.setValue('smartContractName', ContractName.toString(contractInfo.contractName));
+                                                    form.setValue(
+                                                        'smartContractName',
+                                                        ContractName.toString(contractInfo.contractName)
+                                                    );
                                                     setError((err as Error).message);
                                                 });
                                         })
@@ -455,7 +467,10 @@ export default function UpdateComponenet(props: ConnectionProps) {
                                             const arrayBuffer = await file.arrayBuffer();
 
                                             const schema = btoa(
-                                                new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+                                                new Uint8Array(arrayBuffer).reduce(
+                                                    (data, byte) => data + String.fromCharCode(byte),
+                                                    ''
+                                                )
                                             );
                                             setUploadedModuleSchemaBase64(schema);
                                         } else {

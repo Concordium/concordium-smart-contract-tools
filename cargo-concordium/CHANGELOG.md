@@ -2,6 +2,8 @@
 
 ## Unreleased changes
 
+- Fix a bug so that a non-zero status code is now returned by the integration tests if they fail to run successfully.
+
 ## 3.1.4
 
 - Support crate names with uppercase letters.

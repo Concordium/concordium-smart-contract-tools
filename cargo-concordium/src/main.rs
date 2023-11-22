@@ -645,19 +645,17 @@ pub fn main() -> anyhow::Result<()> {
             only_unit_tests,
             test_targets,
         } => {
-            let success_unit = build_and_run_wasm_test(&build_options.cargo_args, seed)
-                .context("Could not build and run tests.")?;
-            let success_integration = if only_unit_tests {
-                true
-            } else {
-                build_and_run_integration_tests(build_options, test_targets).is_ok()
-            };
+            let unit_test_success = build_and_run_wasm_test(&build_options.cargo_args, seed)
+                .context("Could not build and run unit tests.")?;
+            if !only_unit_tests {
+                build_and_run_integration_tests(build_options, test_targets)
+                    .context("Could not build and run integration tests.")?;
+            }
+            if !unit_test_success {
+                anyhow::bail!("One or more unit tests failed.");
+            }
 
-            if success_unit && success_integration {
-                eprintln!("{}", Color::Green.bold().paint("All tests passed"));
-            } else {
-                eprintln!("\n{}", Color::Red.bold().paint("One or more tests failed"));
-            };
+            eprintln!("{}", Color::Green.bold().paint("All tests passed"));
         }
         Command::Init { path } => {
             init_concordium_project(path)

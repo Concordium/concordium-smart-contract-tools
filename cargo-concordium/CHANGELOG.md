@@ -2,6 +2,8 @@
 
 ## Unreleased changes
 
+- Fix a bug so that a non-zero status code is now returned by `cargo concordium test` if tests fail.
+
 ## 3.1.4
 
 - Support crate names with uppercase letters.

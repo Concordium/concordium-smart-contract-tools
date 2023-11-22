@@ -645,12 +645,15 @@ pub fn main() -> anyhow::Result<()> {
             only_unit_tests,
             test_targets,
         } => {
-            build_and_run_wasm_test(&build_options.cargo_args, seed)
+            let unit_test_success = build_and_run_wasm_test(&build_options.cargo_args, seed)
                 .context("Could not build and run unit tests.")?;
             if !only_unit_tests {
                 build_and_run_integration_tests(build_options, test_targets)
                     .context("Could not build and run integration tests.")?;
-            };
+            }
+            if !unit_test_success {
+                anyhow::bail!("One or more unit tests failed.");
+            }
 
             eprintln!("{}", Color::Green.bold().paint("All tests passed"));
         }

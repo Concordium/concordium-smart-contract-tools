@@ -47,6 +47,14 @@ export function activate(context: vscode.ExtensionContext) {
       "concordium-smart-contracts.init-project",
       Commands.displayErrorWrapper(Commands.initProject)
     ),
+    vscode.commands.registerCommand(
+      "concordium-smart-contracts.ccd-js-gen-version",
+      Commands.displayErrorWrapper(Commands.ccdJsGenVersion)
+    ),
+    vscode.commands.registerCommand(
+      "concordium-smart-contracts.generate-js-clients",
+      Commands.displayErrorWrapper(Commands.generateJsClients)
+    ),
     vscode.tasks.registerTaskProvider(CONCORDIUM_TASK_TYPE, taskProvider)
   );
 }

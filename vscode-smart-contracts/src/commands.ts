@@ -5,9 +5,11 @@
 import * as vscode from "vscode";
 import * as util from "node:util";
 import * as cargoConcordium from "./cargo-concordium";
+import * as ccdJsGen from "./ccd-js-gen";
 import * as config from "./configuration";
 import * as path from "node:path";
 import * as childProcess from "node:child_process";
+import * as fs from "fs";
 
 const exec = util.promisify(childProcess.exec);
 const execFile = util.promisify(childProcess.execFile);
@@ -303,4 +305,44 @@ async function installCargoGenerate() {
   if (exitCode !== 0) {
     throw new Error("Failed installing cargo-generate");
   }
+}
+
+/**
+ * Generate JavaScript/TypeScript clients for the smart contract module.
+ */
+export async function generateJsClients() {
+  const editor = vscode.window.activeTextEditor;
+  if (editor === undefined) {
+    vscode.window.showErrorMessage(
+      "Unable to determine smart contract project. Open a file in the smart contract project that you want to build"
+    );
+    return;
+  }
+  const cwd = path.dirname(editor.document.uri.fsPath);
+  const projectDir = await locateCargoProjectDir(cwd);
+  const moduleFilePath = projectDir + "/concordium-out/module.wasm.v1";
+  const outDirPath = projectDir + "/generated";
+  if (!fs.existsSync(moduleFilePath)) {
+    const build_contract_action = "Build contract";
+    const action = await vscode.window.showErrorMessage(`A compiled Wasm module could not be found. Please compile the smart contract via the "build contract" command. (Expect location: ${moduleFilePath})`, build_contract_action);
+    if (action == build_contract_action) {
+        // TODO: This resolves before the outDir has been created, so generating clients directly afterwards does not work.
+        // The user has to run the command again.
+        // Perhaps we use `executeAndAwaitTask` with a build task.
+        await buildWorker("outDir");
+    } else {
+      return;
+    }
+  } else {
+    await ccdJsGen.generateContractClientsFromFile(moduleFilePath, outDirPath);
+    vscode.window.showInformationMessage(`Successfully generated a client in the folder ${outDirPath}`);
+  }
+}
+
+/**
+ * Display the version of the ccd-js-gen executable.
+ * */
+export async function ccdJsGenVersion() {
+  const version = await ccdJsGen.version();
+  vscode.window.showInformationMessage(version);
 }

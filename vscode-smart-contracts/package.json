@@ -120,6 +120,15 @@
           "default": [],
           "scope": "resource",
           "markdownDescription": "Provide additional arguments for `cargo-concordium` when running the test smart contract command."
+        },
+        "concordium-smart-contracts.custom-ccd-js-gen-executable": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "scope": "machine-overridable",
+          "default": null,
+          "markdownDescription": "Provide a custom path to the ccd-js-gen executable to use instead of the bundled one. Ex. `/usr/local/lib/node_modules/.bin/ccd-js-gen`"
         }
       }
     },

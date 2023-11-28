@@ -129,6 +129,17 @@
           "scope": "machine-overridable",
           "default": null,
           "markdownDescription": "Provide a custom path to the ccd-js-gen executable to use instead of the bundled one. Ex. `/usr/local/lib/node_modules/.bin/ccd-js-gen`"
+        },
+        "concordium-smart-contracts.additional-gen-js-args": {
+          "type": "array",
+          "items": {
+            "title": "argument",
+            "description": "Additional argument appended to the generate TypeScript/JavaScript clients command",
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Provide additional arguments for `ccd-js-gen` when running"
         }
       }
     },

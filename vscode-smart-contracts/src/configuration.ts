@@ -24,6 +24,8 @@ export const CUSTOM_CCD_JS_GEN_EXECUTABLE = "custom-ccd-js-gen-executable";
 export const ADDITIONAL_BUILD_ARGUMENTS = "additional-build-args";
 /** Name for the setting to provide additional arguments for when running cargo-concordium test. */
 export const ADDITIONAL_TEST_ARGUMENTS = "additional-test-args";
+/** Name for the setting to provide additional arguments for when running ccd-js-gen. */
+export const ADDITIONAL_GEN_JS_ARGUMENTS = "additional-gen-js-args";
 
 /** Type for the custom executable setting, must match the corresponding type schema in package.json */
 type CustomExecutableConfig = string | null;
@@ -108,5 +110,13 @@ export function getAdditionalTestArgs(): string[] {
   const argsOption = vscode.workspace
     .getConfiguration(SECTION)
     .get<AdditionalArgsConfig>(ADDITIONAL_TEST_ARGUMENTS);
+  return argsOption ?? [];
+}
+
+/** Get additional generate TS/JS clients arguments from configurations. */
+export function getAdditionalJsGenArgs(): string[] {
+  const argsOption = vscode.workspace
+    .getConfiguration(SECTION)
+    .get<AdditionalArgsConfig>(ADDITIONAL_GEN_JS_ARGUMENTS);
   return argsOption ?? [];
 }

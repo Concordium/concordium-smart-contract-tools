@@ -3,6 +3,7 @@
  */
 import * as vscode from "vscode";
 import * as wrapperHelpers from "./executable-wrapper-helpers";
+import * as tasks from "./tasks";
 
 /** Get the version of the executable */
 export async function version(): Promise<string> {
@@ -19,24 +20,6 @@ export async function getResolvedExecutablePath(): Promise<string> {
   return wrapperHelpers.getResolvedExecutablePath("cargo-concordium");
 }
 
-/**
- * Task type. Used by VS Code to match a task provider with a task provided by the user.
- * Should match the schema specified in the package.json (contributes.taskDefinitions)
- */
-export const CONCORDIUM_TASK_TYPE = "concordium";
-
-/**
- * Task definition for tasks provided by this extension.
- * Captures the information to construct a task and should match the schema
- * specified in the package.json (contributes.taskDefinitions).
- */
-export interface ConcordiumTaskDefinition extends vscode.TaskDefinition {
-  type: typeof CONCORDIUM_TASK_TYPE;
-  command: "build" | "test";
-  cwd?: string;
-  args?: string[];
-}
-
 /** Construct a task for running cargo-concordium build in a given directory. */
 export async function build(
   cwd: string,
@@ -44,8 +27,8 @@ export async function build(
   args: string[] = []
 ) {
   const executable = await wrapperHelpers.getResolvedExecutablePath("cargo-concordium");
-  const taskDefinition: ConcordiumTaskDefinition = {
-    type: CONCORDIUM_TASK_TYPE,
+  const taskDefinition: tasks.ConcordiumTaskDefinition = {
+    type: tasks.CONCORDIUM_TASK_TYPE,
     command: "build",
     cwd,
     args,
@@ -69,8 +52,8 @@ export async function test(
   args: string[] = []
 ) {
   const executable = await wrapperHelpers.getResolvedExecutablePath("cargo-concordium");
-  const taskDefinition: ConcordiumTaskDefinition = {
-    type: CONCORDIUM_TASK_TYPE,
+  const taskDefinition: tasks.ConcordiumTaskDefinition = {
+    type: tasks.CONCORDIUM_TASK_TYPE,
     command: "test",
     cwd,
     args,

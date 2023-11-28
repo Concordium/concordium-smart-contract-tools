@@ -10,12 +10,16 @@ import * as config from "./configuration";
 import * as path from "node:path";
 import * as childProcess from "node:child_process";
 import * as fs from "fs";
+import * as tasks from "./tasks";
 
 const exec = util.promisify(childProcess.exec);
 const execFile = util.promisify(childProcess.execFile);
 
 /** The default name used for the output directory using the build command. */
-export const DEFAULT_OUT_DIR_NAME = "concordium-out";
+export const DEFAULT_BUILD_OUT_DIR_NAME = "concordium-out";
+
+/** The default name used for the output directory using the generate TS/JS clients command. */
+export const DEFAULT_JS_GEN_OUT_DIR_NAME = "generated";
 
 /** Wrap a function with try-catch displaying the error to the user, then throws the errors */
 export function displayErrorWrapper<A extends unknown[], B>(
@@ -106,7 +110,7 @@ async function buildWorker(schemaSettings: SchemaSettings) {
   );
 
   const projectDir = await locateCargoProjectDir(cwd);
-  const outDir = path.join(projectDir, DEFAULT_OUT_DIR_NAME);
+  const outDir = path.join(projectDir, DEFAULT_BUILD_OUT_DIR_NAME);
 
   const schemaArgs =
     schemaSettings === "skip"
@@ -160,7 +164,7 @@ async function installWasmTarget() {
     "wasm32-unknown-unknown",
   ]);
   const task = new vscode.Task(
-    { type: cargoConcordium.CONCORDIUM_TASK_TYPE, command: "install wasm" },
+    { type: tasks.CONCORDIUM_TASK_TYPE, command: "install wasm" },
     vscode.TaskScope.Workspace,
     `Install WASM target`,
     "Build smart contract",
@@ -293,7 +297,7 @@ async function installCargoGenerate() {
   ]);
   const task = new vscode.Task(
     {
-      type: cargoConcordium.CONCORDIUM_TASK_TYPE,
+      type: tasks.CONCORDIUM_TASK_TYPE,
       command: "install cargo-generate",
     },
     vscode.TaskScope.Workspace,
@@ -320,8 +324,11 @@ export async function generateJsClients() {
   }
   const cwd = path.dirname(editor.document.uri.fsPath);
   const projectDir = await locateCargoProjectDir(cwd);
-  const moduleFilePath = projectDir + "/concordium-out/module.wasm.v1";
-  const outDirPath = projectDir + "/generated";
+  const moduleFilePath = path.join(projectDir, DEFAULT_BUILD_OUT_DIR_NAME, "module.wasm.v1");
+  const outDirPath = path.join(projectDir, DEFAULT_JS_GEN_OUT_DIR_NAME);
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(
+    editor.document.uri
+  );
   if (!fs.existsSync(moduleFilePath)) {
     const build_contract_action = "Build contract";
     const action = await vscode.window.showErrorMessage(`A compiled Wasm module could not be found. Please compile the smart contract via the "build contract" command. (Expect location: ${moduleFilePath})`, build_contract_action);
@@ -334,8 +341,17 @@ export async function generateJsClients() {
       return;
     }
   } else {
-    await ccdJsGen.generateContractClientsFromFile(moduleFilePath, outDirPath);
-    vscode.window.showInformationMessage(`Successfully generated a client in the folder ${outDirPath}`);
+    const additionalArgs = config.getAdditionalBuildArgs();
+    const defaultArgs = [
+      "--module",
+      moduleFilePath,
+      "--out-dir",
+      outDirPath,
+    ];
+    const args = defaultArgs.concat(additionalArgs);
+    return vscode.tasks.executeTask(
+      await ccdJsGen.generateTsJsClients(cwd, workspaceFolder, args)
+    );
   }
 }
 

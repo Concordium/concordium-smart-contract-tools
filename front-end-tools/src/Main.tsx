@@ -78,13 +78,13 @@ export default function Main(props: ConnectionProps) {
         <main className="container">
             <div className="textCenter">
                 <br />
-                {activeConnectorError && <Alert variant="dager">Connector Error: {activeConnectorError}.</Alert>}
+                {activeConnectorError && <Alert variant="danger">Connector Error: {activeConnectorError}.</Alert>}
                 {!activeConnectorError && activeConnectorType && !activeConnector && (
                     <p>
                         <i>Loading connector...</i>
                     </p>
                 )}
-                {connectError && <Alert variant="dager">Connect Error: {connectError}.</Alert>}
+                {connectError && <Alert variant="danger">Connect Error: {connectError}.</Alert>}
                 {!isConnected && (
                     <button
                         className="btn btn-primary me-1"

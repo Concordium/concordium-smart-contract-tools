@@ -157,19 +157,21 @@ export async function read(
         parameter: param,
     });
 
+    const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
+
     if (!res || res.tag === 'failure') {
         const rejectReason = JSON.stringify(
             ((res as InvokeContractFailedResult)?.reason as RejectedReceive)?.rejectReason
         );
 
         throw new Error(
-            `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' failed.
+            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed.
             ${rejectReason !== undefined ? `Reject reason: ${rejectReason}` : ''}`
         );
     }
     if (!res.returnValue) {
         throw new Error(
-            `RPC call 'invokeContract' on method '${contractName}.${entryPoint}' of contract '${contractIndex}' returned no return_value`
+            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' returned no return_value`
         );
     }
 
@@ -190,13 +192,13 @@ export async function read(
         );
     } catch (e) {
         throw new Error(
-            `Deserializing the returnValue from the '${contractName}.${entryPoint}' method of contract '${contractIndex}' failed. Original error: ${e}`
+            `Deserializing the returnValue from the '${fullEntryPointName}' method of contract '${contractIndex}' failed. Original error: ${e}`
         );
     }
 
     if (returnValue === undefined) {
         throw new Error(
-            `Deserializing the returnValue from the '${contractName}.${entryPoint}' method of contract '${contractIndex}' failed.`
+            `Deserializing the returnValue from the '${fullEntryPointName}' method of contract '${contractIndex}' failed.`
         );
     } else {
         return JSONbig.stringify(returnValue);

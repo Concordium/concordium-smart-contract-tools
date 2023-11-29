@@ -141,12 +141,10 @@ export default function UpdateComponenet(props: ConnectionProps) {
                 throw new Error('Set smart contract name');
             }
 
-            let schema = '';
-
-            const schemaFromModule = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
-
-            if (schemaFromModule !== undefined) {
-                schema = schemaFromModule;
+            const schema = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
+            if (schema === undefined) {
+                setSchemaError('Schema was not uploaded');
+                return;
             }
 
             const functionTemplate = getUpdateContractParameterSchema(

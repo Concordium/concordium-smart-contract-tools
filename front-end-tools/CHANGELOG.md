@@ -1,5 +1,7 @@
 ## Unreleased changes
 
+- Fix error message when specifying input parameter without uploading schema.
+
 ## 3.0.1
 
 - Upgrade dependencies @concordium/web-sdk and @concordium/react-components

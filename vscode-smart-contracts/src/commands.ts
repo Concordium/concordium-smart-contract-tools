@@ -81,6 +81,17 @@ type SchemaSettings = "skip" | "embed-and-outDir" | "outDir";
  * Takes the schema setting as an argument.
  */
 async function buildWorker(schemaSettings: SchemaSettings) {
+  const task = await buildTask(schemaSettings);
+  if (task !== undefined) {
+    return vscode.tasks.executeTask(task);
+  }
+}
+
+/**
+ * Internal helper that tries to return a task that runs 'cargo-concordium build' using the directory of the currently focused editor.
+ * Takes the schema setting as an argument.
+ * */
+async function buildTask(schemaSettings: SchemaSettings): Promise<vscode.Task | undefined> {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
       "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
@@ -127,9 +138,7 @@ async function buildWorker(schemaSettings: SchemaSettings) {
   const additionalArgs = config.getAdditionalBuildArgs();
   const moduleOut = path.join(outDir, "module.wasm.v1");
   const args = ["--out", moduleOut].concat(schemaArgs, additionalArgs);
-  return vscode.tasks.executeTask(
-    await cargoConcordium.build(cwd, workspaceFolder, args)
-  );
+  return cargoConcordium.build(cwd, workspaceFolder, args);
 }
 
 /**
@@ -339,22 +348,24 @@ export async function generateJsClients() {
       `A compiled Wasm module could not be found. Please compile the smart contract via the "build contract" command. (Expect location: ${moduleFilePath})`,
       build_contract_action
     );
-    if (action == build_contract_action) {
-      // TODO: This resolves before the outDir has been created, so generating clients directly afterwards does not work.
-      // The user has to run the command again.
-      // Perhaps we use `executeAndAwaitTask` with a build task.
-      await buildWorker("outDir");
-    } else {
+    if (action !== build_contract_action) {
       return;
     }
-  } else {
-    const additionalArgs = config.getAdditionalBuildArgs();
-    const defaultArgs = ["--module", moduleFilePath, "--out-dir", outDirPath];
-    const args = defaultArgs.concat(additionalArgs);
-    return vscode.tasks.executeTask(
-      await ccdJsGen.generateTsJsClients(cwd, workspaceFolder, args)
-    );
+    const task = await buildTask("outDir");
+    if (task === undefined) {
+      return;
+    }
+    const exitCode = await executeAndAwaitTask(task);
+    if (exitCode !== 0) {
+      return;
+    }
   }
+  const additionalArgs = config.getAdditionalBuildArgs();
+  const defaultArgs = ["--module", moduleFilePath, "--out-dir", outDirPath];
+  const args = defaultArgs.concat(additionalArgs);
+  return vscode.tasks.executeTask(
+    await ccdJsGen.generateTsJsClients(cwd, workspaceFolder, args)
+  );
 }
 
 /**

@@ -1,6 +1,7 @@
 ## Unreleased changes
 
 - Fix error message when specifying input parameter without uploading schema.
+- Fix contract method names in error messages.
 
 ## 3.0.1
 

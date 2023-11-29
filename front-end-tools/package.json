@@ -9,6 +9,7 @@
     "dependencies": {
         "@concordium/react-components": "^0.4.0",
         "@concordium/web-sdk": "^7.1.0",
+        "json-bigint": "^1.0.0",
         "moment": "^2.29.4",
         "react": "^18.1.0",
         "react-bootstrap": "^2.7.4",
@@ -18,6 +19,7 @@
         "react-switch": "^7.0.0"
     },
     "devDependencies": {
+        "@types/json-bigint": "^1",
         "@types/node": "^18.7.23",
         "@types/react": "^18.0.9",
         "@types/react-dom": "^18.0.5",

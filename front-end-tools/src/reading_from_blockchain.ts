@@ -15,7 +15,7 @@ import {
     Parameter,
     ReturnValue,
 } from '@concordium/web-sdk';
-
+import JSONbig from 'json-bigint';
 import { CONTRACT_SUB_INDEX } from './constants';
 
 /** This function gets the contract info of a smart contract index. */
@@ -175,7 +175,7 @@ export async function read(
 
     if (moduleSchema === undefined) {
         // If no schema is provided return the raw bytes
-        return JSON.stringify(res.returnValue);
+        return JSONbig.stringify(res.returnValue);
     }
 
     let returnValue;
@@ -199,6 +199,6 @@ export async function read(
             `Deserializing the returnValue from the '${contractName}.${entryPoint}' method of contract '${contractIndex}' failed.`
         );
     } else {
-        return JSON.stringify(returnValue);
+        return JSONbig.stringify(returnValue);
     }
 }

@@ -1342,6 +1342,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/json-bigint@npm:^1":
+  version: 1.0.4
+  resolution: "@types/json-bigint@npm:1.0.4"
+  checksum: bb567bac8d64f541abb3cb716d5c699c460b9aa4a9fc5fc81a3cee9cb57fe8c03914022049dcdadff213972979a5d08267405d55d2ed6aa95d3558f08347008a
+  languageName: node
+  linkType: hard
+
 "@types/json-schema@npm:^7.0.9":
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
@@ -3625,6 +3632,7 @@ __metadata:
   dependencies:
     "@concordium/react-components": "npm:^0.4.0"
     "@concordium/web-sdk": "npm:^7.1.0"
+    "@types/json-bigint": "npm:^1"
     "@types/node": "npm:^18.7.23"
     "@types/react": "npm:^18.0.9"
     "@types/react-dom": "npm:^18.0.5"
@@ -3640,6 +3648,7 @@ __metadata:
     eslint-plugin-jsx-a11y: "npm:^6.5.1"
     eslint-plugin-react: "npm:^7.29.4"
     eslint-plugin-react-hooks: "npm:^4.4.0"
+    json-bigint: "npm:^1.0.0"
     moment: "npm:^2.29.4"
     prettier: "npm:^3.1.0"
     process: "npm:^0.11.10"

@@ -98,7 +98,9 @@ export default function ReadComponenet(props: ConnectionProps) {
 
             const schema = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
             if (schema === undefined) {
-                setSchemaError('Schema was not uploaded or not embedded into the module. Uncheck the "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter');
+                setSchemaError(
+                    'Schema was not uploaded or not embedded into the module. Uncheck the "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter'
+                );
                 return;
             }
 

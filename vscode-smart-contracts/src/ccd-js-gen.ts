@@ -17,7 +17,9 @@ export async function generateTsJsClients(
   scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
   args: string[] = []
 ) {
-  const executable = await wrapperHelpers.getResolvedExecutablePath("ccd-js-gen");
+  const executable = await wrapperHelpers.getResolvedExecutablePath(
+    "ccd-js-gen"
+  );
   const taskDefinition: tasks.ConcordiumTaskDefinition = {
     type: tasks.CONCORDIUM_TASK_TYPE,
     command: "generate-js-clients",

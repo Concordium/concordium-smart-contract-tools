@@ -10,7 +10,9 @@ import * as vscode from "vscode";
 const execFile = util.promisify(childProcess.execFile);
 
 /** Get the path to the executable shipped with the extension. */
-export function getBundledExecutablePath(executableName: config.ExecutableName): string {
+export function getBundledExecutablePath(
+  executableName: config.ExecutableName
+): string {
   const context = vscode.extensions.getExtension(
     "concordium.concordium-smart-contracts"
   );
@@ -22,15 +24,17 @@ export function getBundledExecutablePath(executableName: config.ExecutableName):
   }
 
   let pathSegments;
-  let executableWithExt = `${executableName}${process.platform === "win32" ? ".exe" : ""}`;
-  switch(executableName) {
+  const executableWithExt = `${executableName}${
+    process.platform === "win32" ? ".exe" : ""
+  }`;
+  switch (executableName) {
     case "cargo-concordium": {
-        pathSegments = ["executables", executableWithExt];
-        break;
+      pathSegments = ["executables", executableWithExt];
+      break;
     }
     case "ccd-js-gen": {
-        pathSegments = ["node_modules", ".bin", executableWithExt];
-        break;
+      pathSegments = ["node_modules", ".bin", executableWithExt];
+      break;
     }
   }
   return vscode.Uri.joinPath(context.extensionUri, ...pathSegments).fsPath;
@@ -41,7 +45,9 @@ export function getBundledExecutablePath(executableName: config.ExecutableName):
  *
  * Uses the appropriate custom executable from settings, otherwise fallbacks to the executables included in the extension.
  */
-export async function getResolvedExecutablePath(executableName: config.ExecutableName): Promise<string> {
+export async function getResolvedExecutablePath(
+  executableName: config.ExecutableName
+): Promise<string> {
   const customExecutable = await config.getCustomExecutablePath(executableName);
   if (customExecutable !== null) {
     return customExecutable;
@@ -50,7 +56,10 @@ export async function getResolvedExecutablePath(executableName: config.Executabl
 }
 
 /** Execute a command with the given executable and arguments. */
-export async function execute(executableName: config.ExecutableName, ...args: string[]) {
+export async function execute(
+  executableName: config.ExecutableName,
+  ...args: string[]
+) {
   const executable = await getResolvedExecutablePath(executableName);
   return execFile(executable, args);
 }

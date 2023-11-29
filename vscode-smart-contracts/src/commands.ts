@@ -324,30 +324,32 @@ export async function generateJsClients() {
   }
   const cwd = path.dirname(editor.document.uri.fsPath);
   const projectDir = await locateCargoProjectDir(cwd);
-  const moduleFilePath = path.join(projectDir, DEFAULT_BUILD_OUT_DIR_NAME, "module.wasm.v1");
+  const moduleFilePath = path.join(
+    projectDir,
+    DEFAULT_BUILD_OUT_DIR_NAME,
+    "module.wasm.v1"
+  );
   const outDirPath = path.join(projectDir, DEFAULT_JS_GEN_OUT_DIR_NAME);
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(
     editor.document.uri
   );
   if (!fs.existsSync(moduleFilePath)) {
     const build_contract_action = "Build contract";
-    const action = await vscode.window.showErrorMessage(`A compiled Wasm module could not be found. Please compile the smart contract via the "build contract" command. (Expect location: ${moduleFilePath})`, build_contract_action);
+    const action = await vscode.window.showErrorMessage(
+      `A compiled Wasm module could not be found. Please compile the smart contract via the "build contract" command. (Expect location: ${moduleFilePath})`,
+      build_contract_action
+    );
     if (action == build_contract_action) {
-        // TODO: This resolves before the outDir has been created, so generating clients directly afterwards does not work.
-        // The user has to run the command again.
-        // Perhaps we use `executeAndAwaitTask` with a build task.
-        await buildWorker("outDir");
+      // TODO: This resolves before the outDir has been created, so generating clients directly afterwards does not work.
+      // The user has to run the command again.
+      // Perhaps we use `executeAndAwaitTask` with a build task.
+      await buildWorker("outDir");
     } else {
       return;
     }
   } else {
     const additionalArgs = config.getAdditionalBuildArgs();
-    const defaultArgs = [
-      "--module",
-      moduleFilePath,
-      "--out-dir",
-      outDirPath,
-    ];
+    const defaultArgs = ["--module", moduleFilePath, "--out-dir", outDirPath];
     const args = defaultArgs.concat(additionalArgs);
     return vscode.tasks.executeTask(
       await ccdJsGen.generateTsJsClients(cwd, workspaceFolder, args)

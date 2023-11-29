@@ -35,7 +35,11 @@ describe("custom-executable setting for cargo-concordium", () => {
     // Set a custom executable
     await vscode.workspace
       .getConfiguration(config.SECTION)
-      .update(config.CUSTOM_CARGO_CONCORDIUM_EXECUTABLE, "my-non-existing-executable", true);
+      .update(
+        config.CUSTOM_CARGO_CONCORDIUM_EXECUTABLE,
+        "my-non-existing-executable",
+        true
+      );
 
     await assert.rejects(
       () => cargoConcordium.getResolvedExecutablePath(),
@@ -101,7 +105,11 @@ describe("custom-executable setting for ccd-js-gen", () => {
     // Set a custom executable
     await vscode.workspace
       .getConfiguration(config.SECTION)
-      .update(config.CUSTOM_CCD_JS_GEN_EXECUTABLE, "my-non-existing-executable", true);
+      .update(
+        config.CUSTOM_CCD_JS_GEN_EXECUTABLE,
+        "my-non-existing-executable",
+        true
+      );
 
     await assert.rejects(
       () => ccdJsGen.getResolvedExecutablePath(),

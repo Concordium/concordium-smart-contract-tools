@@ -7,7 +7,10 @@ import * as tasks from "./tasks";
 
 /** Get the version of the executable */
 export async function version(): Promise<string> {
-  const { stdout } = await wrapperHelpers.execute("cargo-concordium", "--version");
+  const { stdout } = await wrapperHelpers.execute(
+    "cargo-concordium",
+    "--version"
+  );
   return stdout;
 }
 
@@ -26,7 +29,9 @@ export async function build(
   scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
   args: string[] = []
 ) {
-  const executable = await wrapperHelpers.getResolvedExecutablePath("cargo-concordium");
+  const executable = await wrapperHelpers.getResolvedExecutablePath(
+    "cargo-concordium"
+  );
   const taskDefinition: tasks.ConcordiumTaskDefinition = {
     type: tasks.CONCORDIUM_TASK_TYPE,
     command: "build",
@@ -51,7 +56,9 @@ export async function test(
   scope: vscode.TaskScope | vscode.WorkspaceFolder = vscode.TaskScope.Workspace,
   args: string[] = []
 ) {
-  const executable = await wrapperHelpers.getResolvedExecutablePath("cargo-concordium");
+  const executable = await wrapperHelpers.getResolvedExecutablePath(
+    "cargo-concordium"
+  );
   const taskDefinition: tasks.ConcordiumTaskDefinition = {
     type: tasks.CONCORDIUM_TASK_TYPE,
     command: "test",

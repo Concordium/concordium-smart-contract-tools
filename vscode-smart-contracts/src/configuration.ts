@@ -40,17 +40,19 @@ export type ExecutableName = "cargo-concordium" | "ccd-js-gen";
  * Return null if not set by the user.
  * Throws a `ConfigError` if invalid.
  */
-export async function getCustomExecutablePath(executableName: ExecutableName): Promise<string | null> {
+export async function getCustomExecutablePath(
+  executableName: ExecutableName
+): Promise<string | null> {
   let settingName;
-  switch(executableName) {
-      case "cargo-concordium": {
-        settingName = CUSTOM_CARGO_CONCORDIUM_EXECUTABLE;
-        break;
-      }
-      case "ccd-js-gen": {
-        settingName = CUSTOM_CCD_JS_GEN_EXECUTABLE;
-        break;
-      }
+  switch (executableName) {
+    case "cargo-concordium": {
+      settingName = CUSTOM_CARGO_CONCORDIUM_EXECUTABLE;
+      break;
+    }
+    case "ccd-js-gen": {
+      settingName = CUSTOM_CCD_JS_GEN_EXECUTABLE;
+      break;
+    }
   }
 
   const customPath = vscode.workspace

@@ -9,10 +9,7 @@ import * as util from "node:util";
 import * as globCallback from "glob";
 import * as cargoConcordium from "./cargo-concordium";
 import * as path from "node:path";
-import {
-  CONCORDIUM_TASK_TYPE,
-  ConcordiumTaskDefinition,
-} from "./tasks";
+import { CONCORDIUM_TASK_TYPE, ConcordiumTaskDefinition } from "./tasks";
 import * as ccdJsGen from "./ccd-js-gen";
 
 const glob = util.promisify(globCallback);
@@ -73,8 +70,14 @@ const taskProvider: vscode.TaskProvider = {
         const cargoProjectDirs = await getCargoProjectDirs(workspaceRoot);
         return Promise.all(
           cargoProjectDirs.flatMap((cwd) => {
-            const defaultOutDir = path.join(cwd, Commands.DEFAULT_BUILD_OUT_DIR_NAME);
-            const defaultModulePath = path.join(defaultOutDir, "module.wasm.v1");
+            const defaultOutDir = path.join(
+              cwd,
+              Commands.DEFAULT_BUILD_OUT_DIR_NAME
+            );
+            const defaultModulePath = path.join(
+              defaultOutDir,
+              "module.wasm.v1"
+            );
             const defaultBuildArgs = [
               "--out",
               defaultModulePath,
@@ -93,7 +96,11 @@ const taskProvider: vscode.TaskProvider = {
             return [
               cargoConcordium.build(cwd, workspaceFolder, defaultBuildArgs),
               cargoConcordium.test(cwd, workspaceFolder),
-              ccdJsGen.generateTsJsClients(cwd, workspaceFolder, defaultJsGenArgs),
+              ccdJsGen.generateTsJsClients(
+                cwd,
+                workspaceFolder,
+                defaultJsGenArgs
+              ),
             ];
           })
         );

@@ -27,7 +27,7 @@ export function getBundledExecutablePath(
       break;
     }
     case "ccd-js-gen": {
-      pathSegments = ["node_modules", ".bin", `${executableName}${process.platform === "win32" ? ".ps1" : ""}`];
+      pathSegments = ["node_modules", ".bin", `${executableName}${process.platform === "win32" ? ".cmd" : ""}`];
       break;
     }
   }
@@ -57,7 +57,7 @@ const execFile = util.promisify(childProcess.execFile);
 /** Execute a command with the given executable and arguments.
  *
  *  Uses `childProcess.exec` by default, but `childProcess.execFile`
- *  with `PowerShell` on Windows if `executableName === "ccd-js-gen"`.
+ *  with `CommandPrompt` on Windows if `executableName === "ccd-js-gen"`.
  * */
 export async function execute(
   executableName: config.ExecutableName,
@@ -66,8 +66,8 @@ export async function execute(
   const executable = await getResolvedExecutablePath(executableName);
   if (executableName === "ccd-js-gen" && process.platform === "win32") {
     const cmd = [executable, ...args].join(" ");
-    // Use `exec` on Windows to run the `ccd-js-gen.ps1` file in PowerShell.
-    return exec(cmd, {'shell': 'powershell.exe'});
+    // Use `exec` on Windows to run the `ccd-js-gen.cmd` file in CommandPrompt.
+    return exec(cmd, {'shell': 'cmd.exe'});
   }
   return execFile(executable, args);
 }

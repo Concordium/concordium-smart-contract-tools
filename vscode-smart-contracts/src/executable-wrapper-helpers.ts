@@ -6,12 +6,6 @@ import * as childProcess from "node:child_process";
 import * as config from "./configuration";
 import * as vscode from "vscode";
 
-// Create a version of exec, which uses promises instead of callbacks.
-// We use `exec` instead of the slightly faster `execFile` because `exec`
-// runs the command in a terminal, which is necessary for it to run
-// the `ccd-js-gen.ps1` on Windows.
-const exec = util.promisify(childProcess.exec);
-
 /** Get the path to the executable shipped with the extension. */
 export function getBundledExecutablePath(
   executableName: config.ExecutableName
@@ -55,16 +49,21 @@ export async function getResolvedExecutablePath(
   return getBundledExecutablePath(executableName);
 }
 
+// Create a version of `exec`, which uses promises instead of callbacks.
+const exec = util.promisify(childProcess.exec);
+// Create a version of `execFile`, which uses promises instead of callbacks.
+const execFile = util.promisify(childProcess.execFile);
+
 /** Execute a command with the given executable and arguments. */
 export async function execute(
   executableName: config.ExecutableName,
   ...args: string[]
 ) {
   const executable = await getResolvedExecutablePath(executableName);
-  const cmd = [executable, ...args].join(" ");
-  // Use powershell instead of CommandPrompt on Windows, as that is also the default for VS Code's `ProcessExecution`.
-  if (process.platform === "win32") {
+  if (executableName === "ccd-js-gen" && process.platform === "win32") {
+    const cmd = [executable, ...args].join(" ");
+    // Use `exec` on Windows to run the `ccd-js-gen.ps1` file in PowerShell.
     return exec(cmd, {'shell': 'powershell.exe'});
   }
-  return exec(cmd);
+  return execFile(executable, args);
 }

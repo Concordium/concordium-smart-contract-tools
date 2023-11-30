@@ -54,7 +54,11 @@ const exec = util.promisify(childProcess.exec);
 // Create a version of `execFile`, which uses promises instead of callbacks.
 const execFile = util.promisify(childProcess.execFile);
 
-/** Execute a command with the given executable and arguments. */
+/** Execute a command with the given executable and arguments.
+ *
+ *  Uses `childProcess.exec` by default, but `childProcess.execFile`
+ *  with `PowerShell` on Windows if `executableName === "ccd-js-gen"`.
+ * */
 export async function execute(
   executableName: config.ExecutableName,
   ...args: string[]

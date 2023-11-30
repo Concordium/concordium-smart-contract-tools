@@ -1,8 +1,8 @@
 # Concordium Smart Contract extension for VS Code
 
-This extension provides the functionality needed for [developing smart contracts](https://developer.concordium.software/en/mainnet/smart-contracts/general/introduction.html) for the [Concordium Blockchain](https://concordium.com/).
+This extension provides the functionality needed for developing [smart contracts](https://developer.concordium.software/en/mainnet/smart-contracts/general/introduction.html) and dApps for the [Concordium Blockchain](https://concordium.com/).
 
-Features provided by [`cargo-concordium`](https://github.com/Concordium/concordium-smart-contract-tools/tree/main/cargo-concordium) integrated into VS Code.
+Features provided by [`cargo-concordium`](https://github.com/Concordium/concordium-smart-contract-tools/tree/main/cargo-concordium) and [`ccd-js-gen`](https://www.npmjs.com/package/@concordium/ccd-js-gen) integrated into VS Code.
 
 ## Features
 
@@ -24,6 +24,12 @@ Running the smart contract tests command.
 
 ![](https://github.com/Concordium/concordium-smart-contract-tools/raw/main/vscode-smart-contracts/assets/test-contract.gif)
 
+### Command for generating TypeScript/JavaScript clients
+
+Running the generate TypeScript/JavaScript clients command.
+
+![](https://github.com/Concordium/concordium-smart-contract-tools/raw/main/vscode-smart-contracts/assets/generate-js-clients.gif)
+
 ### Provide tasks for smart contract projects
 
 Searches the workspace for common smart contract tasks.
@@ -37,19 +43,25 @@ Just type `ccd` in your smart contract source file and let IntelliSense show you
 
 ## Requirements
 
-The extension relies on [`rustup`](https://rustup.rs/) and [`cargo`](https://doc.rust-lang.org/cargo/) being installed and available in PATH.
+The extension relies on the following tools, which must be installed and available on PATH.
+- [`rustup`](https://rustup.rs/) 
+- [`cargo`](https://doc.rust-lang.org/cargo/)
+- [`Node.js`](https://nodejs.org/en/)
 
 ## Extension Settings
 
 This extension contributes the following settings:
 
 * `concordium-smart-contracts.custom-executable`: `string | null` (default `null`) <br>
-  Provide a custom path to the cargo-concordium executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`
+  Provide a custom path to the `cargo-concordium` executable to use instead of the bundled one. Ex. `~/.cargo/bin/cargo-concordium`
 * `concordium-smart-contracts.additional-build-args`: `string[]` (default `[]`) <br>
   Provide additional arguments for `cargo-concordium` when running the build smart contract command.
 * `concordium-smart-contracts.additional-test-args`: `string[]` (default `[]`) <br>
   Provide additional arguments for `cargo-concordium` when running the test smart contract command.
-
+* `concordium-smart-contracts.custom-ccd-js-gen-executable`: `string | null` (default `null`) <br>
+  Provide a custom path to the `ccd-js-gen` executable to use instead of the bundled one. Ex. `/usr/local/lib/node_modules/.bin/ccd-js-gen`.
+* `concordium-smart-contracts.additional-gen-js-args`: `string[]` (default `[]`) <br>
+  Provide additional arguments for `ccd-js-gen` when running.
 
 ## Release Notes
 

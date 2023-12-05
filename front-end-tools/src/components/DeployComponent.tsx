@@ -223,7 +223,10 @@ export default function DeployComponenet(props: ConnectionProps) {
                                     setEmbeddedModuleSchemaBase64Init(moduleSchemaBase64Embedded);
 
                                     // Check if the module was built as a reproducible build.
-                                    const buildInfoSection = WebAssembly.Module.customSections(wasmModule, 'concordium-build-info');
+                                    const buildInfoSection = WebAssembly.Module.customSections(
+                                        wasmModule,
+                                        'concordium-build-info'
+                                    );
                                     setIsReproducibleBuild(buildInfoSection.length !== 0);
                                 } else {
                                     setUploadError('Upload module file is undefined');
@@ -236,9 +239,10 @@ export default function DeployComponenet(props: ConnectionProps) {
                 {uploadError !== undefined && <Alert variant="danger"> Error: {uploadError}. </Alert>}
                 {isReproducibleBuild === false && (
                     <Alert variant="warning">
-                        Warning: The module was not built as a reproducible build. See the{' '}
-                        <a href="https://docs.rs/crate/cargo-concordium/latest">cargo-concordium documentation</a>{' '}
-                        for more information.
+                        Warning: The module does not have embedded build information. It will likely not be possible to
+                        match this module to source code. See the{' '}
+                        <a href="https://docs.rs/crate/cargo-concordium/latest">cargo-concordium documentation</a> for
+                        more information.
                     </Alert>
                 )}
                 <br />

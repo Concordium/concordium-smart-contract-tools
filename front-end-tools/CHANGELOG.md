@@ -2,7 +2,7 @@
 
 - Fix error message when specifying input parameter without uploading schema.
 - Fix contract method names in error messages.
-- Give warning when deploying a module that is not built with the --verifiable flag.
+- Give warning when deploying a module that does not have embedded build information.
 
 ## 3.0.1
 

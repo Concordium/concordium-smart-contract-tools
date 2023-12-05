@@ -56,6 +56,7 @@ export default function DeployComponenet(props: ConnectionProps) {
 
     const [transactionErrorDeploy, setTransactionErrorDeploy] = useState<string | undefined>(undefined);
     const [uploadError, setUploadError] = useState<string | undefined>(undefined);
+    const [isReproducibleBuild, setIsReproducibleBuild] = useState<boolean | undefined>(undefined);
     const [isModuleReferenceAlreadyDeployedStep1, setIsModuleReferenceAlreadyDeployedStep1] = useState(false);
     const [txHashDeploy, setTxHashDeploy] = useState<string | undefined>(undefined);
     const [base64Module, setBase64Module] = useState<string | undefined>(undefined);
@@ -131,7 +132,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                     <Form.Label>Upload Smart Contract Module File (e.g. myContract.wasm.v1)</Form.Label>
                     <Form.Control
                         type="file"
-                        accept=".wasm,.wasm.v0,.wasm.v1"
+                        accept=".wasm,.v0,.v1"
                         {...form.register('file')}
                         onChange={async (e) => {
                             const register = form.register('file');
@@ -220,6 +221,13 @@ export default function DeployComponenet(props: ConnectionProps) {
                                     );
 
                                     setEmbeddedModuleSchemaBase64Init(moduleSchemaBase64Embedded);
+
+                                    // Check if the module was built as a reproducible build.
+                                    const buildInfoSection = WebAssembly.Module.customSections(
+                                        wasmModule,
+                                        'concordium-build-info'
+                                    );
+                                    setIsReproducibleBuild(buildInfoSection.length !== 0);
                                 } else {
                                     setUploadError('Upload module file is undefined');
                                 }
@@ -229,6 +237,14 @@ export default function DeployComponenet(props: ConnectionProps) {
                     <Form.Text />
                 </Form.Group>
                 {uploadError !== undefined && <Alert variant="danger"> Error: {uploadError}. </Alert>}
+                {isReproducibleBuild === false && (
+                    <Alert variant="warning">
+                        Warning: The module does not have embedded build information. It will likely not be possible to
+                        match this module to source code. See the{' '}
+                        <a href="https://docs.rs/crate/cargo-concordium/latest">cargo-concordium documentation</a> for
+                        more information.
+                    </Alert>
+                )}
                 <br />
                 {base64Module && moduleReferenceCalculated && (
                     <>

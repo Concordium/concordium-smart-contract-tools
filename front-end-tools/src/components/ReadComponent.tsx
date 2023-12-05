@@ -101,7 +101,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                 setSchemaError('Schema was not uploaded');
                 return;
             }
-            
+
             const readFunctionTemplate = getUpdateContractParameterSchema(
                 toBuffer(schema, 'base64'),
                 ContractName.fromString(smartContractName),

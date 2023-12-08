@@ -128,7 +128,7 @@
           ],
           "scope": "machine-overridable",
           "default": null,
-          "markdownDescription": "Provide a custom path to the ccd-js-gen executable to use instead of the bundled one. Ex. `/usr/local/lib/node_modules/.bin/ccd-js-gen`"
+          "markdownDescription": "Provide a custom path to the ccd-js-gen executable (or `.ps1` file on Windows) to use instead of the bundled one. Ex. `/usr/local/lib/node_modules/.bin/ccd-js-gen`"
         },
         "concordium-smart-contracts.additional-gen-js-args": {
           "type": "array",

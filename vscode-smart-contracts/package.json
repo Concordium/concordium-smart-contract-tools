@@ -161,7 +161,6 @@
   },
   "prettier": {},
   "devDependencies": {
-    "@concordium/ccd-js-gen": "^1.0.1",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
@@ -177,6 +176,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
+    "@concordium/ccd-js-gen": "^1.0.1",
     "glob": "^8.1.0"
   }
 }

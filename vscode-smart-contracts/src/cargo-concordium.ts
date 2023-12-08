@@ -19,7 +19,7 @@ export async function version(): Promise<string> {
  *
  * Uses the custom cargo-concordium executable from settings otherwise fallbacks to the executables included in the extension.
  */
-export async function getResolvedExecutablePath(): Promise<string> {
+export function getResolvedExecutablePath(): Promise<string> {
   return wrapperHelpers.getResolvedExecutablePath("cargo-concordium");
 }
 

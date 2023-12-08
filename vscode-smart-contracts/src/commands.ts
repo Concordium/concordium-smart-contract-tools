@@ -110,7 +110,7 @@ async function buildTask(schemaSettings: SchemaSettings): Promise<vscode.Task | 
   const editor = vscode.window.activeTextEditor;
   if (editor === undefined) {
     vscode.window.showErrorMessage(
-      "Unable to determine smart contract project. Open a file in the smart contract project that you want to build"
+      "Unable to determine smart contract project. Open a file in the smart contract project that you want to build."
     );
     return;
   }
@@ -229,7 +229,7 @@ export async function test() {
   const editor = vscode.window.activeTextEditor;
   if (editor === undefined) {
     vscode.window.showErrorMessage(
-      "Unable to determine smart contract project. Open a file in the smart contract project that you want to test"
+      "Unable to determine smart contract project. Open a file in the smart contract project that you want to test."
     );
     return;
   }
@@ -327,7 +327,7 @@ export async function generateJsClients() {
   const editor = vscode.window.activeTextEditor;
   if (editor === undefined) {
     vscode.window.showErrorMessage(
-      "Unable to determine smart contract project. Open a file in the smart contract project that you want to build"
+      "Unable to determine smart contract project. Open a file in the smart contract project where you want generate a client."
     );
     return;
   }
@@ -345,7 +345,7 @@ export async function generateJsClients() {
   if (!fs.existsSync(moduleFilePath)) {
     const build_contract_action = "Build contract";
     const action = await vscode.window.showErrorMessage(
-      `A compiled Wasm module could not be found. Please compile the smart contract via the "build contract" command. (Expect location: ${moduleFilePath})`,
+      `A compiled smart contract module could not be found. Please compile the smart contract via the "build contract" command. (Expected location: ${moduleFilePath})`,
       build_contract_action
     );
     if (action !== build_contract_action) {
@@ -353,14 +353,14 @@ export async function generateJsClients() {
     }
     const task = await buildTask("outDir");
     if (task === undefined) {
-      return;
+      throw new Error("Failed to build the smart contract: `buildTask` returned undefined.")
     }
     const exitCode = await executeAndAwaitTask(task);
     if (exitCode !== 0) {
-      return;
+      throw new Error(`Failed to build the smart contract: Build task returned with error code ${exitCode}.`);
     }
   }
-  const additionalArgs = config.getAdditionalBuildArgs();
+  const additionalArgs = config.getAdditionalJsGenArgs();
   const defaultArgs = ["--module", moduleFilePath, "--out-dir", outDirPath];
   const args = defaultArgs.concat(additionalArgs);
   return vscode.tasks.executeTask(

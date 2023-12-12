@@ -91,7 +91,9 @@ async function buildWorker(schemaSettings: SchemaSettings) {
  * Internal helper that tries to return a task that runs 'cargo-concordium build' using the directory of the currently focused editor.
  * Takes the schema setting as an argument.
  * */
-async function buildTask(schemaSettings: SchemaSettings): Promise<vscode.Task | undefined> {
+async function buildTask(
+  schemaSettings: SchemaSettings
+): Promise<vscode.Task | undefined> {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
       "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
@@ -353,11 +355,15 @@ export async function generateJsClients() {
     }
     const task = await buildTask("outDir");
     if (task === undefined) {
-      throw new Error("Failed to build the smart contract: `buildTask` returned undefined.")
+      throw new Error(
+        "Failed to build the smart contract: `buildTask` returned undefined."
+      );
     }
     const exitCode = await executeAndAwaitTask(task);
     if (exitCode !== 0) {
-      throw new Error(`Failed to build the smart contract: Build task returned with error code ${exitCode}.`);
+      throw new Error(
+        `Failed to build the smart contract: Build task returned with error code ${exitCode}.`
+      );
     }
   }
   const additionalArgs = config.getAdditionalJsGenArgs();

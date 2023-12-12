@@ -83,7 +83,7 @@ describe("custom-executable setting for cargo-concordium", () => {
 describe("ccd-js-gen module", () => {
   prepareTest();
 
-  it("should print the version of ccd-js-gen", async function() {
+  it("should print the version of ccd-js-gen", async function () {
     // Use `function` syntax instead of arrow (=>) to get access to `this`.
     // Then increase the timeout to 3000ms for this test, as loading ccdJsGen is quite slow sometimes.
     // Especially in the CI where it frequently exceeds the default timeout limit of 2000ms.

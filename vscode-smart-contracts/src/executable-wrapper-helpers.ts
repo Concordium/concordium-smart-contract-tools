@@ -23,11 +23,18 @@ export function getBundledExecutablePath(
   let pathSegments;
   switch (executableName) {
     case "cargo-concordium": {
-      pathSegments = ["executables", `${executableName}${process.platform === "win32" ? ".exe" : ""}`];
+      pathSegments = [
+        "executables",
+        `${executableName}${process.platform === "win32" ? ".exe" : ""}`,
+      ];
       break;
     }
     case "ccd-js-gen": {
-      pathSegments = ["node_modules", ".bin", `${executableName}${process.platform === "win32" ? ".cmd" : ""}`];
+      pathSegments = [
+        "node_modules",
+        ".bin",
+        `${executableName}${process.platform === "win32" ? ".cmd" : ""}`,
+      ];
       break;
     }
   }
@@ -67,7 +74,7 @@ export async function execute(
   if (executableName === "ccd-js-gen" && process.platform === "win32") {
     const cmd = [executable, ...args].join(" ");
     // Use `exec` on Windows to run the `ccd-js-gen.cmd` file in CommandPrompt.
-    return exec(cmd, {'shell': 'cmd.exe'});
+    return exec(cmd, { shell: "cmd.exe" });
   }
   return execFile(executable, args);
 }

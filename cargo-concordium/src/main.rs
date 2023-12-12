@@ -17,7 +17,7 @@ use concordium_base::{
 use concordium_smart_contract_engine::{
     utils::{self, WasmVersion},
     v0,
-    v1::{self, ReturnValue},
+    v1::{self, DebugTracker, ReturnValue},
     InterpreterEnergy,
 };
 use concordium_wasm::{
@@ -435,6 +435,13 @@ struct BuildOptions {
     )]
     source_link:         Option<String>,
     #[structopt(
+        name = "allow-debug",
+        long = "allow-debug",
+        help = "Allow debug options when building the contract. This is useful for local testing, \
+                but the use of debug prints is not allowed when deploying to the chain."
+    )]
+    allow_debug:         bool,
+    #[structopt(
         raw = true,
         help = "Extra arguments passed to `cargo build` when building Wasm module."
     )]
@@ -550,6 +557,12 @@ enum RunCommand {
             help = "Pretty print the contract state at the end of execution."
         )]
         should_display_state: bool,
+        #[structopt(
+            name = "emit-debug",
+            long = "emit-debug",
+            help = "Emit debug information at the end of the run."
+        )]
+        emit_debug:           bool,
         #[structopt(flatten)]
         runner:               Runner,
     },
@@ -603,6 +616,12 @@ enum RunCommand {
             help = "Pretty print the contract state at the end of execution."
         )]
         should_display_state: bool,
+        #[structopt(
+            name = "emit-debug",
+            long = "emit-debug",
+            help = "Emit debug information at the end of the run."
+        )]
+        emit_debug:           bool,
         #[structopt(flatten)]
         runner:               Runner,
     },
@@ -645,8 +664,9 @@ pub fn main() -> anyhow::Result<()> {
             only_unit_tests,
             test_targets,
         } => {
-            let unit_test_success = build_and_run_wasm_test(&build_options.cargo_args, seed)
-                .context("Could not build and run unit tests.")?;
+            let unit_test_success =
+                build_and_run_wasm_test(build_options.allow_debug, &build_options.cargo_args, seed)
+                    .context("Could not build and run unit tests.")?;
             if !only_unit_tests {
                 build_and_run_integration_tests(build_options, test_targets)
                     .context("Could not build and run integration tests.")?;
@@ -954,6 +974,13 @@ fn handle_build(
     let bold_style = ansi_term::Style::new().bold();
     let build_schema = options.schema_build_options();
     let is_verifiable_build = options.image.is_some();
+    let cargo_args = if options.allow_debug {
+        let mut args = options.cargo_args;
+        args.push("--features=concordium-std/debug".into());
+        args
+    } else {
+        options.cargo_args
+    };
     let BuildInfo {
         total_module_len,
         schema,
@@ -962,11 +989,12 @@ fn handle_build(
     } = build_contract(
         options.version,
         build_schema,
+        options.allow_debug,
         options.image,
         options.source_link,
         options.container_runtime,
         options.out,
-        &options.cargo_args,
+        &cargo_args,
     )
     .context("Could not build smart contract.")?;
     if let Some(module_schema) = &schema {
@@ -1553,19 +1581,47 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn print_debug(trace: DebugTracker) {
+    let summary = trace.host_call_summary();
+    let DebugTracker {
+        operation,
+        memory_alloc,
+        host_call_trace: _,
+        emitted_events,
+        next_index: _,
+    } = trace;
+    eprintln!("Debug information recorded during the run.");
+    eprintln!("- {operation} interpreter energy spent on Wasm instruction execution.");
+    eprintln!("- {memory_alloc} interpreter energy spent on memory allocation.");
+    eprintln!("- Host calls summary.");
+    for (host_fn, (multiplicity, total_energy)) in summary {
+        eprintln!(
+            "  - {host_fn} called {multiplicity} times totalling {total_energy} interpreter \
+             energy spent."
+        );
+    }
+
+    eprintln!("- Emitted debug events.");
+    for (_, event) in emitted_events {
+        eprintln!("  - {event}");
+    }
+}
+
 fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
-    let (contract_name, runner, is_receive) = match run_cmd {
+    let (contract_name, runner, is_receive, emit_debug) = match run_cmd {
         RunCommand::Init {
             ref runner,
             ref contract_name,
+            emit_debug,
             ..
-        } => (contract_name, runner, None),
+        } => (contract_name, runner, None, emit_debug),
         RunCommand::Receive {
             ref runner,
             ref contract_name,
             ref entrypoint,
+            emit_debug,
             ..
-        } => (contract_name, runner, Some(entrypoint)),
+        } => (contract_name, runner, Some(entrypoint), emit_debug),
     };
 
     // get the module schema if available.
@@ -1786,7 +1842,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             let name = format!("init_{}", contract_name);
             // empty initial backing store.
             let mut loader = v1::trie::Loader::new(&[][..]);
-            let res = v1::invoke_init_with_metering_from_source(
+            let res = v1::invoke_init_with_metering_from_source::<_, DebugTracker>(
                 v1::InvokeFromSourceCtx {
                     source:          module,
                     amount:          runner.amount,
@@ -1808,6 +1864,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     state,
                     remaining_energy,
                     return_value,
+                    trace,
                 } => {
                     eprintln!("\nInit call succeeded. The following logs were produced:");
                     print_logs(logs);
@@ -1817,12 +1874,16 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     eprintln!(
                         "\nInterpreter energy spent is {}",
                         runner.energy.subtract(remaining_energy.energy)
-                    )
+                    );
+                    if emit_debug {
+                        print_debug(trace);
+                    }
                 }
                 v1::InitResult::Reject {
                     remaining_energy,
                     reason,
                     return_value,
+                    trace,
                 } => {
                     eprintln!("Init call rejected with reason {}.", reason);
                     eprintln!("\nThe following error value was returned:");
@@ -1830,19 +1891,29 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     eprintln!(
                         "\nInterpreter energy spent is {}",
                         runner.energy.subtract(remaining_energy.energy)
-                    )
+                    );
+                    if emit_debug {
+                        print_debug(trace);
+                    }
                 }
                 v1::InitResult::Trap {
                     remaining_energy,
                     error,
+                    trace,
                 } => {
+                    if emit_debug {
+                        print_debug(trace);
+                    }
                     return Err(error.context(format!(
                         "Execution triggered a runtime error after spending {} interpreter energy.",
                         runner.energy.subtract(remaining_energy.energy)
                     )));
                 }
-                v1::InitResult::OutOfEnergy => {
-                    eprintln!("Init call terminated with out of energy.")
+                v1::InitResult::OutOfEnergy { trace } => {
+                    eprintln!("Init call terminated with out of energy.");
+                    if emit_debug {
+                        print_debug(trace);
+                    }
                 }
             }
         }
@@ -1893,6 +1964,10 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 ValidationConfig::V1,
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
+                    enable_debug:    true, /* we always allow the debug statements in the
+                                            * module, even if emit-debug is false since
+                                            * the user might want to just run the existing
+                                            * module */
                 },
                 module,
             )?
@@ -1927,7 +2002,15 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             let mut mutable_state = init_state.thaw();
             let inner = mutable_state.get_inner(&mut loader);
             let instance_state = v1::InstanceState::new(loader, inner);
-            let res = v1::invoke_receive::<_, _, _, _, ReceiveContextV1Opt, ReceiveContextV1Opt>(
+            let res = v1::invoke_receive::<
+                _,
+                _,
+                _,
+                _,
+                ReceiveContextV1Opt,
+                ReceiveContextV1Opt,
+                DebugTracker,
+            >(
                 std::sync::Arc::new(artifact),
                 receive_ctx,
                 v1::ReceiveInvocation {
@@ -1946,6 +2029,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     state_changed,
                     remaining_energy,
                     return_value,
+                    trace,
                 } => {
                     eprintln!("\nReceive method succeeded. The following logs were produced.");
                     print_logs(logs);
@@ -1958,24 +2042,34 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     print_return_value(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
-                    )
+                        runner.energy.signed_diff(remaining_energy)
+                    );
+                    if emit_debug {
+                        print_debug(trace);
+                    }
                 }
                 v1::ReceiveResult::Reject {
                     remaining_energy,
                     reason,
                     return_value,
+                    trace,
                 } => {
                     eprintln!("Receive call rejected with reason {}", reason);
                     eprintln!("\nThe following error value was returned:");
                     print_error(return_value)?;
                     eprintln!(
                         "\nInterpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
-                    )
+                        runner.energy.signed_diff(remaining_energy)
+                    );
+                    if emit_debug {
+                        print_debug(trace);
+                    }
                 }
-                v1::ReceiveResult::OutOfEnergy => {
-                    eprintln!("Receive call terminated with: out of energy.")
+                v1::ReceiveResult::OutOfEnergy { trace } => {
+                    eprintln!("Receive call terminated with: out of energy.");
+                    if emit_debug {
+                        print_debug(trace);
+                    }
                 }
                 v1::ReceiveResult::Interrupt {
                     remaining_energy,
@@ -1983,6 +2077,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     logs,
                     config: _,
                     interrupt,
+                    trace,
                 } => {
                     eprintln!(
                         "Receive method was interrupted. The following logs were produced by the \
@@ -2038,16 +2133,23 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                     }
                     eprintln!(
                         "Interpreter energy spent is {}",
-                        runner.energy.subtract(remaining_energy)
-                    )
+                        runner.energy.signed_diff(remaining_energy)
+                    );
+                    if emit_debug {
+                        print_debug(trace);
+                    }
                 }
                 v1::ReceiveResult::Trap {
                     remaining_energy,
                     error,
+                    trace,
                 } => {
+                    if emit_debug {
+                        print_debug(trace);
+                    }
                     return Err(error.context(format!(
                         "Execution triggered a runtime error after spending {} interpreter energy.",
-                        runner.energy.subtract(remaining_energy)
+                        runner.energy.signed_diff(remaining_energy)
                     )));
                 }
             }

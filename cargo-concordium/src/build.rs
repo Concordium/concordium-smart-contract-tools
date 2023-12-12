@@ -15,7 +15,7 @@ use concordium_base::{
     smart_contracts::{ContractName, ReceiveName, WasmModule},
 };
 use concordium_smart_contract_engine::{
-    utils::{self, WasmVersion, BUILD_INFO_SECTION_NAME},
+    utils::{self, TestResult, WasmVersion, BUILD_INFO_SECTION_NAME},
     v0, v1, ExecResult,
 };
 use concordium_wasm::{
@@ -372,9 +372,10 @@ fn build_in_container<'a>(
 ///
 /// Note that even if a verifiable build is requested the schemas are built on
 /// the host machine.
-pub fn build_contract(
+pub(crate) fn build_contract(
     version: WasmVersion,
     build_schema: SchemaBuildOptions,
+    enable_debug: bool,
     image: Option<String>,
     source_link: Option<String>,
     container_runtime: String,
@@ -586,6 +587,7 @@ pub fn build_contract(
                 ValidationConfig::V1,
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
+                    enable_debug,
                 },
                 &skeleton,
             )
@@ -1125,7 +1127,11 @@ pub(crate) fn build_and_run_integration_tests(
     build_options: BuildOptions,
     test_targets: Vec<String>,
 ) -> anyhow::Result<()> {
-    let cargo_args = &build_options.cargo_args.clone();
+    let cloned_args = build_options.cargo_args.clone();
+    let cargo_args = cloned_args
+        .iter()
+        .map(|s| s.as_str())
+        .chain(std::iter::once("--features=concordium-std/debug"));
 
     // Build the module in the same way as `cargo concordium build`, except that
     // schema information shouldn't be printed.
@@ -1199,7 +1205,11 @@ pub(crate) fn build_and_run_integration_tests(
 ///
 /// The `seed` argument allows for providing the seed to instantiate a random
 /// number generator. If `None` is given, a random seed will be sampled.
-pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyhow::Result<bool> {
+pub fn build_and_run_wasm_test(
+    enable_debug: bool,
+    extra_args: &[String],
+    seed: Option<u64>,
+) -> anyhow::Result<bool> {
     let (metadata, _) = get_crate_metadata(extra_args)?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
@@ -1214,7 +1224,11 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
         "--target",
         "wasm32-unknown-unknown",
         "--features",
-        "concordium-std/wasm-test",
+        if enable_debug {
+            "concordium-std/wasm-test,concordium-std/debug"
+        } else {
+            "concordium-std/wasm-test"
+        },
         "--target-dir",
         target_dir.as_str(),
     ];
@@ -1270,9 +1284,13 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
 
     let results = utils::run_module_tests(&wasm, seed_u64)?;
     let mut num_failed = 0;
-    for result in results {
-        let test_name = result.0;
-        match result.1 {
+    for TestResult {
+        test_name,
+        result,
+        debug_events,
+    } in results
+    {
+        match result {
             Some((err, is_randomized)) => {
                 num_failed += 1;
                 eprintln!(
@@ -1295,6 +1313,12 @@ pub fn build_and_run_wasm_test(extra_args: &[String], seed: Option<u64>) -> anyh
             }
             None => {
                 eprintln!("  - {} ... {}", test_name, Color::Green.bold().paint("ok"));
+            }
+        }
+        if enable_debug {
+            eprintln!("    Emitted debug events.");
+            for event in debug_events {
+                eprintln!("    {event}");
             }
         }
     }

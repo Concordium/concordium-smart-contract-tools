@@ -49,6 +49,14 @@
       {
         "command": "concordium-smart-contracts.init-project",
         "title": "Concordium Smart Contracts: Initialize a smart contract project"
+      },
+      {
+        "command": "concordium-smart-contracts.ccd-js-gen-version",
+        "title": "Concordium Smart Contracts: ccd-js-gen version"
+      },
+      {
+        "command": "concordium-smart-contracts.generate-js-clients",
+        "title": "Concordium Smart Contracts: Generate JavaScript/TypeScript clients"
       }
     ],
     "taskDefinitions": [
@@ -112,6 +120,26 @@
           "default": [],
           "scope": "resource",
           "markdownDescription": "Provide additional arguments for `cargo-concordium` when running the test smart contract command."
+        },
+        "concordium-smart-contracts.custom-ccd-js-gen-executable": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "scope": "machine-overridable",
+          "default": null,
+          "markdownDescription": "Provide a custom path to the ccd-js-gen executable (or `.ps1` file on Windows) to use instead of the bundled one. Ex. `/usr/local/lib/node_modules/.bin/ccd-js-gen`"
+        },
+        "concordium-smart-contracts.additional-gen-js-args": {
+          "type": "array",
+          "items": {
+            "title": "argument",
+            "description": "Additional argument appended to the generate TypeScript/JavaScript clients command",
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Provide additional arguments for `ccd-js-gen` when running"
         }
       }
     },
@@ -148,6 +176,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
+    "@concordium/ccd-js-gen": "^1.0.1",
     "glob": "^8.1.0"
   }
 }

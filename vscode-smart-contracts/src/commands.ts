@@ -5,15 +5,21 @@
 import * as vscode from "vscode";
 import * as util from "node:util";
 import * as cargoConcordium from "./cargo-concordium";
+import * as ccdJsGen from "./ccd-js-gen";
 import * as config from "./configuration";
 import * as path from "node:path";
 import * as childProcess from "node:child_process";
+import * as fs from "fs";
+import * as tasks from "./tasks";
 
 const exec = util.promisify(childProcess.exec);
 const execFile = util.promisify(childProcess.execFile);
 
 /** The default name used for the output directory using the build command. */
-export const DEFAULT_OUT_DIR_NAME = "concordium-out";
+export const DEFAULT_BUILD_OUT_DIR_NAME = "concordium-out";
+
+/** The default name used for the output directory using the generate TS/JS clients command. */
+export const DEFAULT_JS_GEN_OUT_DIR_NAME = "generated";
 
 /** Wrap a function with try-catch displaying the error to the user, then throws the errors */
 export function displayErrorWrapper<A extends unknown[], B>(
@@ -75,6 +81,19 @@ type SchemaSettings = "skip" | "embed-and-outDir" | "outDir";
  * Takes the schema setting as an argument.
  */
 async function buildWorker(schemaSettings: SchemaSettings) {
+  const task = await buildTask(schemaSettings);
+  if (task !== undefined) {
+    return vscode.tasks.executeTask(task);
+  }
+}
+
+/**
+ * Internal helper that tries to return a task that runs 'cargo-concordium build' using the directory of the currently focused editor.
+ * Takes the schema setting as an argument.
+ * */
+async function buildTask(
+  schemaSettings: SchemaSettings
+): Promise<vscode.Task | undefined> {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
       "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
@@ -93,7 +112,7 @@ async function buildWorker(schemaSettings: SchemaSettings) {
   const editor = vscode.window.activeTextEditor;
   if (editor === undefined) {
     vscode.window.showErrorMessage(
-      "Unable to determine smart contract project. Open a file in the smart contract project that you want to build"
+      "Unable to determine smart contract project. Open a file in the smart contract project that you want to build."
     );
     return;
   }
@@ -104,7 +123,7 @@ async function buildWorker(schemaSettings: SchemaSettings) {
   );
 
   const projectDir = await locateCargoProjectDir(cwd);
-  const outDir = path.join(projectDir, DEFAULT_OUT_DIR_NAME);
+  const outDir = path.join(projectDir, DEFAULT_BUILD_OUT_DIR_NAME);
 
   const schemaArgs =
     schemaSettings === "skip"
@@ -121,9 +140,7 @@ async function buildWorker(schemaSettings: SchemaSettings) {
   const additionalArgs = config.getAdditionalBuildArgs();
   const moduleOut = path.join(outDir, "module.wasm.v1");
   const args = ["--out", moduleOut].concat(schemaArgs, additionalArgs);
-  return vscode.tasks.executeTask(
-    await cargoConcordium.build(cwd, workspaceFolder, args)
-  );
+  return cargoConcordium.build(cwd, workspaceFolder, args);
 }
 
 /**
@@ -158,7 +175,7 @@ async function installWasmTarget() {
     "wasm32-unknown-unknown",
   ]);
   const task = new vscode.Task(
-    { type: cargoConcordium.CONCORDIUM_TASK_TYPE, command: "install wasm" },
+    { type: tasks.CONCORDIUM_TASK_TYPE, command: "install wasm" },
     vscode.TaskScope.Workspace,
     `Install WASM target`,
     "Build smart contract",
@@ -214,7 +231,7 @@ export async function test() {
   const editor = vscode.window.activeTextEditor;
   if (editor === undefined) {
     vscode.window.showErrorMessage(
-      "Unable to determine smart contract project. Open a file in the smart contract project that you want to test"
+      "Unable to determine smart contract project. Open a file in the smart contract project that you want to test."
     );
     return;
   }
@@ -291,7 +308,7 @@ async function installCargoGenerate() {
   ]);
   const task = new vscode.Task(
     {
-      type: cargoConcordium.CONCORDIUM_TASK_TYPE,
+      type: tasks.CONCORDIUM_TASK_TYPE,
       command: "install cargo-generate",
     },
     vscode.TaskScope.Workspace,
@@ -303,4 +320,64 @@ async function installCargoGenerate() {
   if (exitCode !== 0) {
     throw new Error("Failed installing cargo-generate");
   }
+}
+
+/**
+ * Generate JavaScript/TypeScript clients for the smart contract module.
+ */
+export async function generateJsClients() {
+  const editor = vscode.window.activeTextEditor;
+  if (editor === undefined) {
+    vscode.window.showErrorMessage(
+      "Unable to determine smart contract project. Open a file in the smart contract project where you want generate a client."
+    );
+    return;
+  }
+  const cwd = path.dirname(editor.document.uri.fsPath);
+  const projectDir = await locateCargoProjectDir(cwd);
+  const moduleFilePath = path.join(
+    projectDir,
+    DEFAULT_BUILD_OUT_DIR_NAME,
+    "module.wasm.v1"
+  );
+  const outDirPath = path.join(projectDir, DEFAULT_JS_GEN_OUT_DIR_NAME);
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(
+    editor.document.uri
+  );
+  if (!fs.existsSync(moduleFilePath)) {
+    const build_contract_action = "Build contract";
+    const action = await vscode.window.showErrorMessage(
+      `A compiled smart contract module could not be found. Please compile the smart contract via the "build contract" command. (Expected location: ${moduleFilePath})`,
+      build_contract_action
+    );
+    if (action !== build_contract_action) {
+      return;
+    }
+    const task = await buildTask("outDir");
+    if (task === undefined) {
+      throw new Error(
+        "Failed to build the smart contract: `buildTask` returned undefined."
+      );
+    }
+    const exitCode = await executeAndAwaitTask(task);
+    if (exitCode !== 0) {
+      throw new Error(
+        `Failed to build the smart contract: Build task returned with error code ${exitCode}.`
+      );
+    }
+  }
+  const additionalArgs = config.getAdditionalJsGenArgs();
+  const defaultArgs = ["--module", moduleFilePath, "--out-dir", outDirPath];
+  const args = defaultArgs.concat(additionalArgs);
+  return vscode.tasks.executeTask(
+    await ccdJsGen.generateTsJsClients(cwd, workspaceFolder, args)
+  );
+}
+
+/**
+ * Display the version of the ccd-js-gen executable.
+ * */
+export async function ccdJsGenVersion() {
+  const version = await ccdJsGen.version();
+  vscode.window.showInformationMessage(version);
 }

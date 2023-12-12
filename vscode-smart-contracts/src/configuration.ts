@@ -17,11 +17,15 @@ export class ConfigError extends Error {
 /** Name for the section in the settings. */
 export const SECTION = "concordium-smart-contracts";
 /** Name for the setting to provide a path to a custom cargo-concordium executable. */
-export const CUSTOM_EXECUTABLE = "custom-executable";
+export const CUSTOM_CARGO_CONCORDIUM_EXECUTABLE = "custom-executable";
+/** Name for the setting to provide a path to a custom ccd-js-gen executable. */
+export const CUSTOM_CCD_JS_GEN_EXECUTABLE = "custom-ccd-js-gen-executable";
 /** Name for the setting to provide additional arguments for when running cargo-concordium build. */
 export const ADDITIONAL_BUILD_ARGUMENTS = "additional-build-args";
 /** Name for the setting to provide additional arguments for when running cargo-concordium test. */
 export const ADDITIONAL_TEST_ARGUMENTS = "additional-test-args";
+/** Name for the setting to provide additional arguments for when running ccd-js-gen. */
+export const ADDITIONAL_GEN_JS_ARGUMENTS = "additional-gen-js-args";
 
 /** Type for the custom executable setting, must match the corresponding type schema in package.json */
 type CustomExecutableConfig = string | null;
@@ -29,14 +33,31 @@ type CustomExecutableConfig = string | null;
 /** Type for the additional build/test args setting, must match the corresponding type schema in package.json */
 type AdditionalArgsConfig = string[];
 
-/** Get and validate the custom executable path set by the user.
+/** Type for diffenrentiating between the different executables. */
+export type ExecutableName = "cargo-concordium" | "ccd-js-gen";
+
+/** Get and validate the custom executable path for `cargo-concordium` or `ccd-js-gen` set by the user.
  * Return null if not set by the user.
  * Throws a `ConfigError` if invalid.
  */
-export async function getCustomExecutablePath(): Promise<string | null> {
+export async function getCustomExecutablePath(
+  executableName: ExecutableName
+): Promise<string | null> {
+  let settingName;
+  switch (executableName) {
+    case "cargo-concordium": {
+      settingName = CUSTOM_CARGO_CONCORDIUM_EXECUTABLE;
+      break;
+    }
+    case "ccd-js-gen": {
+      settingName = CUSTOM_CCD_JS_GEN_EXECUTABLE;
+      break;
+    }
+  }
+
   const customPath = vscode.workspace
     .getConfiguration(SECTION)
-    .get<CustomExecutableConfig>(CUSTOM_EXECUTABLE);
+    .get<CustomExecutableConfig>(settingName);
   if (customPath === undefined || customPath === null) {
     return null;
   }
@@ -49,7 +70,7 @@ export async function getCustomExecutablePath(): Promise<string | null> {
     .catch((error: NodeJS.ErrnoException) => {
       if (error.code === "ENOENT") {
         throw new ConfigError(
-          `Custom cargo-concordium executable path does not exist. ${customPath}`
+          `Custom ${executableName} executable path does not exist. ${customPath}`
         );
       }
 
@@ -58,7 +79,7 @@ export async function getCustomExecutablePath(): Promise<string | null> {
 
   if (!stats.isFile()) {
     throw new ConfigError(
-      `Custom cargo-concordium executable path is not a file. ${customPath}`
+      `Custom ${executableName} executable path is not a file. ${customPath}`
     );
   }
 
@@ -71,7 +92,7 @@ export async function getCustomExecutablePath(): Promise<string | null> {
       0
   ) {
     throw new ConfigError(
-      `Custom cargo-concordium executable path is not executable. ${customPath}`
+      `Custom ${executableName} executable path is not executable. ${customPath}`
     );
   }
 
@@ -91,5 +112,13 @@ export function getAdditionalTestArgs(): string[] {
   const argsOption = vscode.workspace
     .getConfiguration(SECTION)
     .get<AdditionalArgsConfig>(ADDITIONAL_TEST_ARGUMENTS);
+  return argsOption ?? [];
+}
+
+/** Get additional generate TS/JS clients arguments from configurations. */
+export function getAdditionalJsGenArgs(): string[] {
+  const argsOption = vscode.workspace
+    .getConfiguration(SECTION)
+    .get<AdditionalArgsConfig>(ADDITIONAL_GEN_JS_ARGUMENTS);
   return argsOption ?? [];
 }

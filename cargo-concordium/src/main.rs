@@ -975,8 +975,11 @@ fn handle_build(
     let build_schema = options.schema_build_options();
     let is_verifiable_build = options.image.is_some();
     let cargo_args = if options.allow_debug {
-        let mut args = options.cargo_args;
+        // prepend the features at the beginning of the options
+        // since the user might have added some options after `--`.
+        let mut args = Vec::with_capacity(options.cargo_args.len() + 1);
         args.push("--features=concordium-std/debug".into());
+        args.extend(options.cargo_args);
         args
     } else {
         options.cargo_args
@@ -1588,7 +1591,7 @@ fn print_debug(trace: DebugTracker) {
         memory_alloc,
         host_call_trace: _,
         emitted_events,
-        next_index: _,
+        ..
     } = trace;
     eprintln!("Debug information recorded during the run.");
     eprintln!("- {operation} interpreter energy spent on Wasm instruction execution.");

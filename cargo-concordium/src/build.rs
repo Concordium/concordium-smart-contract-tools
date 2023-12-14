@@ -372,6 +372,7 @@ fn build_in_container<'a>(
 ///
 /// Note that even if a verifiable build is requested the schemas are built on
 /// the host machine.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_contract(
     version: WasmVersion,
     build_schema: SchemaBuildOptions,
@@ -1127,11 +1128,8 @@ pub(crate) fn build_and_run_integration_tests(
     build_options: BuildOptions,
     test_targets: Vec<String>,
 ) -> anyhow::Result<()> {
-    let cloned_args = build_options.cargo_args.clone();
-    let cargo_args = cloned_args
-        .iter()
-        .map(|s| s.as_str())
-        .chain(std::iter::once("--features=concordium-std/debug"));
+    let cargo_args = build_options.cargo_args.clone();
+    let allow_debug = build_options.allow_debug;
 
     // Build the module in the same way as `cargo concordium build`, except that
     // schema information shouldn't be printed.
@@ -1171,17 +1169,46 @@ pub(crate) fn build_and_run_integration_tests(
         Color::Green.bold().paint("Running integration tests ...")
     );
 
+    let mut command = Command::new("cargo");
+    command.args(cargo_test_args);
+    if allow_debug {
+        command.args(["--features", "concordium-std/debug"]);
+    }
+    command.args(&cargo_args);
+    // when allowing debug output, we make sure that test output is not captured.
+    if allow_debug {
+        // check if the user has already supplied extra test flags
+        let (test_args, show_output) = cargo_args.iter().fold((false, false), |(ta, so), arg| {
+            if arg == "--" {
+                (true, so)
+            } else if arg == "--show-output" || arg == "--nocapture" {
+                (ta, true)
+            } else {
+                (ta, so)
+            }
+        });
+        // if the extra test args separator is added we should not add it again.
+        if !test_args {
+            command.arg("--");
+        }
+        // if the user has already supplied either the --nocapture or --show-output
+        // flags we do nothing, since output will be displayed. Otherwise we
+        // tell the test harness to show output.
+        if !show_output {
+            command.arg("--show-output");
+        }
+
+        command.env("CARGO_CONCORDIUM_TEST_ALLOW_DEBUG", "1");
+    }
     // Output what we are doing so that it is easier to debug if the user
     // has their own features or options.
-    eprintln!(
-        "{} cargo {}",
-        Color::Green.bold().paint("Running"),
-        cargo_test_args.join(" "),
-    );
+    eprint!("{} cargo", Color::Green.bold().paint("Running"),);
+    for arg in command.get_args() {
+        eprint!(" {}", arg.to_string_lossy());
+    }
+    eprintln!();
 
-    let result = Command::new("cargo")
-        .args(cargo_test_args)
-        .args(cargo_args)
+    let result = command
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()

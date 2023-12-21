@@ -3,6 +3,13 @@
 ## Unreleased changes
 
 - Fix a bug so that a non-zero status code is now returned by `cargo concordium test` if tests fail.
+- Add support for running contracts while collecting debug output. Contracts can
+  be built with debugging support enabled by using the `--allow-debug` flag that
+  is supported both by `cargo concordium build` and `cargo concordium test`.
+
+  When this flag is enabled in tests debug output is emitted at the end of the
+  test. Additionally, when running tests `cargo-concordium` will set
+  `CARGO_CONCORDIUM_TEST_ALLOW_DEBUG` environment variable for all the tests.
 
 ## 3.1.4
 

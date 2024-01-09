@@ -1,4 +1,4 @@
-## Unreleased changes
+## 3.0.2
 
 - Fix error message when specifying input parameter without uploading schema.
 - Fix error when contract calls return BigInts.

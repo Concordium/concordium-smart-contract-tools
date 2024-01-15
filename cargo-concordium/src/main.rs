@@ -9,14 +9,13 @@ use concordium_base::{
     contracts_common::{
         self, from_bytes,
         schema::{Type, VersionedModuleSchema},
-        to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName,
+        to_bytes, Amount, OwnedParameter, OwnedReceiveName, ReceiveName, WasmVersion,
     },
     hashes,
-    smart_contracts::{self, WasmModule},
+    smart_contracts::WasmModule,
 };
 use concordium_smart_contract_engine::{
-    utils::{self, WasmVersion},
-    v0,
+    utils, v0,
     v1::{self, DebugTracker, ReturnValue},
     InterpreterEnergy,
 };
@@ -408,7 +407,7 @@ struct BuildOptions {
         help = "Build a module of the given version.",
         default_value = "V1"
     )]
-    version:             utils::WasmVersion,
+    version:             WasmVersion,
     #[structopt(
         name = "verifiable",
         long = "verifiable",
@@ -654,8 +653,8 @@ pub fn main() -> anyhow::Result<()> {
             })?;
             let module = versioned_module.source.as_ref();
             match versioned_module.version {
-                smart_contracts::WasmVersion::V0 => handle_run_v0(*run_cmd, module)?,
-                smart_contracts::WasmVersion::V1 => handle_run_v1(*run_cmd, module)?,
+                WasmVersion::V0 => handle_run_v0(*run_cmd, module)?,
+                WasmVersion::V1 => handle_run_v1(*run_cmd, module)?,
             }
         }
         Command::Test {
@@ -2212,20 +2211,21 @@ fn get_schema(
         let (wasm_version, module) = match wasm_version {
             Some(v) => (v, &bytes[..]),
             None => {
-                let wasm_version = utils::WasmVersion::read(&mut cursor).context(
-                    "Could not read module version from the supplied module file. Supply the \
-                     version using `--wasm-version`.",
-                )?;
+                let wasm_version: WasmVersion =
+                    concordium_base::common::Deserial::deserial(&mut cursor).context(
+                        "Could not read module version from the supplied module file. Supply the \
+                         version using `--wasm-version`.",
+                    )?;
                 (wasm_version, &cursor.into_inner()[8..])
             }
         };
 
         match wasm_version {
-            utils::WasmVersion::V0 => utils::get_embedded_schema_v0(module).context(
+            WasmVersion::V0 => utils::get_embedded_schema_v0(module).context(
                 "Failed to get schema embedded in the module.\nPlease provide a smart contract \
                  module with an embedded schema.",
             )?,
-            utils::WasmVersion::V1 => utils::get_embedded_schema_v1(module).context(
+            WasmVersion::V1 => utils::get_embedded_schema_v1(module).context(
                 "Failed to get schema embedded in the module.\nPlease provide a smart contract \
                  module with an embedded schema.",
             )?,

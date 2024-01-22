@@ -20,7 +20,7 @@ on:
 
 env:
   NODEJS_VERSION: 18.x
-  RUST_VERSION: 1.65
+  RUST_VERSION: 1.66
 
 jobs:
 

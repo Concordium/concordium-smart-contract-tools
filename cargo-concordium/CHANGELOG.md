@@ -2,6 +2,8 @@
 
 ## Unreleased changes
 
+## 3.2.0
+
 - Fix a bug so that a non-zero status code is now returned by `cargo concordium test` if tests fail.
 - Add support for running contracts while collecting debug output. Contracts can
   be built with debugging support enabled by using the `--allow-debug` flag that

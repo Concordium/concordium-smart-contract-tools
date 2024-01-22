@@ -1,10 +1,10 @@
 [package]
 name = "cargo-concordium"
-version = "3.1.4"
+version = "3.2.0"
 authors = ["Concordium <developers@concordium.com>"]
 edition = "2021"
 license-file = "../LICENSE"
-rust-version = "1.65"
+rust-version = "1.66"
 readme = "README.md"
 description = "A tool to build and test smart contracts on the Concordium blockchain."
 homepage = "https://github.com/Concordium/concordium-smart-contract-tools"
@@ -38,13 +38,13 @@ flate2 = "1.0"
 
 [dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"
-version = "3.0"
+version = "4.0"
 
 [dependencies.concordium-smart-contract-engine]
-version = "3.1"
+version = "4.0"
 path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
 
 [dependencies.concordium_base]
-version = "3.1.1"
+version = "4.0"
 path = "../concordium-base/rust-src/concordium_base"

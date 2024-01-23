@@ -65,6 +65,16 @@ This extension contributes the following settings:
 
 ## Release Notes
 
+## 2.2.0
+
+- Contains `cargo-concordium` version 3.2.0
+- Contains `@concordium/ccd-js-gen` version 1.2.0
+
+- Add support for generating TypeScript/JavaScript clients for smart contract modules via the [`ccd-js-gen`](https://www.npmjs.com/package/@concordium/ccd-js-gen) tool.
+  - Adds two commands: one for generating ts/js clients, and one for getting the version of the `ccd-js-gen` executable.
+  - Adds settings for using a custom `ccd-js-gen` executable and to provide additional arguments when running it.
+  - Adds a task for running the `ccd-js-gen` tool.
+
 ## 2.1.0
 
 - Contains `cargo-concordium` version 3.1.4

@@ -20,7 +20,7 @@ pipeline {
                     fi   
 
                     # Set rust env
-                    rustup default 1.65-x86_64-pc-windows-gnu
+                    rustup default 1.66-x86_64-pc-windows-gnu
 
                     cd cargo-concordium
 

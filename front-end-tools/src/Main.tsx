@@ -11,6 +11,7 @@ import {
 } from '@concordium/react-components';
 
 import { Alert } from 'react-bootstrap';
+import { ModuleReference } from '@concordium/web-sdk';
 import DeployComponent from './components/DeployComponent';
 import ReadComponent from './components/ReadComponent';
 import UpdateComponent from './components/UpdateComponent';
@@ -48,8 +49,10 @@ export default function Main(props: ConnectionProps) {
     const [accountBalance, setAccountBalance] = useState<string | undefined>(undefined);
 
     // Shared state between deploy step and init step
-    const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState<string | undefined>(undefined);
-    const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState<string | undefined>(undefined);
+    const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState<ModuleReference.Type | undefined>(
+        undefined
+    );
+    const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState<ModuleReference.Type | undefined>(undefined);
     const [contracts, setContracts] = useState<string[]>([]);
     const [embeddedModuleSchemaBase64Init, setEmbeddedModuleSchemaBase64Init] = useState<string | undefined>(undefined);
 

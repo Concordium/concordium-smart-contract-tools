@@ -23,17 +23,18 @@ import { TxHashLink } from './CCDScanLinks';
 import Box from './Box';
 import { initialize } from '../writing_to_blockchain';
 import { getObjectExample, getArrayExample } from '../utils';
-import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS, REG_MODULE_REF } from '../constants';
+import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
+// import { getEmbeddedSchema } from '../../src/reading_from_blockchain';
 
 interface ConnectionProps {
-    isTestnet: boolean;
     account: string;
-    connection: WalletConnection;
     client: ConcordiumGRPCClient | undefined;
+    connection: WalletConnection;
     contracts: string[];
     embeddedModuleSchemaBase64: undefined | string;
-    moduleReferenceCalculated: undefined | string;
-    moduleReferenceDeployed: undefined | string;
+    isTestnet: boolean;
+    moduleReferenceCalculated: undefined | ModuleReference.Type;
+    moduleReferenceDeployed: undefined | ModuleReference.Type;
 }
 
 /**
@@ -42,47 +43,51 @@ interface ConnectionProps {
  */
 export default function InitComponent(props: ConnectionProps) {
     const {
-        isTestnet,
         account,
-        connection,
         client,
+        connection,
+        contracts,
+        embeddedModuleSchemaBase64,
+        isTestnet,
         moduleReferenceCalculated,
         moduleReferenceDeployed,
-        embeddedModuleSchemaBase64,
-        contracts,
     } = props;
 
     type FormType = {
-        moduleReference: string | undefined;
-        smartContractName: string | undefined;
-        file: FileList | undefined;
-        useModuleReferenceFromStep1: boolean;
-        inputParameterType: string | undefined;
-        inputParameter: string | undefined;
-        hasInputParameter: boolean;
-        maxExecutionEnergy: number;
-        isPayable: boolean;
         cCDAmount: number;
+        deriveFromModuleRefernce: string | undefined;
+        file: FileList | undefined;
+        hasInputParameter: boolean;
+        inputParameter: string | undefined;
+        inputParameterType: string | undefined;
+        isPayable: boolean;
+        maxExecutionEnergy: number;
+        moduleReferenceString: string | undefined;
+        moduleReference: ModuleReference.Type | undefined;
+        smartContractName: string | undefined;
+        useModuleReferenceFromStep1: boolean;
     };
 
     const form = useForm<FormType>({ mode: 'all' });
 
     const [
-        useModuleReferenceFromStep1,
-        smartContractName,
+        deriveFromModuleRefernce,
+        hasInputParameter,
         inputParameterType,
         isPayable,
-        hasInputParameter,
         moduleReference,
+        smartContractName,
+        useModuleReferenceFromStep1,
     ] = useWatch({
         control: form.control,
         name: [
-            'useModuleReferenceFromStep1',
-            'smartContractName',
+            'deriveFromModuleRefernce',
+            'hasInputParameter',
             'inputParameterType',
             'isPayable',
-            'hasInputParameter',
             'moduleReference',
+            'smartContractName',
+            'useModuleReferenceFromStep1',
         ],
     });
 
@@ -143,20 +148,18 @@ export default function InitComponent(props: ConnectionProps) {
 
     useEffect(() => {
         if (connection && client && moduleReference) {
-            if (REG_MODULE_REF.test(moduleReference)) {
-                client
-                    .getModuleSource(ModuleReference.fromHexString(moduleReference))
-                    .then((value) => {
-                        if (value === undefined) {
-                            setIsModuleReferenceAlreadyDeployedStep2(false);
-                        } else {
-                            setIsModuleReferenceAlreadyDeployedStep2(true);
-                        }
-                    })
-                    .catch(() => {
+            client
+                .getModuleSource(moduleReference)
+                .then((value) => {
+                    if (value === undefined) {
                         setIsModuleReferenceAlreadyDeployedStep2(false);
-                    });
-            }
+                    } else {
+                        setIsModuleReferenceAlreadyDeployedStep2(true);
+                    }
+                })
+                .catch(() => {
+                    setIsModuleReferenceAlreadyDeployedStep2(false);
+                });
         }
     }, [connection, client, moduleReference]);
 
@@ -249,7 +252,7 @@ export default function InitComponent(props: ConnectionProps) {
             connection,
             AccountAddress.fromBase58(account),
             isModuleReferenceAlreadyDeployedStep2,
-            data.moduleReference ? ModuleReference.fromHexString(data.moduleReference) : undefined,
+            data.moduleReference ? data.moduleReference : undefined,
             data.inputParameter,
             data.smartContractName ? ContractName.fromString(data.smartContractName) : undefined,
             data.hasInputParameter,
@@ -265,99 +268,122 @@ export default function InitComponent(props: ConnectionProps) {
     return (
         <Box header="Step 2: Initialize Smart Contract">
             <Form onSubmit={form.handleSubmit(onSubmit)}>
-                <Form.Group className="mb-3 d-flex justify-content-center">
-                    <Form.Check
-                        type="checkbox"
-                        label="Use Module From Step 1"
-                        {...form.register('useModuleReferenceFromStep1')}
-                        onChange={async (e) => {
-                            const register = form.register('useModuleReferenceFromStep1');
-
-                            register.onChange(e);
+                <Form.Group className="justify-content-center">
+                    <Form.Label>DeriveFromModuleRefernce</Form.Label>
+                    <Select
+                        {...form.register('deriveFromModuleRefernce', { required: true })}
+                        options={[
+                            {
+                                value: "Don't derive",
+                                label: "Don't derive",
+                            },
+                            {
+                                value: 'Derive from step 1',
+                                label: 'Derive from step 1',
+                            },
+                            {
+                                value: 'Derive from chain',
+                                label: 'Derive from chain',
+                            },
+                        ]}
+                        onChange={(e) => {
+                            form.setValue('deriveFromModuleRefernce', e?.value);
 
                             setModuleReferenceError(undefined);
-                            form.setValue('moduleReference', undefined);
-
                             setUploadedModuleSchemaBase64(undefined);
-
-                            const checkboxElement = form.getValues('useModuleReferenceFromStep1');
-
-                            form.setValue('moduleReference', undefined);
                             setModuleReferenceLengthError(undefined);
+                            form.setValue('smartContractName', undefined);
+                            form.setValue('moduleReference', undefined);
 
-                            if (
-                                checkboxElement &&
-                                moduleReferenceDeployed === undefined &&
-                                moduleReferenceCalculated === undefined
-                            ) {
-                                setModuleReferenceError('No module is uploaded in step 1');
+                            const selectValue = form.getValues('deriveFromModuleRefernce');
+
+                            if (selectValue === 'Derive from step 1') {
+                                if (moduleReferenceDeployed === undefined && moduleReferenceCalculated === undefined) {
+                                    setModuleReferenceError('No module is uploaded in step 1');
+                                }
+
+                                const newModuleReference =
+                                    moduleReferenceDeployed !== undefined
+                                        ? moduleReferenceDeployed
+                                        : moduleReferenceCalculated;
+
+                                if (newModuleReference !== undefined) {
+                                    form.setValue('moduleReference', newModuleReference);
+
+                                    setDisplayContracts(contracts);
+                                    form.setValue('smartContractName', contracts[0]);
+                                }
                             }
 
-                            const newModuleReference =
-                                moduleReferenceDeployed !== undefined
-                                    ? moduleReferenceDeployed
-                                    : moduleReferenceCalculated;
-
-                            if (checkboxElement && newModuleReference !== undefined) {
-                                form.setValue('moduleReference', newModuleReference);
-
-                                setDisplayContracts(contracts);
-                                form.setValue('smartContractName', contracts[0]);
+                            if (selectValue === 'Derive from chain') {
+                                // const promise = getEmbeddedSchema(client, moduleReference);
+                                // TODO
                             }
                         }}
                     />
+                    {deriveFromModuleRefernce === 'Derive from Step1' && (
+                        <>
+                            <br />
+                            <Alert variant="info">
+                                <div>
+                                    You autofilled the <code>module reference</code>, the{' '}
+                                    <code>smart contract name</code>, and the <code>input parameter schema</code> from
+                                    the module in step1.
+                                </div>
+                                <br />
+                                <div>
+                                    Select <b>Don&apos;t derive</b>, if you want to manually fill in a{' '}
+                                    <code>module reference</code>, the <code>smart contract name</code>, or an{' '}
+                                    <code>input parameter schema</code>.
+                                </div>
+                                <br />
+                                <div>
+                                    Select <b>Don&apos;t derive</b> and then select <b>Derive from Step1</b> again, if
+                                    you want to load a new module from step 1.
+                                </div>
+                            </Alert>
+                            <br />
+                        </>
+                    )}
+                    {deriveFromModuleRefernce === 'Derive from chain' && (
+                        <>
+                            <br />
+                            <Alert variant="info">
+                                <div>
+                                    You autofilled the <code>smart contract name</code>, and the{' '}
+                                    <code>input parameter schema</code> from a module refence already on chain.
+                                </div>
+                                <br />
+                                <div>
+                                    Select <b>Don&apos;t derive</b>, if you want to manually fill in a{' '}
+                                    <code>module reference</code>, the <code>smart contract name</code>, or an{' '}
+                                    <code>input parameter schema</code>.
+                                </div>
+                                <br />
+                                <div>
+                                    Select <b>Don&apos;t derive</b> and then select <b>Derive from chain</b> again, if
+                                    you want to load a new module from chain.
+                                </div>
+                            </Alert>
+                            <br />
+                        </>
+                    )}
                 </Form.Group>
 
-                {useModuleReferenceFromStep1 && (
-                    <>
-                        <br />
-                        <Alert variant="info">
-                            <div>
-                                This checkbox autofilled the <code>module reference</code>, the{' '}
-                                <code>smart contract name</code>, and the <code>input parameter schema</code> from the
-                                module in step1.
-                            </div>
-                            <br />
-                            <div>
-                                <b>Uncheck</b> this box, if you want to manually fill in a <code>module reference</code>
-                                , the <code>smart contract name</code>, or an <code>input parameter schema</code>.
-                            </div>
-                            <br />
-                            <div>
-                                <b>Uncheck</b> and <b>check</b> this box again, if you want to load a new module from
-                                step 1.
-                            </div>
-                        </Alert>
-                        <br />
-                    </>
-                )}
-
                 {moduleReferenceError && <Alert variant="danger"> Error: {moduleReferenceError}. </Alert>}
-
+                <br />
                 <Row>
                     <Form.Group className="col-md-4 mb-3">
                         <Form.Label> Module Reference</Form.Label>
                         <Form.Control
                             defaultValue="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
                             disabled={!!useModuleReferenceFromStep1}
-                            {...form.register('moduleReference', { required: true })}
-                            onChange={(e) => {
-                                const register = form.register('moduleReference', {
-                                    required: true,
-                                });
-
-                                register.onChange(e);
-
-                                setModuleReferenceLengthError(undefined);
-
-                                const moduleRef = form.getValues('moduleReference');
-
-                                if (moduleRef !== undefined && !REG_MODULE_REF.test(moduleRef)) {
-                                    setModuleReferenceLengthError(
-                                        'Module reference has to be a valid hex string `[0-9A-Fa-f]` of length 64'
-                                    );
-                                }
-                            }}
+                            {...form.register('moduleReferenceString', {
+                                required: true,
+                                // TODO: validation
+                                // validate: validateModuleReference,
+                            })}
+                            value={moduleReference?.moduleRef}
                         />
                         <Form.Text />
                         {form.formState.errors.moduleReference && (

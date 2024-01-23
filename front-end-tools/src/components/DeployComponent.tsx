@@ -27,9 +27,9 @@ interface ConnectionProps {
     isTestnet: boolean;
     setContracts: (contracts: string[]) => void;
     setEmbeddedModuleSchemaBase64Init: (embeddedModuleSchemaBase64Init: string) => void;
-    setModuleReferenceDeployed: (moduleReferenceDeployed: string | undefined) => void;
-    setModuleReferenceCalculated: (moduleReferenceCalculated: string) => void;
-    moduleReferenceCalculated: string | undefined;
+    setModuleReferenceDeployed: (moduleReferenceDeployed: ModuleReference.Type | undefined) => void;
+    setModuleReferenceCalculated: (moduleReferenceCalculated: ModuleReference.Type) => void;
+    moduleReferenceCalculated: ModuleReference.Type | undefined;
 }
 
 /**
@@ -76,7 +76,9 @@ export default function DeployComponenet(props: ConnectionProps) {
                                 report.outcome.summary.transactionType === TransactionKindString.DeployModule
                             ) {
                                 setTransactionOutcome('Success');
-                                setModuleReferenceDeployed(report.outcome.summary.moduleDeployed.contents);
+                                setModuleReferenceDeployed(
+                                    ModuleReference.fromHexString(report.outcome.summary.moduleDeployed.contents)
+                                );
                                 clearInterval(interval);
                             } else {
                                 setTransactionOutcome('Fail');
@@ -97,7 +99,7 @@ export default function DeployComponenet(props: ConnectionProps) {
     useEffect(() => {
         if (connection && client && moduleReferenceCalculated) {
             client
-                .getModuleSource(ModuleReference.fromHexString(moduleReferenceCalculated))
+                .getModuleSource(moduleReferenceCalculated)
                 .then((value) => {
                     if (value === undefined) {
                         setIsModuleReferenceAlreadyDeployedStep1(false);
@@ -160,7 +162,9 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                 setBase64Module(module);
                                 setModuleReferenceCalculated(
-                                    Buffer.from(sha256([new Uint8Array(arrayBuffer)])).toString('hex')
+                                    ModuleReference.fromBuffer(
+                                        Buffer.from(sha256([new Uint8Array(arrayBuffer)]))
+                                    )
                                 );
 
                                 // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
@@ -250,7 +254,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                     <>
                         <div className="actionResultBox">
                             Calculated module reference:
-                            <div>{moduleReferenceCalculated}</div>
+                            <div>{moduleReferenceCalculated.moduleRef}</div>
                         </div>
                         <div className="actionResultBox">
                             Module in base64:

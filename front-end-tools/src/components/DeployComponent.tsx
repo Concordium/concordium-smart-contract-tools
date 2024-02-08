@@ -162,9 +162,7 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                 setBase64Module(module);
                                 setModuleReferenceCalculated(
-                                    ModuleReference.fromBuffer(
-                                        Buffer.from(sha256([new Uint8Array(arrayBuffer)]))
-                                    )
+                                    ModuleReference.fromBuffer(Buffer.from(sha256([new Uint8Array(arrayBuffer)])))
                                 );
 
                                 // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.

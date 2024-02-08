@@ -39,6 +39,21 @@ export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefine
     return returnValue;
 }
 
+/** This function gets the module source of a module reference. */
+export async function getModuleSource(
+    rpcClient: ConcordiumGRPCClient | undefined,
+    moduleRef: ModuleReference.Type | undefined
+) {
+    if (rpcClient === undefined) {
+        throw new Error(`rpcClient undefined`);
+    }
+    if (moduleRef === undefined) {
+        throw new Error(`Set module ref`);
+    }
+
+    return rpcClient.getModuleSource(moduleRef);
+}
+
 /** This function gets the embedded schema of a module reference. */
 export async function getEmbeddedSchema(
     rpcClient: ConcordiumGRPCClient | undefined,

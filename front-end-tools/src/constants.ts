@@ -31,3 +31,6 @@ export const INPUT_PARAMETER_TYPES_OPTIONS = [
 
 // The subindex of all smart contracts.
 export const CONTRACT_SUB_INDEX = 0n;
+
+// Characters of a hex string.
+export const hexRegex = /^[0-9a-fA-F]+$/;

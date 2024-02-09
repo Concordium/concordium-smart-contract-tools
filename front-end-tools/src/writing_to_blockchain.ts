@@ -131,7 +131,7 @@ export async function initialize(
     inputParameter: string | undefined,
     contractName: ContractName.Type | undefined,
     hasInputParameter: boolean,
-    useModuleFromStep1: boolean,
+    deriveFromModuleRefernce: string | undefined,
     moduleSchema: string | undefined,
     inputParamterType: string | undefined,
     maxContractExecutionEnergy: Energy.Type,
@@ -154,9 +154,9 @@ export async function initialize(
     let params: TypedSmartContractParameters | undefined;
 
     if (hasInputParameter) {
-        if (!useModuleFromStep1 && moduleSchema === undefined) {
+        if ((deriveFromModuleRefernce === "Don't derive" || undefined) && moduleSchema === undefined) {
             throw new Error(`Set schema`);
-        } else if (useModuleFromStep1 && moduleSchema === undefined) {
+        } else if (moduleSchema === undefined) {
             throw new Error(`No embedded module schema found in module`);
         }
 

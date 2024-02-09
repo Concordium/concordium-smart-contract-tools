@@ -23,7 +23,7 @@ import { TxHashLink } from './CCDScanLinks';
 import Box from './Box';
 import { initialize } from '../writing_to_blockchain';
 import { getObjectExample, getArrayExample } from '../utils';
-import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS, hexRegex } from '../constants';
+import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS, hexRegex, MODULE_REFERENCE_PLACEHOLDER } from '../constants';
 import { getModuleSource } from '../reading_from_blockchain';
 
 interface ConnectionProps {
@@ -31,7 +31,7 @@ interface ConnectionProps {
     client: ConcordiumGRPCClient | undefined;
     connection: WalletConnection;
     contracts: string[];
-    embeddedModuleSchemaBase64: undefined | string;
+    embeddedModuleSchemaBase64FromStep1: undefined | string;
     isTestnet: boolean;
     moduleReferenceCalculated: undefined | ModuleReference.Type;
     moduleReferenceDeployed: undefined | ModuleReference.Type;
@@ -47,7 +47,7 @@ export default function InitComponent(props: ConnectionProps) {
         client,
         connection,
         contracts,
-        embeddedModuleSchemaBase64,
+        embeddedModuleSchemaBase64FromStep1,
         isTestnet,
         moduleReferenceCalculated,
         moduleReferenceDeployed,
@@ -62,34 +62,24 @@ export default function InitComponent(props: ConnectionProps) {
         inputParameterType: string | undefined;
         isPayable: boolean;
         maxExecutionEnergy: number;
-        moduleReferenceString: string;
-        moduleReference: ModuleReference.Type | undefined;
+        moduleReferenceString: string | undefined;
         smartContractName: string | undefined;
-        useModuleReferenceFromStep1: boolean;
     };
 
     const form = useForm<FormType>({ mode: 'all' });
 
-    const [
-        deriveFromModuleRefernce,
-        hasInputParameter,
-        inputParameterType,
-        isPayable,
-        moduleReference,
-        smartContractName,
-        useModuleReferenceFromStep1,
-    ] = useWatch({
-        control: form.control,
-        name: [
-            'deriveFromModuleRefernce',
-            'hasInputParameter',
-            'inputParameterType',
-            'isPayable',
-            'moduleReference',
-            'smartContractName',
-            'useModuleReferenceFromStep1',
-        ],
-    });
+    const [deriveFromModuleRefernce, hasInputParameter, inputParameterType, isPayable, smartContractName, file] =
+        useWatch({
+            control: form.control,
+            name: [
+                'deriveFromModuleRefernce',
+                'hasInputParameter',
+                'inputParameterType',
+                'isPayable',
+                'smartContractName',
+                'file',
+            ],
+        });
 
     const [transactionError, setTransactionError] = useState<string | undefined>(undefined);
 
@@ -104,7 +94,10 @@ export default function InitComponent(props: ConnectionProps) {
 
     const [txHash, setTxHash] = useState<string | undefined>(undefined);
 
-    const [uploadedModuleSchemaBase64, setUploadedModuleSchemaBase64] = useState<string | undefined>(undefined);
+    const [schema, setSchema] = useState<string | undefined>(undefined);
+    const [moduleReference, setModuleReference] = useState<ModuleReference.Type | undefined>(
+        ModuleReference.fromHexString(MODULE_REFERENCE_PLACEHOLDER)
+    );
 
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
     const [inputParameterTemplate, setInputParameterTemplate] = useState<string | undefined>(undefined);
@@ -192,18 +185,8 @@ export default function InitComponent(props: ConnectionProps) {
                 throw new Error('Set smart contract name');
             }
 
-            let schema = '';
-
-            const schemaFromModule = useModuleReferenceFromStep1
-                ? embeddedModuleSchemaBase64
-                : uploadedModuleSchemaBase64;
-
-            if (schemaFromModule !== undefined) {
-                schema = schemaFromModule;
-            }
-
             const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
-                toBuffer(schema, 'base64'),
+                toBuffer(schema || '', 'base64'),
                 ContractName.fromString(smartContractName),
                 2
             );
@@ -212,13 +195,13 @@ export default function InitComponent(props: ConnectionProps) {
 
             setInputParameterTemplate(initTemplate);
         } catch (e) {
-            if (useModuleReferenceFromStep1) {
+            if (deriveFromModuleRefernce === "Don't derive") {
                 setSchemaError(
-                    `Could not get embedded schema from the uploaded module. Uncheck "Use Module from Step 1" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter.  Original error: ${e}`
+                    `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             } else {
                 setSchemaError(
-                    `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                    `Could not get embedded schema from the module. Select "Don't derive" to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             }
         }
@@ -230,21 +213,19 @@ export default function InitComponent(props: ConnectionProps) {
                 form.setValue('inputParameter', JSON.stringify(JSON.parse(initTemplate), undefined, 2));
             }
         }
-    }, [
-        hasInputParameter,
-        useModuleReferenceFromStep1,
-        smartContractName,
-        uploadedModuleSchemaBase64,
-        inputParameterType,
-    ]);
+    }, [hasInputParameter, smartContractName, schema, inputParameterType]);
 
-    const validateModuleReference = (value: string) => {
+    const validateModuleReference = (value: string | undefined) => {
+        if (!value) {
+            return true;
+        }
+
         try {
             if (!hexRegex.test(value)) {
                 return 'Invalid module reference. Not a hex string.';
             }
 
-            form.setValue('moduleReference', ModuleReference.fromHexString(value));
+            setModuleReference(ModuleReference.fromHexString(value));
 
             return true;
         } catch (e) {
@@ -258,18 +239,16 @@ export default function InitComponent(props: ConnectionProps) {
         setSmartContractIndex(undefined);
         setTransactionError(undefined);
 
-        const schema = data.useModuleReferenceFromStep1 ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
-
         // Send init transaction
         const tx = initialize(
             connection,
             AccountAddress.fromBase58(account),
             isModuleReferenceAlreadyDeployedStep2,
-            data.moduleReference,
+            moduleReference,
             data.inputParameter,
             data.smartContractName ? ContractName.fromString(data.smartContractName) : undefined,
             data.hasInputParameter,
-            data.useModuleReferenceFromStep1,
+            data.deriveFromModuleRefernce,
             schema,
             data.inputParameterType,
             Energy.create(data.maxExecutionEnergy),
@@ -303,14 +282,15 @@ export default function InitComponent(props: ConnectionProps) {
                             form.setValue('deriveFromModuleRefernce', e?.value);
 
                             setModuleReferenceError(undefined);
-                            setUploadedModuleSchemaBase64(undefined);
+                            setSchema(undefined);
                             setModuleReferenceLengthError(undefined);
                             form.setValue('smartContractName', undefined);
 
                             const selectValue = form.getValues('deriveFromModuleRefernce');
 
                             if (selectValue === 'Derive from step 1') {
-                                form.setValue('moduleReference', undefined);
+                                setModuleReference(undefined);
+                                form.setValue('moduleReferenceString', undefined);
 
                                 if (moduleReferenceDeployed === undefined && moduleReferenceCalculated === undefined) {
                                     setModuleReferenceError('No module is uploaded in step 1');
@@ -322,11 +302,13 @@ export default function InitComponent(props: ConnectionProps) {
                                         : moduleReferenceCalculated;
 
                                 if (newModuleReference !== undefined) {
-                                    form.setValue('moduleReference', newModuleReference);
+                                    setModuleReference(newModuleReference);
+                                    form.setValue('moduleReferenceString', newModuleReference.moduleRef);
 
                                     // TODO schould this be consolidated ?
                                     setDisplayContracts(contracts);
                                     form.setValue('smartContractName', contracts[0]);
+                                    setSchema(embeddedModuleSchemaBase64FromStep1);
                                 }
                             }
 
@@ -355,6 +337,22 @@ export default function InitComponent(props: ConnectionProps) {
 
                                         setDisplayContracts(contractNames);
                                         form.setValue('smartContractName', contractNames[0]);
+
+                                        const customSection = WebAssembly.Module.customSections(
+                                            wasmModule,
+                                            'concordium-schema'
+                                        );
+
+                                        const embeddedSchema = new Uint8Array(customSection[0]);
+
+                                        // Use `reduce` to be able to convert large schema.
+                                        const embeddedModuleSchemaBase64 = btoa(
+                                            new Uint8Array(embeddedSchema).reduce(
+                                                (data, byte) => data + String.fromCharCode(byte),
+                                                ''
+                                            )
+                                        );
+                                        setSchema(embeddedModuleSchemaBase64);
                                     }
                                 }
                             }
@@ -420,8 +418,8 @@ export default function InitComponent(props: ConnectionProps) {
                     <Form.Group className="col-md-4 mb-3">
                         <Form.Label> Module Reference</Form.Label>
                         <Form.Control
-                            defaultValue="91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693"
-                            disabled={!!useModuleReferenceFromStep1}
+                            defaultValue={MODULE_REFERENCE_PLACEHOLDER}
+                            disabled={deriveFromModuleRefernce === 'Derive from step 1'}
                             {...form.register('moduleReferenceString', {
                                 required: true,
                                 validate: validateModuleReference,
@@ -434,12 +432,9 @@ export default function InitComponent(props: ConnectionProps) {
                             </Alert>
                         )}
                         <Form.Text />
-                        {form.formState.errors.moduleReference && (
-                            <Alert variant="info">Module reference is required </Alert>
-                        )}
                     </Form.Group>
 
-                    {useModuleReferenceFromStep1 && displayContracts.length > 0 ? (
+                    {deriveFromModuleRefernce !== "Don't derive" && displayContracts.length > 0 ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
 
@@ -534,21 +529,24 @@ export default function InitComponent(props: ConnectionProps) {
                         onChange={async (e) => {
                             const hasInputParameterRegister = form.register('hasInputParameter');
 
-                            hasInputParameterRegister.onChange(e);
-
                             setParsingError(undefined);
                             form.setValue('inputParameterType', undefined);
                             form.setValue('inputParameter', undefined);
                             setInputParameterTemplate(undefined);
-                            setUploadedModuleSchemaBase64(undefined);
+                            // If previously a file was uploaded and the schema was derived from it. Delete the schema.
+                            if (file) {
+                                setSchema(undefined);
+                            }
                             setSchemaError(undefined);
+
+                            hasInputParameterRegister.onChange(e);
                         }}
                     />
                 </Form.Group>
 
                 {hasInputParameter && (
                     <div className="box">
-                        {!useModuleReferenceFromStep1 && (
+                        {deriveFromModuleRefernce === "Don't derive" && (
                             <Form.Group className="mb-3">
                                 <Form.Label>Upload Smart Contract Module Schema File (e.g. schema.bin)</Form.Label>
                                 <Form.Control
@@ -561,22 +559,22 @@ export default function InitComponent(props: ConnectionProps) {
                                         fileRegister.onChange(e);
 
                                         setUploadError2(undefined);
-                                        setUploadedModuleSchemaBase64(undefined);
+                                        setSchema(undefined);
 
                                         const files = form.getValues('file');
 
                                         if (files !== undefined && files !== null && files.length > 0) {
-                                            const file = files[0];
-                                            const arrayBuffer = await file.arrayBuffer();
+                                            const file0 = files[0];
+                                            const arrayBuffer = await file0.arrayBuffer();
 
                                             // Use `reduce` to be able to convert large schemas.
-                                            const schema = btoa(
+                                            const embeddedSchema = btoa(
                                                 new Uint8Array(arrayBuffer).reduce(
                                                     (data, byte) => data + String.fromCharCode(byte),
                                                     ''
                                                 )
                                             );
-                                            setUploadedModuleSchemaBase64(schema);
+                                            setSchema(embeddedSchema);
                                         } else {
                                             setUploadError2('Upload schema file is undefined');
                                         }
@@ -585,10 +583,10 @@ export default function InitComponent(props: ConnectionProps) {
                                 <Form.Text />
                             </Form.Group>
                         )}
-                        {!useModuleReferenceFromStep1 && uploadedModuleSchemaBase64 && (
+                        {deriveFromModuleRefernce === "Don't derive" && schema && (
                             <div className="actionResultBox">
                                 Schema in base64:
-                                <div>{uploadedModuleSchemaBase64.toString().slice(0, 30)} ...</div>
+                                <div>{schema.toString().slice(0, 30)} ...</div>
                             </div>
                         )}
                         {uploadError2 !== undefined && <Alert variant="danger"> Error: {uploadError2}. </Alert>}

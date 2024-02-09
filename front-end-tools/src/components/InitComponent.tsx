@@ -30,11 +30,8 @@ interface ConnectionProps {
     account: string;
     client: ConcordiumGRPCClient | undefined;
     connection: WalletConnection;
-    contracts: string[];
-    embeddedModuleSchemaBase64FromStep1: undefined | string;
     isTestnet: boolean;
     moduleReferenceCalculated: undefined | ModuleReference.Type;
-    moduleReferenceDeployed: undefined | ModuleReference.Type;
 }
 
 /**
@@ -42,16 +39,7 @@ interface ConnectionProps {
  * This components creates an `InitContract` transaction.
  */
 export default function InitComponent(props: ConnectionProps) {
-    const {
-        account,
-        client,
-        connection,
-        contracts,
-        embeddedModuleSchemaBase64FromStep1,
-        isTestnet,
-        moduleReferenceCalculated,
-        moduleReferenceDeployed,
-    } = props;
+    const { account, client, connection, isTestnet, moduleReferenceCalculated } = props;
 
     type FormType = {
         cCDAmount: number;
@@ -233,6 +221,41 @@ export default function InitComponent(props: ConnectionProps) {
         }
     };
 
+    const deriveSchemaAndContractNames = async (moduleRef: ModuleReference.Type) => {
+        const module = await getModuleSource(client, moduleRef);
+
+        let wasmModule;
+        try {
+            wasmModule = await WebAssembly.compile(module.source);
+        } catch (err) {
+            setModuleReferenceError('ModuleSource on chain is disrupted');
+        }
+
+        if (wasmModule) {
+            const moduleFunctions = WebAssembly.Module.exports(wasmModule);
+
+            const contractNames = [];
+            for (let i = 0; i < moduleFunctions.length; i += 1) {
+                if (moduleFunctions[i].name.startsWith('init_')) {
+                    contractNames.push(moduleFunctions[i].name.slice(5));
+                }
+            }
+
+            setDisplayContracts(contractNames);
+            form.setValue('smartContractName', contractNames[0]);
+
+            const customSection = WebAssembly.Module.customSections(wasmModule, 'concordium-schema');
+
+            const embeddedSchema = new Uint8Array(customSection[0]);
+
+            // Use `reduce` to be able to convert large schema.
+            const embeddedModuleSchemaBase64 = btoa(
+                new Uint8Array(embeddedSchema).reduce((data, byte) => data + String.fromCharCode(byte), '')
+            );
+            setSchema(embeddedModuleSchemaBase64);
+        }
+    };
+
     function onSubmit(data: FormType) {
         setTxHash(undefined);
         setSmartContractIndexError(undefined);
@@ -292,23 +315,15 @@ export default function InitComponent(props: ConnectionProps) {
                                 setModuleReference(undefined);
                                 form.setValue('moduleReferenceString', undefined);
 
-                                if (moduleReferenceDeployed === undefined && moduleReferenceCalculated === undefined) {
+                                if (moduleReferenceCalculated === undefined) {
                                     setModuleReferenceError('No module is uploaded in step 1');
                                 }
 
-                                const newModuleReference =
-                                    moduleReferenceDeployed !== undefined
-                                        ? moduleReferenceDeployed
-                                        : moduleReferenceCalculated;
+                                if (moduleReferenceCalculated !== undefined) {
+                                    setModuleReference(moduleReferenceCalculated);
+                                    form.setValue('moduleReferenceString', moduleReferenceCalculated.moduleRef);
 
-                                if (newModuleReference !== undefined) {
-                                    setModuleReference(newModuleReference);
-                                    form.setValue('moduleReferenceString', newModuleReference.moduleRef);
-
-                                    // TODO schould this be consolidated ?
-                                    setDisplayContracts(contracts);
-                                    form.setValue('smartContractName', contracts[0]);
-                                    setSchema(embeddedModuleSchemaBase64FromStep1);
+                                    await deriveSchemaAndContractNames(moduleReferenceCalculated);
                                 }
                             }
 
@@ -316,44 +331,7 @@ export default function InitComponent(props: ConnectionProps) {
                                 if (moduleReference === undefined) {
                                     setModuleReferenceError('Set module reference field below');
                                 } else {
-                                    const module = await getModuleSource(client, moduleReference);
-
-                                    let wasmModule;
-                                    try {
-                                        wasmModule = await WebAssembly.compile(module.source);
-                                    } catch (err) {
-                                        setModuleReferenceError('ModuleSource on chain is disrupted');
-                                    }
-
-                                    if (wasmModule) {
-                                        const moduleFunctions = WebAssembly.Module.exports(wasmModule);
-
-                                        const contractNames = [];
-                                        for (let i = 0; i < moduleFunctions.length; i += 1) {
-                                            if (moduleFunctions[i].name.startsWith('init_')) {
-                                                contractNames.push(moduleFunctions[i].name.slice(5));
-                                            }
-                                        }
-
-                                        setDisplayContracts(contractNames);
-                                        form.setValue('smartContractName', contractNames[0]);
-
-                                        const customSection = WebAssembly.Module.customSections(
-                                            wasmModule,
-                                            'concordium-schema'
-                                        );
-
-                                        const embeddedSchema = new Uint8Array(customSection[0]);
-
-                                        // Use `reduce` to be able to convert large schema.
-                                        const embeddedModuleSchemaBase64 = btoa(
-                                            new Uint8Array(embeddedSchema).reduce(
-                                                (data, byte) => data + String.fromCharCode(byte),
-                                                ''
-                                            )
-                                        );
-                                        setSchema(embeddedModuleSchemaBase64);
-                                    }
+                                    await deriveSchemaAndContractNames(moduleReference);
                                 }
                             }
                         }}
@@ -369,17 +347,16 @@ export default function InitComponent(props: ConnectionProps) {
                                 </div>
                             </Alert>
                             <Alert variant="info">
-                                <div>
-                                    - Select <b>Don&apos;t derive</b> in the above drop-down list, if you want to
-                                    manually fill in a <code>module reference</code>, the{' '}
-                                    <code>smart contract name</code>, or an <code>input parameter schema</code>.
-                                </div>
-                                <br />
-                                <div>
-                                    - Select <b>Don&apos;t derive</b> and then select <b>Derive from Step1</b> again, if
+                                <li>
+                                    Select <b>Don&apos;t derive</b> in the above drop-down list, if you want to manually
+                                    fill in a <code>module reference</code>, the <code>smart contract name</code>, or an{' '}
+                                    <code>input parameter schema</code>.
+                                </li>
+                                <li>
+                                    Select <b>Don&apos;t derive</b> and then select <b>Derive from chain</b> again, if
                                     you want to load a new module from <b>Step 1</b> because this box will not
                                     automatically update when you do changes to <b>Step 1</b>.
-                                </div>
+                                </li>
                             </Alert>
                             <br />
                         </>

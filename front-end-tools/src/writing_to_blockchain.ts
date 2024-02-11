@@ -139,7 +139,9 @@ export async function initialize(
 ) {
     if (moduleReferenceAlreadyDeployed === false) {
         throw new Error(
-            `Module reference does not exist on chain. First, deploy your module in step 1 and change/refresh the module reference field in step 2 to remove this error.`
+            `Module reference does not exist on chain. Enter a valid module reference or deploy your module in step 1 first.
+           The step 2 box will not automatically reload the new module reference, 
+           you might want to select "Don't derive" and then select "Derive from chain/Derive from Step1" again to load the new module reference`
         );
     }
 

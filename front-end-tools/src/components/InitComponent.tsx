@@ -23,7 +23,20 @@ import { TxHashLink } from './CCDScanLinks';
 import Box from './Box';
 import { initialize } from '../writing_to_blockchain';
 import { getObjectExample, getArrayExample } from '../utils';
-import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS, hexRegex, MODULE_REFERENCE_PLACEHOLDER } from '../constants';
+import {
+    REFRESH_INTERVAL,
+    INPUT_PARAMETER_TYPES_OPTIONS,
+    hexRegex,
+    MODULE_REFERENCE_PLACEHOLDER,
+    OPTIONS_DERIVE_FROM_MODULE_REFERENCE,
+    DO_NOT_DERIVE,
+    DERIVE_FROM_STEP_1,
+    DERIVE_FROM_CHAIN,
+    INPUT_PARAMETER_TYPE_ARRAY,
+    INPUT_PARAMETER_TYPE_OBJECT,
+    INPUT_PARAMETER_TYPE_STRING,
+    INPUT_PARAMETER_TYPE_NUMBER,
+} from '../constants';
 import { getModuleSource } from '../reading_from_blockchain';
 
 interface ConnectionProps {
@@ -78,7 +91,7 @@ export default function InitComponent(props: ConnectionProps) {
     const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState<string | undefined>(undefined);
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
-    const [isModuleReferenceAlreadyDeployedStep2, setIsModuleReferenceAlreadyDeployedStep2] = useState(false);
+    const [isModuleReferenceAlreadyDeployed, setIsModuleReferenceAlreadyDeployed] = useState(false);
 
     const [txHash, setTxHash] = useState<string | undefined>(undefined);
 
@@ -133,13 +146,13 @@ export default function InitComponent(props: ConnectionProps) {
                 .getModuleSource(moduleReference)
                 .then((value) => {
                     if (value === undefined) {
-                        setIsModuleReferenceAlreadyDeployedStep2(false);
+                        setIsModuleReferenceAlreadyDeployed(false);
                     } else {
-                        setIsModuleReferenceAlreadyDeployedStep2(true);
+                        setIsModuleReferenceAlreadyDeployed(true);
                     }
                 })
                 .catch(() => {
-                    setIsModuleReferenceAlreadyDeployedStep2(false);
+                    setIsModuleReferenceAlreadyDeployed(false);
                 });
         }
     }, [connection, client, moduleReference]);
@@ -192,23 +205,23 @@ export default function InitComponent(props: ConnectionProps) {
                 setInputParameterTemplate(initTemplate);
             }
         } catch (e) {
-            if (deriveFromModuleRefernce === "Don't derive") {
+            if (deriveFromModuleRefernce === DO_NOT_DERIVE.value) {
                 setSchemaError(
                     `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             } else {
                 setSchemaError(
-                    `Could not get embedded schema from the module. Select "Don't derive" to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                    `Could not get embedded schema from the module. Select "${DO_NOT_DERIVE.label}" to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             }
         }
 
-        if (initTemplate) {
-            if (inputParameterType === 'array') {
-                form.setValue('inputParameter', JSON.stringify(JSON.parse(initTemplate), undefined, 2));
-            } else if (inputParameterType === 'object') {
-                form.setValue('inputParameter', JSON.stringify(JSON.parse(initTemplate), undefined, 2));
-            }
+        if (
+            initTemplate &&
+            (inputParameterType === INPUT_PARAMETER_TYPE_ARRAY.value ||
+                inputParameterType === INPUT_PARAMETER_TYPE_OBJECT.value)
+        ) {
+            form.setValue('inputParameter', JSON.stringify(JSON.parse(initTemplate), undefined, 2));
         }
     }, [hasInputParameter, smartContractName, schema, inputParameterType]);
 
@@ -275,7 +288,7 @@ export default function InitComponent(props: ConnectionProps) {
         const tx = initialize(
             connection,
             AccountAddress.fromBase58(account),
-            isModuleReferenceAlreadyDeployedStep2,
+            isModuleReferenceAlreadyDeployed,
             moduleReference,
             data.inputParameter,
             data.smartContractName ? ContractName.fromString(data.smartContractName) : undefined,
@@ -296,20 +309,7 @@ export default function InitComponent(props: ConnectionProps) {
                     <Form.Label>DeriveFromModuleRefernce</Form.Label>
                     <Select
                         {...form.register('deriveFromModuleRefernce', { required: true })}
-                        options={[
-                            {
-                                value: "Don't derive",
-                                label: "Don't derive",
-                            },
-                            {
-                                value: 'Derive from step 1',
-                                label: 'Derive from step 1',
-                            },
-                            {
-                                value: 'Derive from chain',
-                                label: 'Derive from chain',
-                            },
-                        ]}
+                        options={OPTIONS_DERIVE_FROM_MODULE_REFERENCE}
                         onChange={async (e) => {
                             form.setValue('deriveFromModuleRefernce', e?.value);
 
@@ -322,7 +322,7 @@ export default function InitComponent(props: ConnectionProps) {
 
                             const selectValue = form.getValues('deriveFromModuleRefernce');
 
-                            if (selectValue === 'Derive from step 1') {
+                            if (selectValue === DERIVE_FROM_STEP_1.value) {
                                 form.clearErrors('moduleReferenceString');
                                 setModuleReference(undefined);
                                 form.setValue('moduleReferenceString', undefined);
@@ -339,7 +339,7 @@ export default function InitComponent(props: ConnectionProps) {
                                 }
                             }
 
-                            if (selectValue === 'Derive from chain') {
+                            if (selectValue === DERIVE_FROM_CHAIN.value) {
                                 if (moduleReference === undefined) {
                                     setModuleReferenceError('Set module reference field below');
                                 } else {
@@ -348,7 +348,7 @@ export default function InitComponent(props: ConnectionProps) {
                             }
                         }}
                     />
-                    {deriveFromModuleRefernce === 'Derive from step 1' && (
+                    {deriveFromModuleRefernce === DERIVE_FROM_STEP_1.value && (
                         <>
                             <br />
                             <Alert variant="info">
@@ -360,20 +360,20 @@ export default function InitComponent(props: ConnectionProps) {
                             </Alert>
                             <Alert variant="info" style={{ textAlign: 'left' }}>
                                 <li>
-                                    Select <b>Don&apos;t derive</b> in the above drop down, if you want to manually fill
-                                    in a <code>module reference</code>, the <code>smart contract name</code>, or an{' '}
+                                    Select <b>{DO_NOT_DERIVE.label}</b> in the above drop down, if you want to manually
+                                    fill in a <code>module reference</code>, the <code>smart contract name</code>, or an{' '}
                                     <code>input parameter schema</code>.
                                 </li>
                                 <li>
-                                    Select <b>Derive from chain</b> again in the drop down, if you want to load a new
-                                    module from <b>Step 1</b> because this box will not automatically update when you do
-                                    changes to <b>Step 1</b>.
+                                    Select <b>{DERIVE_FROM_STEP_1.label}</b> again in the drop down, if you want to load
+                                    a new module from <b>Step 1</b> because this box will not automatically update when
+                                    you do changes to <b>Step 1</b>.
                                 </li>
                             </Alert>
                             <br />
                         </>
                     )}
-                    {deriveFromModuleRefernce === 'Derive from chain' && (
+                    {deriveFromModuleRefernce === DERIVE_FROM_CHAIN.value && (
                         <>
                             <br />
                             <Alert variant="info">
@@ -385,14 +385,14 @@ export default function InitComponent(props: ConnectionProps) {
                             <Alert variant="info" style={{ textAlign: 'left' }}>
                                 <ul>
                                     <li>
-                                        Select <b>Don&apos;t derive</b> in the above drop down, if you want to manually
-                                        fill in the <code>smart contract name</code>, or an{' '}
+                                        Select <b>{DO_NOT_DERIVE.label}</b> in the above drop down, if you want to
+                                        manually fill in the <code>smart contract name</code>, or an{' '}
                                         <code>input parameter schema</code>.
                                     </li>
                                     <li>
-                                        Select <b>Derive from chain</b> again in the drop down, if you want to load a
-                                        new module from the chain because this box will not automatically update when
-                                        you change the moduel reference in field below.
+                                        Select <b>{DERIVE_FROM_CHAIN.label}</b> again in the drop down, if you want to
+                                        load a new module from the chain because this box will not automatically update
+                                        when you change the moduel reference in field below.
                                     </li>
                                 </ul>
                             </Alert>
@@ -408,7 +408,7 @@ export default function InitComponent(props: ConnectionProps) {
                         <Form.Label> Module Reference</Form.Label>
                         <Form.Control
                             defaultValue={MODULE_REFERENCE_PLACEHOLDER}
-                            disabled={deriveFromModuleRefernce === 'Derive from step 1'}
+                            disabled={deriveFromModuleRefernce === DERIVE_FROM_STEP_1.value}
                             {...form.register('moduleReferenceString', {
                                 required: true,
                                 validate: validateModuleReference,
@@ -423,7 +423,7 @@ export default function InitComponent(props: ConnectionProps) {
                         <Form.Text />
                     </Form.Group>
 
-                    {deriveFromModuleRefernce !== "Don't derive" && displayContracts.length > 0 ? (
+                    {deriveFromModuleRefernce !== DO_NOT_DERIVE.value && displayContracts.length > 0 ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
 
@@ -536,7 +536,7 @@ export default function InitComponent(props: ConnectionProps) {
 
                 {hasInputParameter && (
                     <div className="box">
-                        {deriveFromModuleRefernce === "Don't derive" && (
+                        {deriveFromModuleRefernce === DO_NOT_DERIVE.value && (
                             <Form.Group className="mb-3">
                                 <Form.Label>Upload Smart Contract Module Schema File (e.g. schema.bin)</Form.Label>
                                 <Form.Control
@@ -573,7 +573,7 @@ export default function InitComponent(props: ConnectionProps) {
                                 <Form.Text />
                             </Form.Group>
                         )}
-                        {deriveFromModuleRefernce === "Don't derive" && schema && (
+                        {deriveFromModuleRefernce === DO_NOT_DERIVE.value && schema && (
                             <div className="actionResultBox">
                                 Schema in base64:
                                 <div>{schema.toString().slice(0, 30)} ...</div>
@@ -607,11 +607,16 @@ export default function InitComponent(props: ConnectionProps) {
                             <Form.Text />
                         </Form.Group>
 
-                        {(inputParameterType === 'number' || inputParameterType === 'string') && (
+                        {(inputParameterType === INPUT_PARAMETER_TYPE_NUMBER.value ||
+                            inputParameterType === INPUT_PARAMETER_TYPE_STRING.value) && (
                             <Form.Group className="mb-3">
                                 <Form.Label> Add your input parameter ({inputParameterType}):</Form.Label>
                                 <Form.Control
-                                    placeholder={inputParameterType === 'string' ? 'myString' : '1000000'}
+                                    placeholder={
+                                        inputParameterType === INPUT_PARAMETER_TYPE_STRING.value
+                                            ? 'myString'
+                                            : '1000000'
+                                    }
                                     {...form.register('inputParameter', { required: true })}
                                     onChange={(e) => {
                                         const register = form.register('inputParameter', {
@@ -630,11 +635,12 @@ export default function InitComponent(props: ConnectionProps) {
                             </Form.Group>
                         )}
 
-                        {(inputParameterType === 'object' || inputParameterType === 'array') && (
+                        {(inputParameterType === INPUT_PARAMETER_TYPE_ARRAY.value ||
+                            inputParameterType === INPUT_PARAMETER_TYPE_OBJECT.value) && (
                             <Form.Group className="mb-3">
                                 <Form.Label> Add your input parameter ({inputParameterType}):</Form.Label>
 
-                                {inputParameterType === 'array' && (
+                                {inputParameterType === INPUT_PARAMETER_TYPE_ARRAY.value && (
                                     <textarea
                                         {...form.register('inputParameter')}
                                         onChange={(event) => {
@@ -653,7 +659,7 @@ export default function InitComponent(props: ConnectionProps) {
                                         {getArrayExample(inputParameterTemplate)}
                                     </textarea>
                                 )}
-                                {inputParameterType === 'object' && (
+                                {inputParameterType === INPUT_PARAMETER_TYPE_OBJECT.value && (
                                     <textarea
                                         {...form.register('inputParameter')}
                                         onChange={(event) => {
@@ -684,12 +690,14 @@ export default function InitComponent(props: ConnectionProps) {
                     </div>
                 )}
                 <br />
-
                 <Button variant="primary" type="submit">
                     Initialize Smart Contract
                 </Button>
                 <br />
                 <br />
+                {!isModuleReferenceAlreadyDeployed && (
+                    <Alert variant="warning">Warning: Module reference does not exist on chain.</Alert>
+                )}
                 {shouldWarnDifferenceModuleReferences && (
                     <Alert variant="warning">Warning: Module references in step 1 and step 2 are different.</Alert>
                 )}

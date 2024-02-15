@@ -16,7 +16,7 @@ import {
 } from '@concordium/web-sdk';
 import { TypedSmartContractParameters, WalletConnection } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
-import { CONTRACT_SUB_INDEX } from './constants';
+import { CONTRACT_SUB_INDEX, DERIVE_FROM_CHAIN, DERIVE_FROM_STEP_1, DO_NOT_DERIVE } from './constants';
 
 /** This function signs and sends a `DeployModule` transaction.
  */
@@ -140,8 +140,8 @@ export async function initialize(
     if (moduleReferenceAlreadyDeployed === false) {
         throw new Error(
             `Module reference does not exist on chain. Enter a valid module reference or deploy your module in step 1 first.
-           The step 2 box will not automatically reload the new module reference, 
-           you might want to select "Don't derive" and then select "Derive from chain/Derive from Step1" again to load the new module reference`
+           The step 2 box will not automatically derive values from the new module reference, 
+           you might want to select "${DERIVE_FROM_STEP_1.label}/${DERIVE_FROM_CHAIN.label}" again to derive values from the new module reference`
         );
     }
 
@@ -156,7 +156,7 @@ export async function initialize(
     let params: TypedSmartContractParameters | undefined;
 
     if (hasInputParameter) {
-        if ((deriveFromModuleRefernce === "Don't derive" || undefined) && moduleSchema === undefined) {
+        if ((deriveFromModuleRefernce === DO_NOT_DERIVE.value || undefined) && moduleSchema === undefined) {
             throw new Error(`Set schema`);
         } else if (moduleSchema === undefined) {
             throw new Error(`No embedded module schema found in module`);

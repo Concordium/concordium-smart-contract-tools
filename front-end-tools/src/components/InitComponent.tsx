@@ -703,8 +703,8 @@ export default function InitComponent(props: ConnectionProps) {
                 )}
                 {shouldWarnNoEmbeddedSchema && (
                     <Alert variant="warning">
-                        Warning: No schema was embedded in module. It is unknown if contract expects an input parameter.
-                        No parameter schemas will be displayed
+                        Warning: No schema was embedded in the module deployed on chain. It is unknown if contract
+                        expects an input parameter. No parameter schemas will be displayed
                     </Alert>
                 )}
                 {shouldWarnInputParameterInSchemaIgnored && (

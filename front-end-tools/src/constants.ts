@@ -44,10 +44,10 @@ export const hexRegex = /^[0-9a-fA-F]+$/;
 // Module reference displayed as placeholder in the input field.
 export const MODULE_REFERENCE_PLACEHOLDER = '91225f9538ac2903466cc4ab07b6eb607a2cd349549f357dfdf4e6042dde0693';
 
-// Available options to select in step 2 for deriving values from the module references.
+// Available options to select in step 2 for deriving values from the module reference.
 export const DO_NOT_DERIVE = { value: "Don't derive", label: "Don't derive" };
 export const DERIVE_FROM_STEP_1 = { value: 'Derive from step 1', label: 'Derive from step 1' };
 export const DERIVE_FROM_CHAIN = { value: 'Derive from chain', label: 'Derive from chain' };
 
-// All available options to select in step 2 for deriving values from the module references.
+// All available options to select in step 2 for deriving values from the module reference.
 export const OPTIONS_DERIVE_FROM_MODULE_REFERENCE = [DO_NOT_DERIVE, DERIVE_FROM_STEP_1, DERIVE_FROM_CHAIN];

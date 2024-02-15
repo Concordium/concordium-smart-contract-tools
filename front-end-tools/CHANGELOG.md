@@ -1,3 +1,7 @@
+## 3.1.0
+
+- Add option to `deriveFromChain` given a module reference in Step 2.
+
 ## 3.0.2
 
 - Fix error message when specifying input parameter without uploading schema.

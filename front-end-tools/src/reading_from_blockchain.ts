@@ -18,7 +18,16 @@ import {
 import JSONbig from 'json-bigint';
 import { CONTRACT_SUB_INDEX } from './constants';
 
-/** This function gets the contract info of a smart contract index. */
+/**
+ * Retrieves information about a given smart contract instance.
+ *
+ * @param rpcClient the rpcClient to query.
+ * @param contractIndex the contract index (part of the smart contract address).
+ *
+ * @returns An object with information about the contract instance. The object contains the contractName, the methods, and the sourceModule.
+ * @throws If the `rpcClient` is undefined.
+ * @throws If the `contractIndex` is undefined.
+ */
 export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefined, contractIndex: bigint) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
@@ -35,11 +44,19 @@ export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefine
     // Removing the `contractName.` prefix.
     const methods = info.methods.map(ReceiveName.toEntrypointName);
 
-    const returnValue = { contractName, methods, sourceModule: info.sourceModule };
-    return returnValue;
+    return { contractName, methods, sourceModule: info.sourceModule };
 }
 
-/** This function gets the module source of a module reference. */
+/**
+ * Retrieves information about module source of a module reference.
+ *
+ * @param rpcClient the rpcClient to query.
+ * @param moduleRef the module's reference, represented by the ModuleReference class.
+ *
+ * @returns the source of the module as raw bytes.
+ * @throws If the `rpcClient` is undefined.
+ * @throws If the `moduleRef` is undefined.
+ */
 export async function getModuleSource(
     rpcClient: ConcordiumGRPCClient | undefined,
     moduleRef: ModuleReference.Type | undefined
@@ -54,7 +71,16 @@ export async function getModuleSource(
     return rpcClient.getModuleSource(moduleRef);
 }
 
-/** This function gets the embedded schema of a module reference. */
+/**
+ * Retrieves the embedded schema of the given module.
+ *
+ * @param rpcClient the rpcClient to query.
+ * @param moduleRef the module's reference, represented by the ModuleReference class.
+ *
+ * @returns the module schema as a buffer.
+ * @throws If the `rpcClient` is undefined.
+ * @throws If the `moduleRef` is undefined.
+ */
 export async function getEmbeddedSchema(
     rpcClient: ConcordiumGRPCClient | undefined,
     moduleRef: ModuleReference.Type | undefined
@@ -69,7 +95,17 @@ export async function getEmbeddedSchema(
     return rpcClient.getEmbeddedSchema(moduleRef);
 }
 
-/** This function gets the account info and its balance. */
+/**
+ * Retrieves the account info for the specified account. If the request to the node is successful, this function updates
+ * the account balance with the `setAccountBalance` hook and updates the account existence status using the `setAccountExistsOnNetwork` hook.
+ * If the request to the node fails, the error returned is written to the `setViewErrorAccountInfo` hook.
+ *
+ * @param rpcClient the rpcClient to query.
+ * @param accountIdentifier the string in base58 encoding representing the account address.
+ * @param setAccountBalance a hook to update the account balance.
+ * @param setAccountExistsOnNetwork a hook to update the account existence status.
+ * @param setViewErrorAccountInfo a hook to write the error to in case the request to the node fails.
+ */
 export function getAccountInfo(
     client: ConcordiumGRPCClient,
     account: string,
@@ -95,22 +131,40 @@ export function getAccountInfo(
         });
 }
 
-/** This function invokes a smart contract entry point and returns its return_value.
- * This function expects that the entry point is a `typical` smart contract view/read/getter function that returns a return_value.
- * This function throws an error if the entry point does not return a return_value.
- * If the moduleSchema parameter is undefined, the return_value is in raw bytes.
- * If a valid moduleSchema is provided, the return_value is deserialized.
+/**
+ * Invokes a smart contract entry point and returns its return value.
+ * This function expects that the entry point is a `typical` smart contract view/read/getter function that returns a return value.
+ * This function throws an error if the entry point does not return a return value.
+ * If the moduleSchema parameter is undefined, the return value is in raw bytes.
+ * If a valid moduleSchema is provided, the return value is deserialized.
+ *
+ * @param rpcClient the rpcClient to query.
+ * @param contractName the contract name to be invoked.
+ * @param contractIndex the contract index to be invoked.
+ * @param entryPoint an optional entry point to be invoked. This function will throw if the entryPoint is undefined.
+ * @param hasInputParameter a boolean signaling if the invoke should be executed with an input parameter.
+ * @param inputParameter an optional input parameter.
+ * @param inputParameterType an optional input parameter type (`string`/`number`/`array`/`object`).
+ * @param moduleSchema an optional module schema to serialize the input parameter and deserialize the return value.
+ * @param deriveContractInfoFromIndex a boolean signaling if values were derived from the contract index or manually inputted by the user.
+ *
+ * @returns the return value from the smart contract invoke in raw bytes (if no valid moduleSchema is provided) or deserialized (if a valid moduleSchema is provided).
+ * @throws If the `rpcClient` is undefined.
+ * @throws If the `entryPoint` is undefined.
+ * @throws If the `hasInputParameter` is true but the input parameter cannot be serialized.
+ * @throws If the request to the node fails.
+ * @throws In case of a valid moduleSchema: if the deserialization of the return value fails.
  */
 export async function read(
     rpcClient: ConcordiumGRPCClient | undefined,
     contractName: ContractName.Type,
     contractIndex: bigint,
     entryPoint: EntrypointName.Type | undefined,
-    moduleSchema: string | undefined,
+    hasInputParameter: boolean,
     inputParameter: string | undefined,
     inputParameterType: string | undefined,
-    hasInputParameter: boolean,
-    deriveContractInfo: boolean
+    moduleSchema: string | undefined,
+    deriveContractInfoFromIndex: boolean
 ) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
@@ -123,9 +177,9 @@ export async function read(
     let param = Parameter.empty();
 
     if (hasInputParameter) {
-        if (!deriveContractInfo && moduleSchema === undefined) {
+        if (!deriveContractInfoFromIndex && moduleSchema === undefined) {
             throw new Error(`Set schema`);
-        } else if (deriveContractInfo && moduleSchema === undefined) {
+        } else if (deriveContractInfoFromIndex && moduleSchema === undefined) {
             throw new Error(`No embedded module schema found in module`);
         }
 

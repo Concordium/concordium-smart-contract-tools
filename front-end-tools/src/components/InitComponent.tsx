@@ -56,7 +56,7 @@ export default function InitComponent(props: ConnectionProps) {
 
     type FormType = {
         cCDAmount: number;
-        deriveFromModuleRefernce: string | undefined;
+        deriveFromModuleReference: string | undefined;
         file: FileList | undefined;
         hasInputParameter: boolean;
         inputParameter: string | undefined;
@@ -69,11 +69,11 @@ export default function InitComponent(props: ConnectionProps) {
 
     const form = useForm<FormType>({ mode: 'all' });
 
-    const [deriveFromModuleRefernce, hasInputParameter, inputParameterType, isPayable, smartContractName, file] =
+    const [deriveFromModuleReference, hasInputParameter, inputParameterType, isPayable, smartContractName, file] =
         useWatch({
             control: form.control,
             name: [
-                'deriveFromModuleRefernce',
+                'deriveFromModuleReference',
                 'hasInputParameter',
                 'inputParameterType',
                 'isPayable',
@@ -145,11 +145,7 @@ export default function InitComponent(props: ConnectionProps) {
             client
                 .getModuleSource(moduleReference)
                 .then((value) => {
-                    if (value === undefined) {
-                        setIsModuleReferenceAlreadyDeployed(false);
-                    } else {
-                        setIsModuleReferenceAlreadyDeployed(true);
-                    }
+                    setIsModuleReferenceAlreadyDeployed(value !== undefined);
                 })
                 .catch(() => {
                     setIsModuleReferenceAlreadyDeployed(false);
@@ -175,12 +171,7 @@ export default function InitComponent(props: ConnectionProps) {
         return false;
     }, [inputParameterTemplate, hasInputParameter]);
 
-    const shouldWarnNoEmbeddedSchema = useMemo(() => {
-        if (schema?.length === 0) {
-            return true;
-        }
-        return false;
-    }, [schema]);
+    const shouldWarnNoEmbeddedSchema = useMemo(() => schema?.length === 0, [schema]);
 
     useEffect(() => {
         setSchemaError(undefined);
@@ -194,24 +185,24 @@ export default function InitComponent(props: ConnectionProps) {
             }
 
             if (schema) {
-                const inputParamterTypeSchemaBuffer = getInitContractParameterSchema(
+                const inputParameterTypeSchemaBuffer = getInitContractParameterSchema(
                     toBuffer(schema, 'base64'),
                     ContractName.fromString(smartContractName),
                     2
                 );
 
-                initTemplate = displayTypeSchemaTemplate(inputParamterTypeSchemaBuffer);
+                initTemplate = displayTypeSchemaTemplate(inputParameterTypeSchemaBuffer);
 
                 setInputParameterTemplate(initTemplate);
             }
         } catch (e) {
-            if (deriveFromModuleRefernce === DO_NOT_DERIVE.value) {
+            if (deriveFromModuleReference === DO_NOT_DERIVE.value) {
                 setSchemaError(
-                    `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                    `Could not get schema from uploaded schema. Uncheck "Has Input Parameter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             } else {
                 setSchemaError(
-                    `Could not get embedded schema from the module. Select "${DO_NOT_DERIVE.label}" to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                    `Could not get embedded schema from the module. Select "${DO_NOT_DERIVE.label}" to manually upload a schema or uncheck "Has Input Parameter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             }
         }
@@ -290,12 +281,12 @@ export default function InitComponent(props: ConnectionProps) {
             AccountAddress.fromBase58(account),
             isModuleReferenceAlreadyDeployed,
             moduleReference,
-            data.inputParameter,
             data.smartContractName ? ContractName.fromString(data.smartContractName) : undefined,
             data.hasInputParameter,
-            data.deriveFromModuleRefernce,
-            schema,
+            data.inputParameter,
             data.inputParameterType,
+            schema,
+            data.deriveFromModuleReference,
             Energy.create(data.maxExecutionEnergy),
             CcdAmount.fromMicroCcd(data.cCDAmount ?? 0)
         );
@@ -306,12 +297,12 @@ export default function InitComponent(props: ConnectionProps) {
         <Box header="Step 2: Initialize Smart Contract">
             <Form onSubmit={form.handleSubmit(onSubmit)}>
                 <Form.Group className="justify-content-center">
-                    <Form.Label>DeriveFromModuleRefernce</Form.Label>
+                    <Form.Label>DeriveFromModuleReference</Form.Label>
                     <Select
-                        {...form.register('deriveFromModuleRefernce', { required: true })}
+                        {...form.register('deriveFromModuleReference', { required: true })}
                         options={OPTIONS_DERIVE_FROM_MODULE_REFERENCE}
                         onChange={async (e) => {
-                            form.setValue('deriveFromModuleRefernce', e?.value);
+                            form.setValue('deriveFromModuleReference', e?.value);
 
                             setModuleReferenceError(undefined);
                             setModuleReferenceLengthError(undefined);
@@ -320,7 +311,7 @@ export default function InitComponent(props: ConnectionProps) {
                             form.setValue('file', undefined);
                             setDisplayContracts([]);
 
-                            const selectValue = form.getValues('deriveFromModuleRefernce');
+                            const selectValue = form.getValues('deriveFromModuleReference');
 
                             if (selectValue === DERIVE_FROM_STEP_1.value) {
                                 form.clearErrors('moduleReferenceString');
@@ -348,7 +339,7 @@ export default function InitComponent(props: ConnectionProps) {
                             }
                         }}
                     />
-                    {deriveFromModuleRefernce === DERIVE_FROM_STEP_1.value && (
+                    {deriveFromModuleReference === DERIVE_FROM_STEP_1.value && (
                         <>
                             <br />
                             <Alert variant="info">
@@ -373,7 +364,7 @@ export default function InitComponent(props: ConnectionProps) {
                             <br />
                         </>
                     )}
-                    {deriveFromModuleRefernce === DERIVE_FROM_CHAIN.value && (
+                    {deriveFromModuleReference === DERIVE_FROM_CHAIN.value && (
                         <>
                             <br />
                             <Alert variant="info">
@@ -408,7 +399,7 @@ export default function InitComponent(props: ConnectionProps) {
                         <Form.Label> Module Reference</Form.Label>
                         <Form.Control
                             defaultValue={MODULE_REFERENCE_PLACEHOLDER}
-                            disabled={deriveFromModuleRefernce === DERIVE_FROM_STEP_1.value}
+                            disabled={deriveFromModuleReference === DERIVE_FROM_STEP_1.value}
                             {...form.register('moduleReferenceString', {
                                 required: true,
                                 validate: validateModuleReference,
@@ -423,7 +414,7 @@ export default function InitComponent(props: ConnectionProps) {
                         <Form.Text />
                     </Form.Group>
 
-                    {deriveFromModuleRefernce !== DO_NOT_DERIVE.value && displayContracts.length > 0 ? (
+                    {deriveFromModuleReference !== DO_NOT_DERIVE.value && displayContracts.length > 0 ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
 
@@ -536,7 +527,7 @@ export default function InitComponent(props: ConnectionProps) {
 
                 {hasInputParameter && (
                     <div className="box">
-                        {deriveFromModuleRefernce === DO_NOT_DERIVE.value && (
+                        {deriveFromModuleReference === DO_NOT_DERIVE.value && (
                             <Form.Group className="mb-3">
                                 <Form.Label>Upload Smart Contract Module Schema File (e.g. schema.bin)</Form.Label>
                                 <Form.Control
@@ -573,7 +564,7 @@ export default function InitComponent(props: ConnectionProps) {
                                 <Form.Text />
                             </Form.Group>
                         )}
-                        {deriveFromModuleRefernce === DO_NOT_DERIVE.value && schema && (
+                        {deriveFromModuleReference === DO_NOT_DERIVE.value && schema && (
                             <div className="actionResultBox">
                                 Schema in base64:
                                 <div>{schema.toString().slice(0, 30)} ...</div>

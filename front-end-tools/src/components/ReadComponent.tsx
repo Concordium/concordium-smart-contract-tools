@@ -99,7 +99,7 @@ export default function ReadComponenet(props: ConnectionProps) {
             const schema = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
             if (schema === undefined) {
                 setSchemaError(
-                    'Schema was not uploaded or not embedded into the module. Uncheck the "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter'
+                    'Schema was not uploaded or not embedded into the module. Uncheck the "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Parameter" checkbox if this entrypoint has no input parameter'
                 );
                 return;
             }
@@ -116,11 +116,11 @@ export default function ReadComponenet(props: ConnectionProps) {
         } catch (e) {
             if (deriveContractInfo) {
                 setSchemaError(
-                    `Could not derive the embedded schema from the smart contract index. Uncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                    `Could not derive the embedded schema from the smart contract index. Uncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Parameter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             } else {
                 setSchemaError(
-                    `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                    `Could not get schema from uploaded schema. Uncheck "Has Input Parameter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             }
         }
@@ -147,10 +147,10 @@ export default function ReadComponenet(props: ConnectionProps) {
             ContractName.fromString(data.smartContractName),
             BigInt(data.smartContractIndex),
             data.entryPointName ? EntrypointName.fromString(data.entryPointName) : undefined,
-            schema,
+            data.hasInputParameter,
             data.inputParameter,
             data.inputParameterType,
-            data.hasInputParameter,
+            schema,
             data.deriveFromSmartContractIndex
         );
 

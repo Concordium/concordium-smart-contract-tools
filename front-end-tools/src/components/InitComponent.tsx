@@ -26,7 +26,7 @@ import { getObjectExample, getArrayExample } from '../utils';
 import {
     REFRESH_INTERVAL,
     INPUT_PARAMETER_TYPES_OPTIONS,
-    hexRegex,
+    REG_MODULE_REF,
     MODULE_REFERENCE_PLACEHOLDER,
     OPTIONS_DERIVE_FROM_MODULE_REFERENCE,
     DO_NOT_DERIVE,
@@ -87,6 +87,9 @@ export default function InitComponent(props: ConnectionProps) {
     const [uploadError2, setUploadError2] = useState<string | undefined>(undefined);
     const [parsingError, setParsingError] = useState<string | undefined>(undefined);
     const [smartContractIndexError, setSmartContractIndexError] = useState<string | undefined>(undefined);
+    const [isModuleReferenceAlreadyDeployedError, setIsModuleReferenceAlreadyDeployedError] = useState<
+        string | undefined
+    >(undefined);
     const [moduleReferenceError, setModuleReferenceError] = useState<string | undefined>(undefined);
     const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState<string | undefined>(undefined);
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
@@ -141,13 +144,15 @@ export default function InitComponent(props: ConnectionProps) {
     }, [connection, client, txHash]);
 
     useEffect(() => {
+        setIsModuleReferenceAlreadyDeployedError(undefined);
         if (connection && client && moduleReference) {
             client
                 .getModuleSource(moduleReference)
                 .then((value) => {
                     setIsModuleReferenceAlreadyDeployed(value !== undefined);
                 })
-                .catch(() => {
+                .catch((e) => {
+                    setIsModuleReferenceAlreadyDeployedError((e as Error).message.replaceAll('%20', ' '));
                     setIsModuleReferenceAlreadyDeployed(false);
                 });
         }
@@ -221,17 +226,11 @@ export default function InitComponent(props: ConnectionProps) {
             return true;
         }
 
-        try {
-            if (!hexRegex.test(value)) {
-                return 'Invalid module reference. Not a hex string.';
-            }
-
+        if (REG_MODULE_REF.test(value)) {
             setModuleReference(ModuleReference.fromHexString(value));
-
-            return true;
-        } catch (e) {
-            return `Invalid module reference. Original error: ${(e as Error).message}`;
         }
+
+        return REG_MODULE_REF.test(value) ? true : 'Invalid module reference. Not a hex string of length 64.';
     };
 
     const deriveSchemaAndContractNames = async (moduleRef: ModuleReference.Type) => {
@@ -255,6 +254,9 @@ export default function InitComponent(props: ConnectionProps) {
             }
 
             setDisplayContracts(contractNames);
+            // We select and display the first contract name in the drop-down as the default value.
+            // This is especially convenient if the module only includes one contract since the user does not have to manually select
+            // the contract name. A smart contract module can include several smart contracts on Concordium.
             form.setValue('smartContractName', contractNames[0]);
 
             const customSection = WebAssembly.Module.customSections(wasmModule, 'concordium-schema');
@@ -715,6 +717,9 @@ export default function InitComponent(props: ConnectionProps) {
                 <br />
                 {smartContractIndexError !== undefined && (
                     <Alert variant="danger"> Error: {smartContractIndexError}.</Alert>
+                )}
+                {isModuleReferenceAlreadyDeployedError !== undefined && (
+                    <Alert variant="danger"> Error: {isModuleReferenceAlreadyDeployedError}.</Alert>
                 )}
                 {smartContractIndex !== undefined && (
                     <div className="actionResultBox">

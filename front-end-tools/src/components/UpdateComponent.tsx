@@ -594,18 +594,20 @@ export default function UpdateComponenet(props: ConnectionProps) {
                 )}
 
                 <br />
-
-                <Button variant="primary" type="submit">
-                    Update Smart Contract
-                </Button>
-                <br />
-                <br />
                 {shouldWarnInputParameterInSchemaIgnored && (
                     <Alert variant="warning">
                         {' '}
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.
                     </Alert>
                 )}
+                <br />
+
+                <Button variant="primary" type="submit">
+                    Update Smart Contract
+                </Button>
+
+                <br />
+                <br />
                 {!txHashUpdate && transactionErrorUpdate && (
                     <Alert variant="danger"> Error: {transactionErrorUpdate}. </Alert>
                 )}

@@ -516,12 +516,6 @@ export default function ReadComponenet(props: ConnectionProps) {
                 )}
 
                 <br />
-
-                <Button variant="primary" type="submit">
-                    Read Smart Contract
-                </Button>
-                <br />
-                <br />
                 {(deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64) === undefined && (
                     <Alert variant="warning">
                         {' '}
@@ -534,6 +528,14 @@ export default function ReadComponenet(props: ConnectionProps) {
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.{' '}
                     </Alert>
                 )}
+                <br />
+
+                <Button variant="primary" type="submit">
+                    Read Smart Contract
+                </Button>
+
+                <br />
+                <br />
                 {error && <Alert variant="danger"> Error: {error}. </Alert>}
                 {returnValue && (
                     <div className="actionResultBox">

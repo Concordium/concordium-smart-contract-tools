@@ -683,11 +683,6 @@ export default function InitComponent(props: ConnectionProps) {
                     </div>
                 )}
                 <br />
-                <Button variant="primary" type="submit">
-                    Initialize Smart Contract
-                </Button>
-                <br />
-                <br />
                 {!isModuleReferenceAlreadyDeployed && (
                     <Alert variant="warning">Warning: Module reference does not exist on chain.</Alert>
                 )}
@@ -706,6 +701,17 @@ export default function InitComponent(props: ConnectionProps) {
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.
                     </Alert>
                 )}
+                {isModuleReferenceAlreadyDeployedError !== undefined && (
+                    <Alert variant="danger"> Error: {isModuleReferenceAlreadyDeployedError}.</Alert>
+                )}
+                <br />
+
+                <Button variant="primary" type="submit">
+                    Initialize Smart Contract
+                </Button>
+
+                <br />
+                <br />
                 {!txHash && transactionError && <Alert variant="danger">Error: {transactionError}.</Alert>}
                 {txHash && (
                     <TxHashLink
@@ -717,9 +723,6 @@ export default function InitComponent(props: ConnectionProps) {
                 <br />
                 {smartContractIndexError !== undefined && (
                     <Alert variant="danger"> Error: {smartContractIndexError}.</Alert>
-                )}
-                {isModuleReferenceAlreadyDeployedError !== undefined && (
-                    <Alert variant="danger"> Error: {isModuleReferenceAlreadyDeployedError}.</Alert>
                 )}
                 {smartContractIndex !== undefined && (
                     <div className="actionResultBox">

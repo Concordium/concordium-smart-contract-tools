@@ -9,9 +9,9 @@ import {
     MAINNET,
     useWalletConnectorSelector,
 } from '@concordium/react-components';
+import { ModuleReference } from '@concordium/web-sdk';
 
 import { Alert } from 'react-bootstrap';
-import { ModuleReference } from '@concordium/web-sdk';
 import DeployComponent from './components/DeployComponent';
 import ReadComponent from './components/ReadComponent';
 import UpdateComponent from './components/UpdateComponent';

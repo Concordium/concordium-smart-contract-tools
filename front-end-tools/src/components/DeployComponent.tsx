@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Button, Form } from 'react-bootstrap';
-import { Buffer } from 'buffer';
 
 import { WalletConnection } from '@concordium/react-components';
 import {
@@ -143,7 +142,7 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                 setBase64Module(module);
                                 setModuleReferenceCalculated(
-                                    ModuleReference.fromBuffer(Buffer.from(sha256([new Uint8Array(arrayBuffer)])))
+                                    ModuleReference.fromBuffer(sha256([new Uint8Array(arrayBuffer)]))
                                 );
 
                                 // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.

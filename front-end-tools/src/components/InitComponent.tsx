@@ -162,7 +162,7 @@ export default function InitComponent(props: ConnectionProps) {
         if (
             moduleReference !== undefined &&
             moduleReferenceCalculated !== undefined &&
-            moduleReferenceCalculated.moduleRef !== moduleReference.moduleRef
+            !ModuleReference.equals(moduleReferenceCalculated, moduleReference)
         ) {
             return true;
         }

@@ -3,9 +3,15 @@
 The front end contains useful functionalities for smart contract developers:
 
 - Upload and deploy a smart contract module to chain.
-- Initialize a smart contract module on chain.
+- Initialize a smart contract instance on chain.
+- Invoke a smart contract on chain (reading from chain).
+- Update a smart contract on chain (writing to chain).
 
 Only the browser wallet is supported in the first version (no support for mobile wallets).
+
+## Hosted front end
+
+[Hosted front end link](https://sctools.mainnet.concordium.software/)
 
 ## Prerequisites
 
@@ -30,13 +36,13 @@ To start the front end locally, do the following:
 
 -   Run `yarn build` in this folder.
 -   Run `yarn start` in this folder.
--   Open URL logged in console (typically http://127.0.0.1:8080).
+-   Open URL logged in console (typically http://127.0.0.1:5173).
 
 To have hot-reload (useful for development), do the following instead:
 
 -   Run `yarn watch` in this folder in a terminal.
 -   Run `yarn start` in this folder in another terminal.
--   Open URL logged in console (typically http://127.0.0.1:8080).
+-   Open URL logged in console (typically http://127.0.0.1:5173).
 
 ## Using yarn (on Unix/macOS systems)
 

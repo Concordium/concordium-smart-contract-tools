@@ -9,6 +9,7 @@ import {
     MAINNET,
     useWalletConnectorSelector,
 } from '@concordium/react-components';
+import { ModuleReference } from '@concordium/web-sdk';
 
 import { Alert } from 'react-bootstrap';
 import DeployComponent from './components/DeployComponent';
@@ -48,10 +49,9 @@ export default function Main(props: ConnectionProps) {
     const [accountBalance, setAccountBalance] = useState<string | undefined>(undefined);
 
     // Shared state between deploy step and init step
-    const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState<string | undefined>(undefined);
-    const [moduleReferenceDeployed, setModuleReferenceDeployed] = useState<string | undefined>(undefined);
-    const [contracts, setContracts] = useState<string[]>([]);
-    const [embeddedModuleSchemaBase64Init, setEmbeddedModuleSchemaBase64Init] = useState<string | undefined>(undefined);
+    const [moduleReferenceCalculated, setModuleReferenceCalculated] = useState<ModuleReference.Type | undefined>(
+        undefined
+    );
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -135,11 +135,8 @@ export default function Main(props: ConnectionProps) {
                                 connection={connection}
                                 account={account}
                                 client={client}
-                                setContracts={setContracts}
                                 moduleReferenceCalculated={moduleReferenceCalculated}
-                                setModuleReferenceDeployed={setModuleReferenceDeployed}
                                 setModuleReferenceCalculated={setModuleReferenceCalculated}
-                                setEmbeddedModuleSchemaBase64Init={setEmbeddedModuleSchemaBase64Init}
                             />
 
                             <InitComponent
@@ -147,10 +144,7 @@ export default function Main(props: ConnectionProps) {
                                 connection={connection}
                                 account={account}
                                 client={client}
-                                contracts={contracts}
-                                moduleReferenceDeployed={moduleReferenceDeployed}
                                 moduleReferenceCalculated={moduleReferenceCalculated}
-                                embeddedModuleSchemaBase64={embeddedModuleSchemaBase64Init}
                             />
 
                             <ReadComponent connection={connection} account={account} client={client} />

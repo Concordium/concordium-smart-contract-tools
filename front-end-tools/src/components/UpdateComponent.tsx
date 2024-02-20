@@ -144,7 +144,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
             const schema = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
             if (schema === undefined) {
                 setSchemaError(
-                    'Schema was not uploaded or not embedded into the module. Uncheck the "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter'
+                    'Schema was not uploaded or not embedded into the module. Uncheck the "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Parameter" checkbox if this entrypoint has no input parameter'
                 );
                 return;
             }
@@ -161,11 +161,11 @@ export default function UpdateComponenet(props: ConnectionProps) {
         } catch (e) {
             if (deriveContractInfo) {
                 setSchemaError(
-                    `Could not derive the embedded schema from the smart contract index. Uncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                    `Could not derive the embedded schema from the smart contract index. Uncheck "Derive From Smart Contract Index" checkbox to manually upload a schema or uncheck "Has Input Parameter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             } else {
                 setSchemaError(
-                    `Could not get schema from uploaded schema. Uncheck "Has Input Paramter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
+                    `Could not get schema from uploaded schema. Uncheck "Has Input Parameter" checkbox if this entrypoint has no input parameter. Original error: ${e}`
                 );
             }
         }
@@ -187,17 +187,16 @@ export default function UpdateComponenet(props: ConnectionProps) {
         const schema = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
 
         // Send update transaction
-
         const tx = update(
             connection,
             AccountAddress.fromBase58(account),
-            data.inputParameter,
             ContractName.fromString(data.smartContractName),
             data.entryPointName ? EntrypointName.fromString(data.entryPointName) : undefined,
-            data.hasInputParameter,
             data.deriveFromSmartContractIndex,
-            schema,
+            data.hasInputParameter,
+            data.inputParameter,
             data.inputParameterType,
+            schema,
             Energy.create(data.maxExecutionEnergy),
             BigInt(data.smartContractIndex),
             CcdAmount.fromMicroCcd(data.cCDAmount ?? 0)
@@ -595,18 +594,20 @@ export default function UpdateComponenet(props: ConnectionProps) {
                 )}
 
                 <br />
-
-                <Button variant="primary" type="submit">
-                    Update Smart Contract
-                </Button>
-                <br />
-                <br />
                 {shouldWarnInputParameterInSchemaIgnored && (
                     <Alert variant="warning">
                         {' '}
                         Warning: Input parameter schema found but &quot;Has Input Parameter&quot; checkbox is unchecked.
                     </Alert>
                 )}
+                <br />
+
+                <Button variant="primary" type="submit">
+                    Update Smart Contract
+                </Button>
+
+                <br />
+                <br />
                 {!txHashUpdate && transactionErrorUpdate && (
                     <Alert variant="danger"> Error: {transactionErrorUpdate}. </Alert>
                 )}

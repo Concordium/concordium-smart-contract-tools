@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Button, Form } from 'react-bootstrap';
-import { Buffer } from 'buffer';
 
 import { WalletConnection } from '@concordium/react-components';
 import {
@@ -25,11 +24,8 @@ interface ConnectionProps {
     connection: WalletConnection;
     client: ConcordiumGRPCClient | undefined;
     isTestnet: boolean;
-    setContracts: (contracts: string[]) => void;
-    setEmbeddedModuleSchemaBase64Init: (embeddedModuleSchemaBase64Init: string) => void;
-    setModuleReferenceDeployed: (moduleReferenceDeployed: string | undefined) => void;
-    setModuleReferenceCalculated: (moduleReferenceCalculated: string) => void;
-    moduleReferenceCalculated: string | undefined;
+    setModuleReferenceCalculated: (moduleReferenceCalculated: ModuleReference.Type) => void;
+    moduleReferenceCalculated: ModuleReference.Type | undefined;
 }
 
 /**
@@ -37,17 +33,7 @@ interface ConnectionProps {
  *  This components creates a `DeployModule` transaction.
  */
 export default function DeployComponenet(props: ConnectionProps) {
-    const {
-        isTestnet,
-        client,
-        connection,
-        account,
-        setContracts,
-        setModuleReferenceDeployed,
-        setModuleReferenceCalculated,
-        moduleReferenceCalculated,
-        setEmbeddedModuleSchemaBase64Init,
-    } = props;
+    const { isTestnet, client, connection, account, setModuleReferenceCalculated, moduleReferenceCalculated } = props;
 
     type FormType = {
         file: FileList | undefined;
@@ -76,7 +62,6 @@ export default function DeployComponenet(props: ConnectionProps) {
                                 report.outcome.summary.transactionType === TransactionKindString.DeployModule
                             ) {
                                 setTransactionOutcome('Success');
-                                setModuleReferenceDeployed(report.outcome.summary.moduleDeployed.contents);
                                 clearInterval(interval);
                             } else {
                                 setTransactionOutcome('Fail');
@@ -85,7 +70,6 @@ export default function DeployComponenet(props: ConnectionProps) {
                         }
                     })
                     .catch((e) => {
-                        setModuleReferenceDeployed(undefined);
                         setTransactionOutcome(`Fail; Error: ${(e as Error).message}`);
                         clearInterval(interval);
                     });
@@ -97,7 +81,7 @@ export default function DeployComponenet(props: ConnectionProps) {
     useEffect(() => {
         if (connection && client && moduleReferenceCalculated) {
             client
-                .getModuleSource(ModuleReference.fromHexString(moduleReferenceCalculated))
+                .getModuleSource(moduleReferenceCalculated)
                 .then((value) => {
                     if (value === undefined) {
                         setIsModuleReferenceAlreadyDeployedStep1(false);
@@ -120,7 +104,6 @@ export default function DeployComponenet(props: ConnectionProps) {
 
         const tx = deploy(connection, AccountAddress.fromBase58(account), base64Module);
         tx.then((txHash) => {
-            setModuleReferenceDeployed(undefined);
             setTxHashDeploy(txHash);
         }).catch((err: Error) => setTransactionErrorDeploy((err as Error).message));
     }
@@ -140,7 +123,6 @@ export default function DeployComponenet(props: ConnectionProps) {
                             register.onChange(e);
 
                             setUploadError(undefined);
-                            setModuleReferenceDeployed(undefined);
                             setTransactionErrorDeploy(undefined);
                             setTxHashDeploy(undefined);
 
@@ -160,7 +142,7 @@ export default function DeployComponenet(props: ConnectionProps) {
 
                                 setBase64Module(module);
                                 setModuleReferenceCalculated(
-                                    Buffer.from(sha256([new Uint8Array(arrayBuffer)])).toString('hex')
+                                    ModuleReference.fromBuffer(sha256([new Uint8Array(arrayBuffer)]))
                                 );
 
                                 // Concordium's tooling create versioned modules e.g. `.wasm.v1` now.
@@ -195,33 +177,6 @@ export default function DeployComponenet(props: ConnectionProps) {
                                 }
 
                                 if (wasmModule) {
-                                    const moduleFunctions = WebAssembly.Module.exports(wasmModule);
-
-                                    const contractNames = [];
-                                    for (let i = 0; i < moduleFunctions.length; i += 1) {
-                                        if (moduleFunctions[i].name.startsWith('init_')) {
-                                            contractNames.push(moduleFunctions[i].name.slice(5));
-                                        }
-                                    }
-                                    setContracts(contractNames);
-
-                                    const customSection = WebAssembly.Module.customSections(
-                                        wasmModule,
-                                        'concordium-schema'
-                                    );
-
-                                    const schema = new Uint8Array(customSection[0]);
-
-                                    // Use `reduce` to be able to convert large schema.
-                                    const moduleSchemaBase64Embedded = btoa(
-                                        new Uint8Array(schema).reduce(
-                                            (data, byte) => data + String.fromCharCode(byte),
-                                            ''
-                                        )
-                                    );
-
-                                    setEmbeddedModuleSchemaBase64Init(moduleSchemaBase64Embedded);
-
                                     // Check if the module was built as a reproducible build.
                                     const buildInfoSection = WebAssembly.Module.customSections(
                                         wasmModule,
@@ -250,7 +205,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                     <>
                         <div className="actionResultBox">
                             Calculated module reference:
-                            <div>{moduleReferenceCalculated}</div>
+                            <div>{moduleReferenceCalculated.moduleRef}</div>
                         </div>
                         <div className="actionResultBox">
                             Module in base64:

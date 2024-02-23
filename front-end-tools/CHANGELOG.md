@@ -1,3 +1,7 @@
+## 3.1.1
+
+- Add decoding of a failed invoke transaction into a human-readable error.
+
 ## 3.1.0
 
 - Add option to `deriveFromChain` given a module reference in Step 2.

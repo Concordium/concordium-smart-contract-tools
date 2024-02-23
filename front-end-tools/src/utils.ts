@@ -42,9 +42,9 @@ export function getArrayExample(template: string | undefined) {
  * @param failedResult the failed invoke contract result.
  * @param contractName the name of the contract.
  * @param entryPoint the entry point name.
- * @param moduleSchema an optional module schema. If provided, the rejectReason code as logged by the smart contract can be decoded into a human-readable error string.
+ * @param moduleSchema an optional module schema including an error schema. If provided, the rejectReason code as logged by the smart contract can be decoded into a human-readable error string.
  *
- * @returns a decoded human-readable reject reason string (falls back to return the error codes if a missing schema prevents the function from decoding the error codes into human-readable strings).
+ * @returns a decoded human-readable reject reason string (or falls back to return the error codes if decoding is impossible).
  */
 export function decodeRejectReason(
     failedResult: InvokeContractFailedResult,
@@ -69,7 +69,7 @@ export function decodeRejectReason(
             // -3 => 0x02
             // -4 => 0x03
             // ...
-            // This conversion works as long as there ares no more then 256 (one byte) of different errors in the smart contract which should be sufficient for practical smart contracts.
+            // This conversion works as long as there are no more then 256 (one byte) of different errors in the smart contract which should be sufficient for practical smart contracts.
             const decodedError = deserializeReceiveError(
                 Uint8Array.from([Math.abs(rejectReason) - 1]).buffer,
                 toBuffer(moduleSchema, 'base64'),

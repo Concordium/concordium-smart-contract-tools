@@ -726,7 +726,7 @@ export default function InitComponent(props: ConnectionProps) {
                 )}
                 {smartContractIndex !== undefined && (
                     <div className="actionResultBox">
-                        Smart Contract Inedex:
+                        Smart Contract Index:
                         <div>{smartContractIndex}</div>
                     </div>
                 )}

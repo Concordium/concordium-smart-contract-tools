@@ -4,8 +4,6 @@ import {
     deserializeReceiveReturnValue,
     serializeUpdateContractParameters,
     ModuleReference,
-    InvokeContractFailedResult,
-    RejectedReceive,
     AccountAddress,
     AccountInfo,
     ContractAddress,
@@ -17,6 +15,7 @@ import {
 } from '@concordium/web-sdk';
 import JSONbig from 'json-bigint';
 import { CONTRACT_SUB_INDEX } from './constants';
+import { decodeRejectReason } from './utils';
 
 /**
  * Retrieves information about a given smart contract instance.
@@ -229,15 +228,14 @@ export async function read(
     const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
 
     if (!res || res.tag === 'failure') {
-        const rejectReason = JSON.stringify(
-            ((res as InvokeContractFailedResult)?.reason as RejectedReceive)?.rejectReason
-        );
+        const rejectReason = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
 
         throw new Error(
             `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed.
             ${rejectReason !== undefined ? `Reject reason: ${rejectReason}` : ''}`
         );
     }
+
     if (!res.returnValue) {
         throw new Error(
             `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' returned no return_value`

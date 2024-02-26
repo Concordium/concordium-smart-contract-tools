@@ -5,6 +5,7 @@ import {
     deserializeReceiveError,
     EntrypointName,
     ContractName,
+    ReturnValue,
 } from '@concordium/web-sdk';
 import { EXAMPLE_ARRAYS, EXAMPLE_JSON_OBJECT } from './constants';
 
@@ -55,108 +56,103 @@ export function decodeRejectReason(
     entryPoint: EntrypointName.Type,
     moduleSchema: string | undefined
 ) {
-    let rejectReason;
+    let rejectReasonCode;
 
     const errorReason = failedResult.reason;
+
+    let humanReadableError;
 
     if (errorReason.tag === 'RejectedReceive') {
         // If the error is due to a logical smart contract revert (`RejectedReceive` type), get the `rejectReason` code.
         // e.g. -1, -2, ... (if the error comes from the smart contract).
         // e,g, -2147483647, -2147483646, ... (if the error comes from the `concordium-std` crate).
-        rejectReason = ((failedResult as InvokeContractFailedResult)?.reason as RejectedReceive)?.rejectReason;
+        rejectReasonCode = ((failedResult as InvokeContractFailedResult)?.reason as RejectedReceive)?.rejectReason;
 
-        switch (rejectReason) {
+        switch (rejectReasonCode) {
             // Check if the `rejectReason` comes from the `concordium-std` crate, and decode it into human-readable strings.
             case -2147483647:
-                rejectReason = 'Error ()';
+                humanReadableError = '`[Error ()]`';
                 break;
             case -2147483646:
-                rejectReason = 'ParseError';
+                humanReadableError = '`[ParseError]`';
                 break;
             case -2147483645:
-                rejectReason = 'LogError::Full';
+                humanReadableError = '`[LogError::Full]`';
                 break;
             case -2147483644:
-                rejectReason = 'LogError::Malformed';
+                humanReadableError = '`[LogError::Malformed]`';
                 break;
             case -2147483643:
-                rejectReason = 'NewContractNameError::MissingInitPrefix';
+                humanReadableError = '`[NewContractNameError::MissingInitPrefix]`';
                 break;
             case -2147483642:
-                rejectReason = 'NewContractNameError::TooLong';
+                humanReadableError = '`[NewContractNameError::TooLong]`';
                 break;
             case -2147483641:
-                rejectReason = 'NewReceiveNameError::MissingDotSeparator';
+                humanReadableError = '`[NewReceiveNameError::MissingDotSeparator]`';
                 break;
             case -2147483640:
-                rejectReason = 'NewReceiveNameError::TooLong';
+                humanReadableError = '`[NewReceiveNameError::TooLong]`';
                 break;
             case -2147483639:
-                rejectReason = 'NewContractNameError::ContainsDot';
+                humanReadableError = '`[NewContractNameError::ContainsDot]`';
                 break;
             case -2147483638:
-                rejectReason = 'NewContractNameError::InvalidCharacters';
+                humanReadableError = '`[NewContractNameError::InvalidCharacters]`';
                 break;
             case -2147483637:
-                rejectReason = 'NewReceiveNameError::InvalidCharacters';
+                humanReadableError = '`[NewReceiveNameError::InvalidCharacters]`';
                 break;
             case -2147483636:
-                rejectReason = 'NotPayableError';
+                humanReadableError = '`[NotPayableError]`';
                 break;
             case -2147483635:
-                rejectReason = 'TransferError::AmountTooLarge';
+                humanReadableError = '`[TransferError::AmountTooLarge]`';
                 break;
             case -2147483634:
-                rejectReason = 'TransferError::MissingAccount';
+                humanReadableError = '`[TransferError::MissingAccount]`';
                 break;
             case -2147483633:
-                rejectReason = 'CallContractError::AmountTooLarge';
+                humanReadableError = '`[CallContractError::AmountTooLarge]`';
                 break;
             case -2147483632:
-                rejectReason = 'CallContractError::MissingAccount';
+                humanReadableError = '`[CallContractError::MissingAccount]`';
                 break;
             case -2147483631:
-                rejectReason = 'CallContractError::MissingContract';
+                humanReadableError = '`[CallContractError::MissingContract]`';
                 break;
             case -2147483630:
-                rejectReason = 'CallContractError::MissingEntrypoint';
+                humanReadableError = '`[CallContractError::MissingEntrypoint]`';
                 break;
             case -2147483629:
-                rejectReason = 'CallContractError::MessageFailed';
+                humanReadableError = '`[CallContractError::MessageFailed]`';
                 break;
             case -2147483628:
-                rejectReason = 'CallContractError::LogicReject';
+                humanReadableError = '`[CallContractError::LogicReject]`';
                 break;
             case -2147483627:
-                rejectReason = 'CallContractError::Trap';
+                humanReadableError = '`[CallContractError::Trap]`';
                 break;
             case -2147483626:
-                rejectReason = 'UpgradeError::MissingModule';
+                humanReadableError = '`[UpgradeError::MissingModule]`';
                 break;
             case -2147483625:
-                rejectReason = 'UpgradeError::MissingContract';
+                humanReadableError = '`[UpgradeError::MissingContract]`';
                 break;
             case -2147483624:
-                rejectReason = 'UpgradeError::UnsupportedModuleVersion';
+                humanReadableError = '`[UpgradeError::UnsupportedModuleVersion]`';
                 break;
             case -2147483623:
-                rejectReason = 'QueryAccountBalanceError';
+                humanReadableError = '`[QueryAccountBalanceError]`';
                 break;
             case -2147483622:
-                rejectReason = 'QueryContractBalanceError';
+                humanReadableError = '`[QueryContractBalanceError]`';
                 break;
             default:
                 // If the `rejectReason` comes from the smart contract itself (e.g. -1, -2, -3, ...) and an error schema is provided in the module schema, deserialize the reject reason into a human-readable string.
-                if (moduleSchema !== undefined) {
-                    // Note: The rejectReason codes are converted to the byte tags of the enum type in Rust. Errors are represented as an enum type in Concordium smart contracts.
-                    // -1 => 0x00
-                    // -2 => 0x01
-                    // -3 => 0x02
-                    // -4 => 0x03
-                    // ...
-                    // This conversion works as long as there are no more then 256 (one byte) of different errors in the smart contract which should be sufficient for practical smart contracts.
+                if (moduleSchema !== undefined && failedResult.returnValue !== undefined) {
                     const decodedError = deserializeReceiveError(
-                        Uint8Array.from([Math.abs(rejectReason) - 1]).buffer,
+                        ReturnValue.toBuffer(failedResult.returnValue),
                         toBuffer(moduleSchema, 'base64'),
                         contractName,
                         entryPoint
@@ -166,13 +162,13 @@ export function decodeRejectReason(
                     const key = Object.keys(decodedError);
 
                     // Convert the human-readable error to a JSON string.
-                    return JSON.stringify(key);
+                    humanReadableError = JSON.stringify(key);
                 }
         }
     } else {
         // If the error is not due to a logical smart contract revert, return the `errorReasonTag` instead (e.g. if the transactions runs out of energy)
-        rejectReason = errorReason.tag;
+        humanReadableError = `\`[${errorReason.tag}]\``;
     }
 
-    return rejectReason;
+    return [rejectReasonCode, humanReadableError];
 }

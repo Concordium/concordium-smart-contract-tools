@@ -228,11 +228,16 @@ export async function read(
     const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
 
     if (!res || res.tag === 'failure') {
-        const rejectReason = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
+        const [rejectReasonCode, humanReadableError] = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
 
         throw new Error(
             `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed.
-            ${rejectReason !== undefined ? `Reject reason: ${rejectReason}` : ''}`
+            ${rejectReasonCode !== undefined ? `Reject reason code: ${rejectReasonCode}.` : ''} ${
+                humanReadableError !== undefined
+                    ? `Prettified reject reason: ${humanReadableError} (Warning: Prettified reject reason is not guaranteed to be correct.
+                    Check smart contract code to ensure error codes have not been overwritten.)`
+                    : ''
+            }`
         );
     }
 

@@ -31,24 +31,28 @@ export function getArrayExample(template: string | undefined) {
 }
 
 /**
- * Decodes the reason for the transaction failure into a human-readable format.
+ * Decodes the reason for the transaction failure. Depending on the type of the error and if an error schema in the module schema is provided,
+ * this function decodes the error as much as possible. The assumption is that the error codes have not been overwritten in the smart contract.
+ * The function returns a reject reason code and/or a human-readable error.
  *
  * If the error is NOT caused by a smart contract logical revert, this function returns the reason in a human-readable format as follows:
- * - `a human-readable rejectReason tag`. This can happen for example if the transaction runs out of energy. Such errors have tags that are human-readable (e.g. "OutOfEnergy").
+ * - `humanReadableError = a human-readable rejectReason tag; rejectReasonCode = undefined)`. This can happen for example if the transaction runs out of energy. Such errors have tags that are human-readable (e.g. "OutOfEnergy").
  *
- * If the error is caused by a smart contract logical revert coming from the `concordium-std` crate, this function returns the reason in a human-readable format as follows:
- * - `a human-readable error string` decoded from the `concordium-std` crate error codes.
+ * If the error is caused by a smart contract logical revert coming from the `concordium-std` crate, this function returns the reason in a human-readable format as well as the reject reason code as follows:
+ * - `humanReadableError = a human-readable error string decoded from the `concordium-std` crate error codes; rejectReasonCode = reject reason code from the `concordium-std` crate`.
  *
  * If the error is caused by a smart contract logical revert coming from the smart contract itself, this function returns the reason as follows:
- *  - `a rejectReason code` if NO error schema is provided (e.g. -1, -2, -3, ...).
- *  - `a human-readable error string` if an error schema is provided in the moduleSchema. This error schema is used to decode the above `rejectReason code` into a human-readable string.
+ *  - If NO error schema is provided:
+ *    `humanReadableError = undefined; rejectReasonCode = a rejectReason code as defined in the smart contract (e.g. -1, -2, -3, ...)`.
+ *  - If an error schema is provided in the moduleSchema:
+ *    `humanReadableError = a human-readable error string; rejectReasonCode = a rejectReason code as defined in the smart contract`. The error schema is used to decode the `rejectReasonCode` into a human-readable string.
  *
  * @param failedResult the failed invoke contract result.
  * @param contractName the name of the contract.
  * @param entryPoint the entry point name.
  * @param moduleSchema an optional module schema including an error schema. If provided, the rejectReason code as logged by the smart contract can be decoded into a human-readable error string.
  *
- * @returns a decoded human-readable reject reason string (or falls back to return the error codes if decoding is impossible).
+ * @returns a decoded human-readable reject reason string and/or error codes.
  */
 export function decodeRejectReason(
     failedResult: InvokeContractFailedResult,
@@ -149,7 +153,8 @@ export function decodeRejectReason(
                 humanReadableError = '`[QueryContractBalanceError]`';
                 break;
             default:
-                // If the `rejectReason` comes from the smart contract itself (e.g. -1, -2, -3, ...) and an error schema is provided in the module schema, deserialize the reject reason into a human-readable string.
+                // If the `rejectReason` comes from the smart contract itself (e.g. -1, -2, -3, ...)
+                // and an error schema is provided in the module schema, deserialize the reject reason into a human-readable string.
                 if (moduleSchema !== undefined && failedResult.returnValue !== undefined) {
                     const decodedError = deserializeReceiveError(
                         ReturnValue.toBuffer(failedResult.returnValue),

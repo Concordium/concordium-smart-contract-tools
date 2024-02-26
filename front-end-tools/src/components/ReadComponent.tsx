@@ -536,7 +536,20 @@ export default function ReadComponenet(props: ConnectionProps) {
 
                 <br />
                 <br />
-                {error && <Alert variant="danger"> Error: {error}. </Alert>}
+                {error && (
+                    <Alert variant="danger">
+                        {' '}
+                        Error: {error}.
+                        <br />
+                        <a href="https://docs.rs/concordium-std/latest/concordium_std/#signalling-errors">
+                            `Concordium-std` crate signalling errors
+                        </a>
+                        <br />
+                        <a href="https://developer.concordium.software/en/mainnet/smart-contracts/tutorials/piggy-bank/deploying.html#concordium-std-crate-errors">
+                            Developer documentation: Explanation error codes
+                        </a>
+                    </Alert>
+                )}
                 {returnValue && (
                     <div className="actionResultBox">
                         Read value:

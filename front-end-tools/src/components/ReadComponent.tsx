@@ -546,7 +546,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                         </a>
                         <br />
                         <a href="https://developer.concordium.software/en/mainnet/smart-contracts/tutorials/piggy-bank/deploying.html#concordium-std-crate-errors">
-                            Developer documentation: Explanation error codes
+                            Developer documentation: Explanation of error codes
                         </a>
                     </Alert>
                 )}

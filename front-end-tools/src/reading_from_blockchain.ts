@@ -4,8 +4,6 @@ import {
     deserializeReceiveReturnValue,
     serializeUpdateContractParameters,
     ModuleReference,
-    InvokeContractFailedResult,
-    RejectedReceive,
     AccountAddress,
     AccountInfo,
     ContractAddress,
@@ -17,6 +15,7 @@ import {
 } from '@concordium/web-sdk';
 import JSONbig from 'json-bigint';
 import { CONTRACT_SUB_INDEX } from './constants';
+import { decodeRejectReason } from './utils';
 
 /**
  * Retrieves information about a given smart contract instance.
@@ -229,15 +228,23 @@ export async function read(
     const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
 
     if (!res || res.tag === 'failure') {
-        const rejectReason = JSON.stringify(
-            ((res as InvokeContractFailedResult)?.reason as RejectedReceive)?.rejectReason
-        );
+        const [rejectReasonCode, humanReadableError] = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
 
         throw new Error(
             `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed.
-            ${rejectReason !== undefined ? `Reject reason: ${rejectReason}` : ''}`
+            ${rejectReasonCode !== undefined ? `Reject reason code: ${rejectReasonCode}.` : ''} ${
+                humanReadableError !== undefined
+                    ? `Prettified reject reason: ${humanReadableError} (Warning: A smart contract can have logic to
+                        overwrite/change the meaning of the error codes as defined in the concordium-std crate.
+                        While it is not advised to overwrite these error codes and is rather unusual to do so, it's important to note that
+                        this tool decodes the error codes based on the definitions in the concordium-std crate (assuming they have not been overwritten
+                        with other meanings in the smart contract logic). No guarantee are given as such that the meaning of the displayed prettified reject reason haven't been altered by the smart contract logic.
+                       )`
+                    : ''
+            }`
         );
     }
+
     if (!res.returnValue) {
         throw new Error(
             `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' returned no return_value`

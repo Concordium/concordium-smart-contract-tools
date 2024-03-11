@@ -2132,6 +2132,14 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                         v1::Interrupt::QueryAccountKeys { address } => {
                             eprintln!("Receive call requested public keys of account {address}.");
                         }
+                        v1::Interrupt::QueryContractModuleReference { address } => {
+                            eprintln!(
+                                "Receive call requested module reference of contract {address}."
+                            );
+                        }
+                        v1::Interrupt::QueryContractName { address } => {
+                            eprintln!("Receive call requested init-name of contract {address}.");
+                        }
                     }
                     eprintln!(
                         "Interpreter energy spent is {}",

@@ -2,6 +2,9 @@
 
 ## Unreleased changes
 
+- Support state-related host functions when running _unit-tests_ with `cargo concordium test`. Each test-case is provided with an empty temporary key-value store.
+- Support interrupt events to be introduced in protocol version 7.
+
 ## 3.2.0
 
 - Fix a bug so that a non-zero status code is now returned by `cargo concordium test` if tests fail.

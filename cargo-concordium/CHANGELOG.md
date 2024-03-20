@@ -2,6 +2,7 @@
 
 ## Unreleased changes
 
+- Bump minimum Rust version to 1.73.
 - Support state-related host functions when running _unit-tests_ with `cargo concordium test`. Each test-case is provided with an empty temporary key-value store.
 - Support interrupt events to be introduced in protocol version 7.
 

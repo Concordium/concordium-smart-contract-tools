@@ -28,7 +28,7 @@ pipeline {
             agent { 
                 docker {
                     reuseNode true
-                    image 'concordium/base:latest'
+                    image 'concordium/base:rust1.73-ghc9.6.4'
                     args '-u root'
                 } 
             }

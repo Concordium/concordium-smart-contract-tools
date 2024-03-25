@@ -1,0 +1,104 @@
+# This action is triggered when tags of the form releases/vscode-smart-contracts/*.*.*
+# are created. It will build cargo-concordium and vscode extension and upload it
+# as artifacts of the workflow run. If a release already exists with the given
+# tag then the extension will also be attached as assets to the release.
+#
+# The intended workflow is that a release is created and tagged, at which point
+# this action will be triggered and complete the build.
+name: 'Build and publish VSCode extension in a release'
+on:
+  # This release action always requires a tag to publish a release.
+  # This job will run when a releases/vscode-smart-contracts/$VERSION
+  # tag is created.
+  push:
+    tags:
+      - releases/vscode-smart-contracts/*.*.*
+
+jobs:
+  build-cargo-concordium:
+    name: build ${{ matrix.platform }}
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Support longpaths on Windows
+        if: matrix.platform == 'windows-latest'
+        run: git config --system core.longpaths true
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@1.74
+      - name: Build on ubuntu
+        if: matrix.platfrom == 'ubuntu-latest'
+        run: |
+          rustup target add x86_64-unknown-linux-musl
+          cargo build --release --manifest-path cargo-concordium/Cargo.toml --target x86_64-unknown-linux-musl
+      - name: Build on other platforms
+        if: matrix.platfrom != 'ubuntu-latest'
+        run: cargo build --release --manifest-path cargo-concordium/Cargo.toml
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.platform }}
+          path: |
+            cargo-concordium/target/release/cargo-concordium
+            cargo-concordium/target/release/x86_64-unknown-linux-musl/cargo-concordium
+            cargo-concordium/target/release/cargo-concordium.exe
+
+  build-extension:
+    needs: build-cargo-concordium
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # For uploading artifacts to a release
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/download-artifact@v4
+      - name: Build extension for all platforms
+        working-directory: ./vscode-smart-contracts
+        run: |
+          mkdir out
+          mkdir executables
+
+          # Install dependencies
+          npm ci
+
+          # Mac first
+          mv ../binary-macos-latest/cargo-concordium executables/cargo-concordium
+          chmod +x executables/cargo-concordium
+
+          npx vsce package --target darwin-x64 --out ./out/extension-darwin-x64.vsix
+          npx vsce package --target darwin-arm64 --out ./out/extension-darwin-arm64.vsix
+
+          # Then Windows
+          rm -rf executables/*
+          mv ../binary-windows-latest/cargo-concordium.exe executables/cargo-concordium.exe
+          npx vsce package --target win32-x64 --out ./out/extension-win64.vsix
+
+          # Finally linux
+          rm -rf executables/*
+          mv ../binary-ubuntu-latest/cargo-concordium executables/cargo-concordium
+          npx vsce package --target linux-x64 --out ./out/extension-linux-x64.vsix
+
+      - name: Upload extension artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extensions
+          path: |
+            vscode-smart-contracts/out/*.vsix
+
+      - name: Attach binaries to an existing release.
+        if: ${{ always() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view ${{ github.ref_name }}; then
+            gh release upload ${{ github.ref_name }} vscode-smart-contracts/out/*.vsix
+          else
+            echo "::notice No release with ref name ${{ github.ref_name }}, so not uploading artifacts there."
+          fi

@@ -1,4 +1,11 @@
-name: 'Publish vscode extension'
+# This action is triggered when tags of the form releases/vscode-smart-contracts/*.*.*
+# are created. It will build cargo-concordium and vscode extension and upload it
+# as artifacts of the workflow run. If a release already exists with the given
+# tag then the extension will also be attached as assets to the release.
+#
+# The intended workflow is that a release is created and tagged, at which point
+# this action will be triggered and complete the build.
+name: 'Build and publish VSCode extension in a release'
 on:
   # This release action always requires a tag to publish a release.
   # This job will run when a releases/cargo-concordium/$VERSION
@@ -6,9 +13,6 @@ on:
   push:
     tags:
       - releases/vscode-smart-contracts/*.*.*
-
-    branches:
-      - remove-jenkins
 
 jobs:
   build-cargo-concordium:
@@ -96,5 +100,5 @@ jobs:
           if gh release view ${{ github.ref_name }}; then
             gh release upload ${{ github.ref_name }} vscode-smart-contracts/out/*.vsix
           else
-            echo "::notice No release with ref name ${RELEASE}, so not uploading artifacts there."
+            echo "::notice No release with ref name ${{ github.ref_name }}, so not uploading artifacts there."
           fi

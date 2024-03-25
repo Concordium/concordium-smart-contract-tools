@@ -1,13 +1,11 @@
 name: 'Publish cargo-concordium binaries'
 on:
-  # The release action always requires a tag to publish a release.
+  # This release action always requires a tag to publish a release.
   # This job will run when a releases/cargo-concordium/$VERSION
   # tag is created.
   push:
     tags:
       - releases/cargo-concordium/*.*.*
-    branches:
-      - release/3.3.0
 
 jobs:
   build:
@@ -43,6 +41,7 @@ jobs:
             cargo-concordium/target/release/x86_64-unknown-linux-musl/cargo-concordium
             cargo-concordium/target/release/cargo-concordium.exe
 
+  # Attach binaries to the release identified by the tag.
   release:
     permissions:
       contents: write
@@ -51,12 +50,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
       - run: |
-          mv binary-macos-latest/cargo-concordium cargo-concordium-darwin-amd64
-          mv binary-windows-latest/cargo-concordium.exe cargo-concordium-windows-amd64.exe
-          mv binary-ubuntu-latest/cargo-concordium cargo-concordium-linux-amd64
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: |
-            cargo-concordium-*
+          mkdir uploads
+          mv binary-macos-latest/cargo-concordium uploads/cargo-concordium-darwin-amd64
+          mv binary-windows-latest/cargo-concordium.exe uploads/cargo-concordium-windows-amd64.exe
+          mv binary-ubuntu-latest/cargo-concordium uploads/cargo-concordium-linux-amd64
+      - name: Attach binaries to an existing release.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.ref_name }} uploads/*

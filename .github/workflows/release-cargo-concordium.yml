@@ -1,0 +1,61 @@
+name: 'Publish cargo-concordium binaries'
+on:
+  # This release action always requires a tag to publish a release.
+  # This job will run when a releases/cargo-concordium/$VERSION
+  # tag is created.
+  push:
+    tags:
+      - releases/cargo-concordium/*.*.*
+
+jobs:
+  build:
+    name: build ${{ matrix.platform }}
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Support longpaths on Windows
+        if: matrix.platform == 'windows-latest'
+        run: git config --system core.longpaths true
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@1.74
+      - name: Build on ubuntu
+        if: matrix.platfrom == 'ubuntu-latest'
+        run: |
+          rustup target add x86_64-unknown-linux-musl
+          cargo build --release --manifest-path cargo-concordium/Cargo.toml --target x86_64-unknown-linux-musl
+      - name: Build on other platforms
+        if: matrix.platfrom != 'ubuntu-latest'
+        run: cargo build --release --manifest-path cargo-concordium/Cargo.toml
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.platform }}
+          path: |
+            cargo-concordium/target/release/cargo-concordium
+            cargo-concordium/target/release/x86_64-unknown-linux-musl/cargo-concordium
+            cargo-concordium/target/release/cargo-concordium.exe
+
+  # Attach binaries to the release identified by the tag.
+  release:
+    permissions:
+      contents: write
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - run: |
+          mkdir uploads
+          mv binary-macos-latest/cargo-concordium uploads/cargo-concordium-darwin-amd64
+          mv binary-windows-latest/cargo-concordium.exe uploads/cargo-concordium-windows-amd64.exe
+          mv binary-ubuntu-latest/cargo-concordium uploads/cargo-concordium-linux-amd64
+      - name: Attach binaries to an existing release.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.ref_name }} uploads/*

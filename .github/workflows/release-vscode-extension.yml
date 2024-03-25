@@ -8,7 +8,7 @@
 name: 'Build and publish VSCode extension in a release'
 on:
   # This release action always requires a tag to publish a release.
-  # This job will run when a releases/cargo-concordium/$VERSION
+  # This job will run when a releases/vscode-smart-contracts/$VERSION
   # tag is created.
   push:
     tags:

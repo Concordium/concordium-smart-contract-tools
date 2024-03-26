@@ -780,7 +780,7 @@ pub fn build_contract_schema<A>(
 /// Create a new Concordium smart contract project from a template, or there
 /// are runtime exceptions that are not expected then this function returns
 /// `Err(...)`.
-pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
+pub fn init_concordium_project(path: impl AsRef<Path>, tag: &str) -> anyhow::Result<()> {
     let path = path.as_ref();
 
     let absolute_path = if path.is_absolute() {
@@ -802,6 +802,8 @@ pub fn init_concordium_project(path: impl AsRef<Path>) -> anyhow::Result<()> {
             "--git",
             "https://github.com/Concordium/concordium-rust-smart-contracts",
             "templates",
+            "--tag",
+            tag,
         ])
         .args(["--destination", absolute_path.to_str().unwrap()])
         .stdout(Stdio::inherit())

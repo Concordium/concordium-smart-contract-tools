@@ -109,6 +109,14 @@ This command also builds a deployable Wasm module for integration testing, and i
             help = "The path where the project should be created."
         )]
         path: PathBuf,
+        #[structopt(
+            name = "tag",
+            long = "tag",
+            short = "t",
+            default_value = "releases/templates/latest",
+            help = "The release tag of the template to use."
+        )]
+        tag:  String,
     },
     #[structopt(
         name = "schema-json",
@@ -676,8 +684,8 @@ pub fn main() -> anyhow::Result<()> {
 
             eprintln!("{}", Color::Green.bold().paint("All tests passed"));
         }
-        Command::Init { path } => {
-            init_concordium_project(path)
+        Command::Init { path, tag } => {
+            init_concordium_project(path, &tag)
                 .context("Could not create a new Concordium smart contract project.")?;
         }
         Command::SchemaJSON {

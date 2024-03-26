@@ -2,6 +2,8 @@
 
 ## Unreleased changes
 
+- Added a `tag` option to `cargo concordium init`
+
 ## 3.3.0
 
 - Bump minimum Rust version to 1.73.

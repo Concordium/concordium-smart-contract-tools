@@ -973,10 +973,7 @@ fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
 /// When building, i.e. when running `cargo concordium build`, the schema
 /// information is outputted, but that is not the case when testing.
 /// This behaviour is configurable via the parameter `print_schema_info`.
-fn handle_build(
-    options: BuildOptions,
-    print_extra_info: bool,
-) -> anyhow::Result<cargo_metadata::Metadata> {
+fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result<BuildInfo> {
     let success_style = ansi_term::Color::Green.bold();
     let bold_style = ansi_term::Style::new().bold();
     let build_schema = options.schema_build_options();
@@ -991,12 +988,7 @@ fn handle_build(
     } else {
         options.cargo_args
     };
-    let BuildInfo {
-        total_module_len,
-        schema,
-        metadata,
-        stored_build_info,
-    } = build_contract(
+    let build_info = build_contract(
         options.version,
         build_schema,
         options.allow_debug,
@@ -1007,7 +999,7 @@ fn handle_build(
         &cargo_args,
     )
     .context("Could not build smart contract.")?;
-    if let Some(module_schema) = &schema {
+    if let Some(module_schema) = &build_info.schema {
         let module_schema_bytes = to_bytes(module_schema);
         if print_extra_info {
             match module_schema {
@@ -1100,7 +1092,7 @@ fn handle_build(
         }
     }
     if print_extra_info {
-        if let Some((bi, archived_files)) = stored_build_info {
+        if let Some((bi, archived_files)) = &build_info.stored_build_info {
             eprintln!("  Embedded build information information:\n",);
             print_build_info(&bi);
             eprintln!();
@@ -1112,8 +1104,8 @@ fn handle_build(
 
         let size = format!(
             "{}.{:03} kB",
-            total_module_len / 1000,
-            total_module_len % 1000
+            build_info.total_module_len / 1000,
+            build_info.total_module_len % 1000
         );
         eprintln!(
             "    {} smart contract module {}",
@@ -1132,7 +1124,7 @@ fn handle_build(
             )
         )
     }
-    Ok(metadata)
+    Ok(build_info)
 }
 
 /// Loads the contract state from file and displays it as a tree by printing to

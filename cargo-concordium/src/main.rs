@@ -1094,7 +1094,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
     if print_extra_info {
         if let Some((bi, archived_files)) = &build_info.stored_build_info {
             eprintln!("  Embedded build information information:\n",);
-            print_build_info(&bi);
+            print_build_info(bi);
             eprintln!();
             eprintln!("    - Archived source files:");
             for file in archived_files {

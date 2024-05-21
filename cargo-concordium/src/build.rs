@@ -635,6 +635,9 @@ pub(crate) fn build_contract(
 
     let total_module_len = output_bytes.len();
     fs::write(&out_filename, output_bytes).context("Unable to write final module.")?;
+
+    // File name cannot be canonicalized before the file exists, so we do it here.
+    let out_filename = out_filename.canonicalize()?;
     Ok(BuildInfo {
         total_module_len,
         schema: return_schema,

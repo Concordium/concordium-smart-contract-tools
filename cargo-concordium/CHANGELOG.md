@@ -3,6 +3,8 @@
 ## Unreleased changes
 
 - Added a `tag` option to `cargo concordium init`
+- When running integration tests the module output path is now exposed to the
+  tests via the `CARGO_CONCORDIUM_TEST_MODULE_OUTPUT_PATH` environment variable.
 
 ## 3.3.0
 

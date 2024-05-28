@@ -122,6 +122,8 @@ pub struct BuildInfo {
     /// list of file paths that were used to build the artifact. The file
     /// paths are relative to the package root.
     pub stored_build_info: Option<(utils::VersionedBuildInfo, Vec<PathBuf>)>,
+    /// The path to the file of the built module.
+    pub out_filename:      PathBuf,
 }
 
 /// Result of [`create_archive`]. It contains the actual archive with a
@@ -632,12 +634,16 @@ pub(crate) fn build_contract(
     (output_bytes[4..8]).copy_from_slice(&data_size.to_be_bytes());
 
     let total_module_len = output_bytes.len();
-    fs::write(out_filename, output_bytes).context("Unable to write final module.")?;
+    fs::write(&out_filename, output_bytes).context("Unable to write final module.")?;
+
+    // File name cannot be canonicalized before the file exists, so we do it here.
+    let out_filename = out_filename.canonicalize()?;
     Ok(BuildInfo {
         total_module_len,
         schema: return_schema,
         stored_build_info: stored_build_info.map(|(bi, a)| (bi, a.archived_files)),
         metadata,
+        out_filename,
     })
 }
 
@@ -1135,13 +1141,14 @@ pub(crate) fn build_and_run_integration_tests(
 
     // Build the module in the same way as `cargo concordium build`, except that
     // schema information shouldn't be printed.
-    let metadata = crate::handle_build(build_options, false)?;
+    let build_info = crate::handle_build(build_options, false)?;
 
     let mut cargo_test_args = vec!["test"];
 
     let test_targets: Vec<String> = if test_targets.is_empty() {
         // Find all the integration test targets and include them in the test.
-        metadata
+        build_info
+            .metadata
             .root_package()
             .context("Could not determine package.")?
             .targets
@@ -1202,6 +1209,13 @@ pub(crate) fn build_and_run_integration_tests(
 
         command.env("CARGO_CONCORDIUM_TEST_ALLOW_DEBUG", "1");
     }
+    // This enviroment variable needs to match the
+    // `CONTRACT_MODULE_OUTPUT_PATH_ENV_VAR` constant in the `contract-testing`
+    // crate.
+    command.env(
+        "CARGO_CONCORDIUM_TEST_MODULE_OUTPUT_PATH",
+        build_info.out_filename,
+    );
     // Output what we are doing so that it is easier to debug if the user
     // has their own features or options.
     eprint!("{} cargo", Color::Green.bold().paint("Running"),);

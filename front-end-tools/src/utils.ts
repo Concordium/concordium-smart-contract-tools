@@ -20,6 +20,18 @@ export function arraysEqual(a: Uint8Array, b: Uint8Array) {
     return true;
 }
 
+/**
+ * Decodes a `Uint8Array` into a hex string.
+ * @param uint8Array the `Uint8Array`.
+ *
+ * @returns a hex string.
+ */
+export function uint8ArrayToHexString(uint8Array: Uint8Array) {
+    return Array.from(uint8Array)
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('');
+}
+
 export function getObjectExample(template: string | undefined) {
     return template !== undefined
         ? JSON.stringify(JSON.parse(template), undefined, 2)

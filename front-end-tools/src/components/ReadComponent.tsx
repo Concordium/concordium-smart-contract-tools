@@ -68,6 +68,7 @@ export default function ReadComponenet(props: ConnectionProps) {
         | undefined
     >(undefined);
     const [returnValue, setReturnValue] = useState<string | undefined>(undefined);
+    const [errorContractInvoke, setErrorContractInvoke] = useState<string | undefined>(undefined);
     const [error, setError] = useState<string | undefined>(undefined);
 
     const [entryPointTemplate, setEntryPointTemplate] = useState<string | undefined>(undefined);
@@ -135,7 +136,7 @@ export default function ReadComponenet(props: ConnectionProps) {
     }, [entryPointName, hasInputParameter, smartContractName, uploadedModuleSchemaBase64, inputParameterType]);
 
     function onSubmit(data: FormType) {
-        setError(undefined);
+        setErrorContractInvoke(undefined);
         setReturnValue(undefined);
 
         const schema = data.deriveFromSmartContractIndex ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
@@ -158,7 +159,7 @@ export default function ReadComponenet(props: ConnectionProps) {
             .then((value) => {
                 setReturnValue(value);
             })
-            .catch((err: Error) => setError((err as Error).message));
+            .catch((err: Error) => setErrorContractInvoke((err as Error).message));
     }
 
     return (
@@ -536,20 +537,21 @@ export default function ReadComponenet(props: ConnectionProps) {
 
                 <br />
                 <br />
-                {error && (
+                {errorContractInvoke && (
                     <Alert variant="danger">
                         {' '}
-                        Error: {error}.
-                        <br />
-                        <a href="https://docs.rs/concordium-std/latest/concordium_std/#signalling-errors">
-                            `Concordium-std` crate signalling errors
-                        </a>
+                        Error: {errorContractInvoke}.
                         <br />
                         <a href="https://developer.concordium.software/en/mainnet/smart-contracts/tutorials/piggy-bank/deploying.html#concordium-std-crate-errors">
                             Developer documentation: Explanation of error codes
                         </a>
+                        <br />
+                        <a href="https://docs.rs/concordium-std/latest/concordium_std/#signalling-errors">
+                            `Concordium-std` crate signalling errors
+                        </a>
                     </Alert>
                 )}
+                {error && <Alert variant="danger"> Error: {error}.</Alert>}
                 {returnValue && (
                     <div className="actionResultBox">
                         Read value:

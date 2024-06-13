@@ -15,7 +15,7 @@ import {
 } from '@concordium/web-sdk';
 import JSONbig from 'json-bigint';
 import { CONTRACT_SUB_INDEX } from './constants';
-import { decodeRejectReason } from './utils';
+import { decodeRejectReason, uint8ArrayToHexString } from './utils';
 
 /**
  * Retrieves information about a given smart contract instance.
@@ -251,9 +251,12 @@ export async function read(
         );
     }
 
+    // If no schema is provided, return the raw bytes as a hex string.
     if (moduleSchema === undefined) {
-        // If no schema is provided return the raw bytes
-        return JSONbig.stringify(res.returnValue);
+        // Convert the Uint8Array to a hex string.
+        const hexString = uint8ArrayToHexString(res.returnValue.buffer);
+
+        return JSONbig.stringify({ rawBytes: `0x${hexString}` });
     }
 
     let returnValue;

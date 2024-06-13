@@ -1,3 +1,7 @@
+## Unreleased
+
+- Display the raw bytes returned from the smart contract as hex string instead of buffer if no schema is provided.
+
 ## 3.1.1
 
 - Add decoding of a failed invoke transaction into a human-readable error.

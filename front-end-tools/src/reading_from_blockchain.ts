@@ -251,9 +251,12 @@ export async function read(
         );
     }
 
+    // If no schema is provided, return the raw bytes as a hex string.
     if (moduleSchema === undefined) {
-        // If no schema is provided return the raw bytes as a hex string.
-        return JSONbig.stringify(`0x${uint8ArrayToHexString(res.returnValue.buffer)}`);
+        // Convert the Uint8Array to a hex string.
+        const hexString = uint8ArrayToHexString(res.returnValue.buffer);
+
+        return JSONbig.stringify({ rawBytes: `0x${hexString}` });
     }
 
     let returnValue;

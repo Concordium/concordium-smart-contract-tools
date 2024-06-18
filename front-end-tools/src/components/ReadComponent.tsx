@@ -20,8 +20,8 @@ import { getObjectExample, getArrayExample } from '../utils';
 import { INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
 
 interface ConnectionProps {
-    account: string;
-    connection: WalletConnection;
+    account: string | undefined;
+    connection: WalletConnection | undefined;
     client: ConcordiumGRPCClient | undefined;
 }
 

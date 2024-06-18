@@ -29,8 +29,8 @@ import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
 
 interface ConnectionProps {
     isTestnet: boolean;
-    account: string;
-    connection: WalletConnection;
+    account: string | undefined;
+    connection: WalletConnection | undefined;
     client: ConcordiumGRPCClient | undefined;
 }
 
@@ -186,23 +186,26 @@ export default function UpdateComponenet(props: ConnectionProps) {
 
         const schema = deriveContractInfo ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
 
-        // Send update transaction
-        const tx = update(
-            connection,
-            AccountAddress.fromBase58(account),
-            ContractName.fromString(data.smartContractName),
-            data.entryPointName ? EntrypointName.fromString(data.entryPointName) : undefined,
-            data.deriveFromSmartContractIndex,
-            data.hasInputParameter,
-            data.inputParameter,
-            data.inputParameterType,
-            schema,
-            Energy.create(data.maxExecutionEnergy),
-            BigInt(data.smartContractIndex),
-            CcdAmount.fromMicroCcd(data.cCDAmount ?? 0)
-        );
-
-        tx.then(setTxHashUpdate).catch((err: Error) => setTransactionErrorUpdate((err as Error).message));
+        if (connection && account) {
+            // Send update transaction
+            const tx = update(
+                connection,
+                AccountAddress.fromBase58(account),
+                ContractName.fromString(data.smartContractName),
+                data.entryPointName ? EntrypointName.fromString(data.entryPointName) : undefined,
+                data.deriveFromSmartContractIndex,
+                data.hasInputParameter,
+                data.inputParameter,
+                data.inputParameterType,
+                schema,
+                Energy.create(data.maxExecutionEnergy),
+                BigInt(data.smartContractIndex),
+                CcdAmount.fromMicroCcd(data.cCDAmount ?? 0)
+            );
+            tx.then(setTxHashUpdate).catch((err: Error) => setTransactionErrorUpdate((err as Error).message));
+        } else {
+            setTransactionErrorUpdate('Connect wallet first.');
+        }
     }
 
     return (

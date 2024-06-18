@@ -231,15 +231,14 @@ export async function read(
         const [rejectReasonCode, humanReadableError] = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
 
         throw new Error(
-            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed.
-            ${rejectReasonCode !== undefined ? `Reject reason code: ${rejectReasonCode}.` : ''} ${
+            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed
+            ${rejectReasonCode !== undefined ? `. Reject reason code: ${rejectReasonCode}` : ''} ${
                 humanReadableError !== undefined
-                    ? `Prettified reject reason: ${humanReadableError} (Warning: A smart contract can have logic to
+                    ? `. Prettified reject reason: ${humanReadableError} (Warning: A smart contract can have logic to
                         overwrite/change the meaning of the error codes as defined in the concordium-std crate.
                         While it is not advised to overwrite these error codes and is rather unusual to do so, it's important to note that
                         this tool decodes the error codes based on the definitions in the concordium-std crate (assuming they have not been overwritten
-                        with other meanings in the smart contract logic). No guarantee are given as such that the meaning of the displayed prettified reject reason haven't been altered by the smart contract logic.
-                       )`
+                        with other meanings in the smart contract logic). No guarantee are given as such that the meaning of the displayed prettified reject reason haven't been altered by the smart contract logic.)`
                     : ''
             }`
         );

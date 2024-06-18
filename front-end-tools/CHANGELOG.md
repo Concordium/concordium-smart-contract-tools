@@ -1,5 +1,6 @@
-## Unreleased
+## 3.2.0
 
+- Change to enable reading from smart contract without wallet connection.
 - Display the raw bytes returned from the smart contract as hex string instead of buffer if no schema is provided.
 
 ## 3.1.1

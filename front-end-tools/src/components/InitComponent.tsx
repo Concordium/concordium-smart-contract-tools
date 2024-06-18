@@ -295,7 +295,7 @@ export default function InitComponent(props: ConnectionProps) {
             );
             tx.then(setTxHash).catch((err: Error) => setTransactionError((err as Error).message));
         } else {
-            setTransactionError('Connect wallet first.');
+            setTransactionError('Connect wallet at the top of the page');
         }
     }
 

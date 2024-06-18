@@ -149,7 +149,7 @@ export default function Main(props: ConnectionProps) {
                         moduleReferenceCalculated={moduleReferenceCalculated}
                     />
 
-                    <ReadComponent connection={connection} account={account} client={client} />
+                    <ReadComponent client={client} />
 
                     <UpdateComponent isTestnet={isTestnet} connection={connection} account={account} client={client} />
                     <br />

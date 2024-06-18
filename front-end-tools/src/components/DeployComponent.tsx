@@ -107,7 +107,7 @@ export default function DeployComponenet(props: ConnectionProps) {
                 setTxHashDeploy(txHash);
             }).catch((err: Error) => setTransactionErrorDeploy((err as Error).message));
         } else {
-            setTransactionErrorDeploy('Connect wallet first.');
+            setTransactionErrorDeploy('Connect wallet at the top of the page');
         }
     }
 

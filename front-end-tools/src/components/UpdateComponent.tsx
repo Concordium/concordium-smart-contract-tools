@@ -204,7 +204,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
             );
             tx.then(setTxHashUpdate).catch((err: Error) => setTransactionErrorUpdate((err as Error).message));
         } else {
-            setTransactionErrorUpdate('Connect wallet first.');
+            setTransactionErrorUpdate('Connect wallet at the top of the page');
         }
     }
 
@@ -231,15 +231,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
                     contractInstanceInfo.contractName !== undefined ? (
                         <Form.Group className="col-md-3 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
-                            <Form.Control
-                                value={
-                                    contractInstanceInfo?.contractName
-                                        ? ContractName.toString(contractInstanceInfo.contractName)
-                                        : 'undefined'
-                                }
-                                disabled
-                                {...form.register('smartContractName', { required: true })}
-                            />
+                            <Form.Control disabled {...form.register('smartContractName', { required: true })} />
                             {form.formState.errors.smartContractName && (
                                 <Alert variant="info"> Smart contract name is required </Alert>
                             )}

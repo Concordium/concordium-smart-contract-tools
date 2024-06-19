@@ -3,7 +3,6 @@ import { useForm, useWatch } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
 
-import { WalletConnection } from '@concordium/react-components';
 import {
     ModuleReference,
     displayTypeSchemaTemplate,
@@ -20,8 +19,6 @@ import { getObjectExample, getArrayExample } from '../utils';
 import { INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
 
 interface ConnectionProps {
-    account: string;
-    connection: WalletConnection;
     client: ConcordiumGRPCClient | undefined;
 }
 
@@ -188,15 +185,7 @@ export default function ReadComponenet(props: ConnectionProps) {
                     contractInstanceInfo.contractName !== undefined ? (
                         <Form.Group className="col-md-4 mb-3">
                             <Form.Label>Smart Contract Name</Form.Label>
-                            <Form.Control
-                                value={
-                                    contractInstanceInfo?.contractName
-                                        ? ContractName.toString(contractInstanceInfo.contractName)
-                                        : 'undefined'
-                                }
-                                disabled
-                                {...form.register('smartContractName', { required: true })}
-                            />
+                            <Form.Control disabled {...form.register('smartContractName', { required: true })} />
                             {form.formState.errors.smartContractName && (
                                 <Alert key="info" variant="info">
                                     {' '}

@@ -20,8 +20,8 @@ import { arraysEqual } from '../utils';
 import { REFRESH_INTERVAL } from '../constants';
 
 interface ConnectionProps {
-    account: string;
-    connection: WalletConnection;
+    account: string | undefined;
+    connection: WalletConnection | undefined;
     client: ConcordiumGRPCClient | undefined;
     isTestnet: boolean;
     setModuleReferenceCalculated: (moduleReferenceCalculated: ModuleReference.Type) => void;
@@ -100,12 +100,15 @@ export default function DeployComponenet(props: ConnectionProps) {
         setTransactionErrorDeploy(undefined);
         setTransactionOutcome(undefined);
 
-        // Send deploy transaction
-
-        const tx = deploy(connection, AccountAddress.fromBase58(account), base64Module);
-        tx.then((txHash) => {
-            setTxHashDeploy(txHash);
-        }).catch((err: Error) => setTransactionErrorDeploy((err as Error).message));
+        if (connection && account) {
+            // Send deploy transaction
+            const tx = deploy(connection, AccountAddress.fromBase58(account), base64Module);
+            tx.then((txHash) => {
+                setTxHashDeploy(txHash);
+            }).catch((err: Error) => setTransactionErrorDeploy((err as Error).message));
+        } else {
+            setTransactionErrorDeploy('Connect wallet at the top of the page');
+        }
     }
 
     return (

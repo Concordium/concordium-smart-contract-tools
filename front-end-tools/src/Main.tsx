@@ -110,74 +110,69 @@ export default function Main(props: ConnectionProps) {
                     </>
                 )}
             </div>
-            {account && (
-                <div className="row">
-                    {connection && account !== undefined && (
-                        <div className="col-lg-12">
-                            {viewErrorAccountInfo && (
-                                <div className="alert alert-danger" role="alert">
-                                    Error: {viewErrorAccountInfo}.
-                                </div>
-                            )}
-                            <br />
-                            <div className="label">Connected account:</div>
-                            <AccountLink isTestnet={isTestnet} account={account} />
-                            <br />
-                            {accountBalance && (
-                                <>
-                                    <div className="label">Your account balance:</div>
-                                    <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
-                                </>
-                            )}
+            <div className="row">
+                {connection && account && (
+                    <div className="col-lg-12">
+                        {viewErrorAccountInfo && (
+                            <div className="alert alert-danger" role="alert">
+                                Error: {viewErrorAccountInfo}.
+                            </div>
+                        )}
+                        <br />
+                        <div className="label">Connected account:</div>
+                        <AccountLink isTestnet={isTestnet} account={account} />
+                        <br />
+                        {accountBalance && (
+                            <>
+                                <div className="label">Your account balance:</div>
+                                <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
+                            </>
+                        )}
+                    </div>
+                )}
 
-                            <DeployComponent
-                                isTestnet={isTestnet}
-                                connection={connection}
-                                account={account}
-                                client={client}
-                                moduleReferenceCalculated={moduleReferenceCalculated}
-                                setModuleReferenceCalculated={setModuleReferenceCalculated}
-                            />
+                <div className="col-lg-12">
+                    <DeployComponent
+                        isTestnet={isTestnet}
+                        connection={connection}
+                        account={account}
+                        client={client}
+                        moduleReferenceCalculated={moduleReferenceCalculated}
+                        setModuleReferenceCalculated={setModuleReferenceCalculated}
+                    />
 
-                            <InitComponent
-                                isTestnet={isTestnet}
-                                connection={connection}
-                                account={account}
-                                client={client}
-                                moduleReferenceCalculated={moduleReferenceCalculated}
-                            />
+                    <InitComponent
+                        isTestnet={isTestnet}
+                        connection={connection}
+                        account={account}
+                        client={client}
+                        moduleReferenceCalculated={moduleReferenceCalculated}
+                    />
 
-                            <ReadComponent connection={connection} account={account} client={client} />
+                    <ReadComponent client={client} />
 
-                            <UpdateComponent
-                                isTestnet={isTestnet}
-                                connection={connection}
-                                account={account}
-                                client={client}
-                            />
-                            <br />
-                            <a
-                                href="https://developer.concordium.software/en/mainnet/smart-contracts/guides/on-chain-index.html"
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                Learn more about how deployment and initialization works on Concordium.
-                            </a>
-                            <br />
-                            <br />
-                            <a
-                                href="https://github.com/Concordium/concordium-smart-contract-tools/tree/main/front-end-tools"
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                Front end source code
-                            </a>
-                            <br />
-                            <br />
-                        </div>
-                    )}
+                    <UpdateComponent isTestnet={isTestnet} connection={connection} account={account} client={client} />
+                    <br />
+                    <a
+                        href="https://developer.concordium.software/en/mainnet/smart-contracts/guides/on-chain-index.html"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        Learn more about how deployment and initialization works on Concordium.
+                    </a>
+                    <br />
+                    <br />
+                    <a
+                        href="https://github.com/Concordium/concordium-smart-contract-tools/tree/main/front-end-tools"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        Front end source code
+                    </a>
+                    <br />
+                    <br />
                 </div>
-            )}
+            </div>
         </main>
     );
 }

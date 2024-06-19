@@ -40,9 +40,9 @@ import {
 import { getModuleSource } from '../reading_from_blockchain';
 
 interface ConnectionProps {
-    account: string;
+    account: string | undefined;
     client: ConcordiumGRPCClient | undefined;
-    connection: WalletConnection;
+    connection: WalletConnection | undefined;
     isTestnet: boolean;
     moduleReferenceCalculated: undefined | ModuleReference.Type;
 }
@@ -277,22 +277,26 @@ export default function InitComponent(props: ConnectionProps) {
         setSmartContractIndex(undefined);
         setTransactionError(undefined);
 
-        // Send init transaction
-        const tx = initialize(
-            connection,
-            AccountAddress.fromBase58(account),
-            isModuleReferenceAlreadyDeployed,
-            moduleReference,
-            data.smartContractName ? ContractName.fromString(data.smartContractName) : undefined,
-            data.hasInputParameter,
-            data.inputParameter,
-            data.inputParameterType,
-            schema,
-            data.deriveFromModuleReference,
-            Energy.create(data.maxExecutionEnergy),
-            CcdAmount.fromMicroCcd(data.cCDAmount ?? 0)
-        );
-        tx.then(setTxHash).catch((err: Error) => setTransactionError((err as Error).message));
+        if (connection && account) {
+            // Send init transaction
+            const tx = initialize(
+                connection,
+                AccountAddress.fromBase58(account),
+                isModuleReferenceAlreadyDeployed,
+                moduleReference,
+                data.smartContractName ? ContractName.fromString(data.smartContractName) : undefined,
+                data.hasInputParameter,
+                data.inputParameter,
+                data.inputParameterType,
+                schema,
+                data.deriveFromModuleReference,
+                Energy.create(data.maxExecutionEnergy),
+                CcdAmount.fromMicroCcd(data.cCDAmount ?? 0)
+            );
+            tx.then(setTxHash).catch((err: Error) => setTransactionError((err as Error).message));
+        } else {
+            setTransactionError('Connect wallet at the top of the page');
+        }
     }
 
     return (

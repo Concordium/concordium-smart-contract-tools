@@ -14,7 +14,7 @@ import {
 } from '@concordium/web-sdk';
 
 import Box from './Box';
-import { read, getEmbeddedSchema, getContractInfo } from '../reading_from_blockchain';
+import { read, parseResult, getEmbeddedSchema, getContractInfo, parseError } from '../reading_from_blockchain';
 import { getObjectExample, getArrayExample } from '../utils';
 import { INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
 
@@ -65,8 +65,9 @@ export default function ReadComponenet(props: ConnectionProps) {
         | undefined
     >(undefined);
     const [returnValue, setReturnValue] = useState<string | undefined>(undefined);
-    const [errorContractInvoke, setErrorContractInvoke] = useState<string | undefined>(undefined);
+    const [errorContractInvoke, setErrorContractInvoke] = useState<string[] | undefined>(undefined);
     const [error, setError] = useState<string | undefined>(undefined);
+    const [addDisclaimer, setAddDisclaimer] = useState<boolean | undefined>(false);
 
     const [entryPointTemplate, setEntryPointTemplate] = useState<string | undefined>(undefined);
 
@@ -135,16 +136,23 @@ export default function ReadComponenet(props: ConnectionProps) {
     function onSubmit(data: FormType) {
         setErrorContractInvoke(undefined);
         setReturnValue(undefined);
+        setAddDisclaimer(false);
 
+        if (data.entryPointName === undefined) {
+            throw new Error(`Set entry point name`);
+        }
+
+        const entryPoint = EntrypointName.fromString(data.entryPointName);
         const schema = data.deriveFromSmartContractIndex ? embeddedModuleSchemaBase64 : uploadedModuleSchemaBase64;
+        const contractName = ContractName.fromString(data.smartContractName);
+        const contractIndex = BigInt(data.smartContractIndex);
 
         // Invoke smart contract (read)
-
         const promise = read(
             client,
-            ContractName.fromString(data.smartContractName),
-            BigInt(data.smartContractIndex),
-            data.entryPointName ? EntrypointName.fromString(data.entryPointName) : undefined,
+            contractName,
+            contractIndex,
+            entryPoint,
             data.hasInputParameter,
             data.inputParameter,
             data.inputParameterType,
@@ -153,10 +161,19 @@ export default function ReadComponenet(props: ConnectionProps) {
         );
 
         promise
-            .then((value) => {
-                setReturnValue(value);
+            .then((res) => {
+                if (!res || res.tag === 'failure' || !res.returnValue) {
+                    const er = parseError(res, contractName, contractIndex, entryPoint, schema);
+                    setAddDisclaimer(er?.addDisclaimer);
+                    setErrorContractInvoke(er?.errors);
+                } else {
+                    const parsedValue = parseResult(res, contractName, contractIndex, entryPoint, schema);
+                    setReturnValue(parsedValue);
+                }
             })
-            .catch((err: Error) => setErrorContractInvoke((err as Error).message));
+            .catch((err: Error) => {
+                setErrorContractInvoke([(err as Error).message]);
+            });
     }
 
     return (
@@ -526,13 +543,19 @@ export default function ReadComponenet(props: ConnectionProps) {
 
                 <br />
                 <br />
-                {errorContractInvoke && (
+
+                {errorContractInvoke && errorContractInvoke?.length !== 0 && (
                     <Alert variant="danger">
-                        {' '}
-                        Error: {errorContractInvoke}.
+                        <strong>Error:</strong>
+
+                        {errorContractInvoke.map((err, index) => (
+                            /* eslint-disable-next-line react/no-array-index-key */
+                            <div key={index}>{err}</div>
+                        ))}
+
                         <br />
                         <a href="https://developer.concordium.software/en/mainnet/smart-contracts/tutorials/piggy-bank/deploying.html#concordium-std-crate-errors">
-                            Developer documentation: Explanation of error codes
+                            Developer documentation: Explanation of errors
                         </a>
                         <br />
                         <a href="https://docs.rs/concordium-std/latest/concordium_std/#signalling-errors">
@@ -540,7 +563,19 @@ export default function ReadComponenet(props: ConnectionProps) {
                         </a>
                     </Alert>
                 )}
+
                 {error && <Alert variant="danger"> Error: {error}.</Alert>}
+                {addDisclaimer && (
+                    <Alert variant="warning">
+                        Disclaimer: A smart contract can have logic to overwrite/change the meaning of the error codes
+                        as defined in the concordium-std crate. While it is not advised to overwrite these error codes
+                        and is rather unusual to do so, it&apos;s important to note that this tool decodes the error
+                        codes based on the definitions in the concordium-std crate (assuming they have not been
+                        overwritten with other meanings in the smart contract logic). No guarantee are given as such
+                        that the meaning of the displayed prettified reject reason haven&apos;t been altered by the
+                        smart contract logic.
+                    </Alert>
+                )}
                 {returnValue && (
                     <div className="actionResultBox">
                         Read value:

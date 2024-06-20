@@ -12,6 +12,7 @@ import {
     ReceiveName,
     Parameter,
     ReturnValue,
+    InvokeContractResult,
 } from '@concordium/web-sdk';
 import JSONbig from 'json-bigint';
 import { CONTRACT_SUB_INDEX } from './constants';
@@ -158,7 +159,7 @@ export async function read(
     rpcClient: ConcordiumGRPCClient | undefined,
     contractName: ContractName.Type,
     contractIndex: bigint,
-    entryPoint: EntrypointName.Type | undefined,
+    entryPoint: EntrypointName.Type,
     hasInputParameter: boolean,
     inputParameter: string | undefined,
     inputParameterType: string | undefined,
@@ -167,10 +168,6 @@ export async function read(
 ) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
-    }
-
-    if (entryPoint === undefined) {
-        throw new Error(`Set entry point name`);
     }
 
     let param = Parameter.empty();
@@ -219,30 +216,21 @@ export async function read(
         }
     }
 
-    const res = await rpcClient.invokeContract({
+    return rpcClient.invokeContract({
         method: ReceiveName.create(contractName, entryPoint),
         contract: ContractAddress.create(contractIndex, CONTRACT_SUB_INDEX),
         parameter: param,
     });
+}
 
+export function parseResult(
+    res: InvokeContractResult,
+    contractName: ContractName.Type,
+    contractIndex: bigint,
+    entryPoint: EntrypointName.Type,
+    moduleSchema: string | undefined
+) {
     const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
-
-    if (!res || res.tag === 'failure') {
-        const [rejectReasonCode, humanReadableError] = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
-
-        throw new Error(
-            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed
-            ${rejectReasonCode !== undefined ? `. Reject reason code: ${rejectReasonCode}` : ''} ${
-                humanReadableError !== undefined
-                    ? `. Prettified reject reason: ${humanReadableError} (Warning: A smart contract can have logic to
-                        overwrite/change the meaning of the error codes as defined in the concordium-std crate.
-                        While it is not advised to overwrite these error codes and is rather unusual to do so, it's important to note that
-                        this tool decodes the error codes based on the definitions in the concordium-std crate (assuming they have not been overwritten
-                        with other meanings in the smart contract logic). No guarantee are given as such that the meaning of the displayed prettified reject reason haven't been altered by the smart contract logic.)`
-                    : ''
-            }`
-        );
-    }
 
     if (!res.returnValue) {
         throw new Error(
@@ -281,4 +269,43 @@ export async function read(
     } else {
         return JSONbig.stringify(returnValue);
     }
+}
+
+export function parseError(
+    res: InvokeContractResult,
+    contractName: ContractName.Type,
+    contractIndex: bigint,
+    entryPoint: EntrypointName.Type,
+    moduleSchema: string | undefined
+) {
+    const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
+
+    if (!res || res.tag === 'failure') {
+        const [rejectReasonCode, humanReadableError] = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
+
+        const errors = [];
+
+        if (humanReadableError) {
+            errors.push(`Prettified reject reason: ${humanReadableError}.`);
+        }
+        if (rejectReasonCode) {
+            errors.push(`Reject reason code: ${rejectReasonCode}.`);
+        }
+        errors.push(
+            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed.`
+        );
+
+        return { addDisclaimer: true, errors };
+    }
+
+    if (!res.returnValue) {
+        return {
+            addDisclaimer: false,
+            errors: [
+                `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' returned no return_value.`,
+            ],
+        };
+    }
+
+    return undefined;
 }

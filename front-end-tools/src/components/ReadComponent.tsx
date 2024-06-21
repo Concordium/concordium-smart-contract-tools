@@ -162,10 +162,10 @@ export default function ReadComponenet(props: ConnectionProps) {
 
         promise
             .then((res) => {
-                if (!res || res.tag === 'failure' || !res.returnValue) {
-                    const er = parseError(res, contractName, contractIndex, entryPoint, schema);
-                    setAddDisclaimer(er?.addDisclaimer);
-                    setErrorContractInvoke(er?.errors);
+                if (res.tag === 'failure') {
+                    const parsedError = parseError(res, contractName, contractIndex, entryPoint, schema);
+                    setAddDisclaimer(parsedError?.addDisclaimer);
+                    setErrorContractInvoke(parsedError?.errors);
                 } else {
                     const parsedValue = parseResult(res, contractName, contractIndex, entryPoint, schema);
                     setReturnValue(parsedValue);
@@ -554,11 +554,21 @@ export default function ReadComponenet(props: ConnectionProps) {
                         ))}
 
                         <br />
-                        <a href="https://developer.concordium.software/en/mainnet/smart-contracts/tutorials/piggy-bank/deploying.html#concordium-std-crate-errors">
+                        <a
+                            className="link"
+                            target="_blank"
+                            rel="noreferrer"
+                            href="https://developer.concordium.software/en/mainnet/smart-contracts/tutorials/piggy-bank/deploying.html#concordium-std-crate-errors"
+                        >
                             Developer documentation: Explanation of errors
                         </a>
                         <br />
-                        <a href="https://docs.rs/concordium-std/latest/concordium_std/#signalling-errors">
+                        <a
+                            className="link"
+                            target="_blank"
+                            rel="noreferrer"
+                            href="https://docs.rs/concordium-std/latest/concordium_std/#signalling-errors"
+                        >
                             `Concordium-std` crate signalling errors
                         </a>
                     </Alert>

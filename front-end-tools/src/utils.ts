@@ -188,20 +188,19 @@ export function decodeRejectReason(
             // to deserialize the error with the schema before falling back to decode the `concordium-std` crate errors manually.
             // Only the `NotPayableError` is treated special since it has no matched error in the errorSchema.
             if (moduleSchema !== undefined && failedResult.returnValue !== undefined) {
-                const decodedError = deserializeReceiveError(
-                    ReturnValue.toBuffer(failedResult.returnValue),
-                    toBuffer(moduleSchema, 'base64'),
-                    contractName,
-                    entryPoint
-                );
-
-                if (decodedError !== undefined) {
+                try {
+                    const decodedError = deserializeReceiveError(
+                        ReturnValue.toBuffer(failedResult.returnValue),
+                        toBuffer(moduleSchema, 'base64'),
+                        contractName,
+                        entryPoint
+                    );
                     // The object only includes one key. Its key is the human-readable error string.
                     const key = Object.keys(decodedError);
 
                     // Convert the human-readable error to a JSON string.
                     humanReadableError = JSON.stringify(key);
-                } else {
+                } catch (_error) {
                     // Falling back to decode the `concordium-std` crate errors manually
                     // Decode the `rejectReason` based on the error codes defined in `concordium-std` crate, and decode it into a human-readable string if possible.
                     humanReadableError = decodeConcordiumStdError(rejectReasonCode);

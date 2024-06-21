@@ -232,9 +232,9 @@ export function parseResult(
 ) {
     const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
 
-    if (!res.returnValue) {
+    if (!res.returnValue || !res.returnValue?.buffer.length) {
         throw new Error(
-            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' returned no return_value`
+            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' returned no return_value.`
         );
     }
 
@@ -279,33 +279,22 @@ export function parseError(
     moduleSchema: string | undefined
 ) {
     const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
+    const returnValue = { addDisclaimer: false, errors: [] as string[] };
 
-    if (!res || res.tag === 'failure') {
+    if (res.tag === 'failure') {
         const [rejectReasonCode, humanReadableError] = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
 
-        const errors = [];
-
         if (humanReadableError) {
-            errors.push(`Prettified reject reason: ${humanReadableError}.`);
+            returnValue.errors.push(`Prettified reject reason: ${humanReadableError}.`);
+            returnValue.addDisclaimer = true;
         }
         if (rejectReasonCode) {
-            errors.push(`Reject reason code: ${rejectReasonCode}.`);
+            returnValue.errors.push(`Reject reason code: ${rejectReasonCode}.`);
         }
-        errors.push(
+        returnValue.errors.push(
             `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed.`
         );
-
-        return { addDisclaimer: true, errors };
     }
 
-    if (!res.returnValue) {
-        return {
-            addDisclaimer: false,
-            errors: [
-                `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' returned no return_value.`,
-            ],
-        };
-    }
-
-    return undefined;
+    return returnValue;
 }

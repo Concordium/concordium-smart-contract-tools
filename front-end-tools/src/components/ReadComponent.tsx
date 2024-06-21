@@ -14,7 +14,7 @@ import {
 } from '@concordium/web-sdk';
 
 import Box from './Box';
-import { read, parseResult, getEmbeddedSchema, getContractInfo, parseError } from '../reading_from_blockchain';
+import { read, parseReturnValue, getEmbeddedSchema, getContractInfo, parseError } from '../reading_from_blockchain';
 import { getObjectExample, getArrayExample } from '../utils';
 import { INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
 
@@ -164,10 +164,10 @@ export default function ReadComponenet(props: ConnectionProps) {
             .then((res) => {
                 if (res.tag === 'failure') {
                     const parsedError = parseError(res, contractName, contractIndex, entryPoint, schema);
-                    setAddDisclaimer(parsedError?.addDisclaimer);
-                    setErrorContractInvoke(parsedError?.errors);
+                    setAddDisclaimer(parsedError.addDisclaimer);
+                    setErrorContractInvoke(parsedError.errors);
                 } else {
-                    const parsedValue = parseResult(res, contractName, contractIndex, entryPoint, schema);
+                    const parsedValue = parseReturnValue(res, contractName, contractIndex, entryPoint, schema);
                     setReturnValue(parsedValue);
                 }
             })

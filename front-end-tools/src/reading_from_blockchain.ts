@@ -12,6 +12,7 @@ import {
     ReceiveName,
     Parameter,
     ReturnValue,
+    InvokeContractResult,
 } from '@concordium/web-sdk';
 import JSONbig from 'json-bigint';
 import { CONTRACT_SUB_INDEX } from './constants';
@@ -56,7 +57,7 @@ export async function getContractInfo(rpcClient: ConcordiumGRPCClient | undefine
  * @throws If the `rpcClient` is undefined.
  * @throws If the `moduleRef` is undefined.
  */
-export async function getModuleSource(
+export function getModuleSource(
     rpcClient: ConcordiumGRPCClient | undefined,
     moduleRef: ModuleReference.Type | undefined
 ) {
@@ -80,7 +81,7 @@ export async function getModuleSource(
  * @throws If the `rpcClient` is undefined.
  * @throws If the `moduleRef` is undefined.
  */
-export async function getEmbeddedSchema(
+export function getEmbeddedSchema(
     rpcClient: ConcordiumGRPCClient | undefined,
     moduleRef: ModuleReference.Type | undefined
 ) {
@@ -131,34 +132,27 @@ export function getAccountInfo(
 }
 
 /**
- * Invokes a smart contract entry point and returns its return value.
- * This function expects that the entry point is a `typical` smart contract view/read/getter function that returns a return value.
- * This function throws an error if the entry point does not return a return value.
- * If the moduleSchema parameter is undefined, the return value is in raw bytes.
- * If a valid moduleSchema is provided, the return value is deserialized.
+ * Invokes a smart contract entry point and returns its response as a promise.
  *
  * @param rpcClient the rpcClient to query.
  * @param contractName the contract name to be invoked.
  * @param contractIndex the contract index to be invoked.
- * @param entryPoint an optional entry point to be invoked. This function will throw if the entryPoint is undefined.
+ * @param entryPoint the entry point to be invoked.
  * @param hasInputParameter a boolean signaling if the invoke should be executed with an input parameter.
  * @param inputParameter an optional input parameter.
  * @param inputParameterType an optional input parameter type (`string`/`number`/`array`/`object`).
- * @param moduleSchema an optional module schema to serialize the input parameter and deserialize the return value.
+ * @param moduleSchema an optional module schema to serialize the input parameter.
  * @param deriveContractInfoFromIndex a boolean signaling if values were derived from the contract index or manually inputted by the user.
  *
- * @returns the return value from the smart contract invoke in raw bytes (if no valid moduleSchema is provided) or deserialized (if a valid moduleSchema is provided).
+ * @returns the response as a promise from the smart contract invoke.
  * @throws If the `rpcClient` is undefined.
- * @throws If the `entryPoint` is undefined.
  * @throws If the `hasInputParameter` is true but the input parameter cannot be serialized.
- * @throws If the request to the node fails.
- * @throws In case of a valid moduleSchema: if the deserialization of the return value fails.
  */
-export async function read(
+export function read(
     rpcClient: ConcordiumGRPCClient | undefined,
     contractName: ContractName.Type,
     contractIndex: bigint,
-    entryPoint: EntrypointName.Type | undefined,
+    entryPoint: EntrypointName.Type,
     hasInputParameter: boolean,
     inputParameter: string | undefined,
     inputParameterType: string | undefined,
@@ -167,10 +161,6 @@ export async function read(
 ) {
     if (rpcClient === undefined) {
         throw new Error(`rpcClient undefined`);
-    }
-
-    if (entryPoint === undefined) {
-        throw new Error(`Set entry point name`);
     }
 
     let param = Parameter.empty();
@@ -219,34 +209,42 @@ export async function read(
         }
     }
 
-    const res = await rpcClient.invokeContract({
+    return rpcClient.invokeContract({
         method: ReceiveName.create(contractName, entryPoint),
         contract: ContractAddress.create(contractIndex, CONTRACT_SUB_INDEX),
         parameter: param,
     });
+}
 
+/**
+ * Parse the return value from a smart contract invoke.
+ * This function expects that the entry point that was invoked is a `typical` smart contract view/read/getter
+ * function that returns a return value. As such, this function throws an error if there is no return value.
+ * If the moduleSchema parameter is undefined, the return value is in raw bytes.
+ * If a valid moduleSchema is provided, the return value is deserialized.
+ *
+ * @param res the response of a smart contract invoke.
+ * @param contractName the contract name that was invoked.
+ * @param contractIndex the contract index that was invoked.
+ * @param entryPoint the entry point that was invoked.
+ * @param moduleSchema an optional module schema to deserialize the return value.
+ *
+ * @returns the return value from the smart contract invoke in raw bytes (if no valid moduleSchema is provided) or deserialized (if a valid moduleSchema is provided).
+ * @throws If there is no `returnValue` in the response.
+ * @throws In case of a valid moduleSchema: if the deserialization of the return value fails.
+ */
+export function parseReturnValue(
+    res: InvokeContractResult,
+    contractName: ContractName.Type,
+    contractIndex: bigint,
+    entryPoint: EntrypointName.Type,
+    moduleSchema: string | undefined
+) {
     const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
 
-    if (!res || res.tag === 'failure') {
-        const [rejectReasonCode, humanReadableError] = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
-
+    if (!res.returnValue || !res.returnValue?.buffer.length) {
         throw new Error(
-            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed
-            ${rejectReasonCode !== undefined ? `. Reject reason code: ${rejectReasonCode}` : ''} ${
-                humanReadableError !== undefined
-                    ? `. Prettified reject reason: ${humanReadableError} (Warning: A smart contract can have logic to
-                        overwrite/change the meaning of the error codes as defined in the concordium-std crate.
-                        While it is not advised to overwrite these error codes and is rather unusual to do so, it's important to note that
-                        this tool decodes the error codes based on the definitions in the concordium-std crate (assuming they have not been overwritten
-                        with other meanings in the smart contract logic). No guarantee are given as such that the meaning of the displayed prettified reject reason haven't been altered by the smart contract logic.)`
-                    : ''
-            }`
-        );
-    }
-
-    if (!res.returnValue) {
-        throw new Error(
-            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' returned no return_value`
+            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' returned no return_value.`
         );
     }
 
@@ -281,4 +279,49 @@ export async function read(
     } else {
         return JSONbig.stringify(returnValue);
     }
+}
+
+/**
+ * This function parses the error from a response of a smart contract invoke.
+ * If the response tag is a 'failure', this function extracts the error code and decodes the error as much as possible
+ * into human-readable error text snippets. In addition, this function signals with the returned `addDisclaimer` value
+ * if the error text snippets contain decoded human-readable error information which should be displayed with
+ * a disclaimer since the decoding step is done based on the assumption that error codes have not been
+ * manually overwritten by the smart contract developer.
+ *
+ * @param res the response of a smart contract invoke.
+ * @param contractName the contract name that was invoked.
+ * @param contractIndex the contract index that was invoked.
+ * @param entryPoint the entry point that was invoked.
+ * @param moduleSchema an optional module schema to decode the error code.
+ *
+ * @returns error text snippets and the `addDisclaimer` boolean which signals if the error text snippets contain
+ *         decoded human-readable error information which should be displayed with a disclaimer.
+ */
+export function parseError(
+    res: InvokeContractResult,
+    contractName: ContractName.Type,
+    contractIndex: bigint,
+    entryPoint: EntrypointName.Type,
+    moduleSchema: string | undefined
+) {
+    const fullEntryPointName = `${contractName.value}.${entryPoint.value}`;
+    const returnValue = { addDisclaimer: false, errors: [] as string[] };
+
+    if (res.tag === 'failure') {
+        const [rejectReasonCode, humanReadableError] = decodeRejectReason(res, contractName, entryPoint, moduleSchema);
+
+        if (humanReadableError) {
+            returnValue.errors.push(`Prettified reject reason: ${humanReadableError}.`);
+            returnValue.addDisclaimer = true;
+        }
+        if (rejectReasonCode) {
+            returnValue.errors.push(`Reject reason code: ${rejectReasonCode}.`);
+        }
+        returnValue.errors.push(
+            `RPC call 'invokeContract' on method '${fullEntryPointName}' of contract '${contractIndex}' failed.`
+        );
+    }
+
+    return returnValue;
 }

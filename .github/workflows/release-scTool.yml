@@ -40,7 +40,7 @@ jobs:
           if docker manifest inspect ${FULL_IMAGE_TAG} > /dev/null; then
              echo "::error ${FULL_IMAGE_TAG} already exists"
              exit 1
-          elif [ ! "${EXPECTED_TAG}" = "front-end-tools/${VERSION}" ]; then
+          elif [ ! "${EXPECTED_TAG}" = "releases/front-end-tools/${VERSION}" ]; then
              echo "::error Expected tag ${EXPECTED_TAG} does not match the version ${VERSION}."
              exit 1
           else

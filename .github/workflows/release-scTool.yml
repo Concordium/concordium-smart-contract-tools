@@ -7,7 +7,7 @@ on:
 
   push:
     tags:
-      - 'front-end-tools/*.*.*'
+      - 'releases/front-end-tools/*.*.*'
 
 env:
   REGISTRY: docker.io

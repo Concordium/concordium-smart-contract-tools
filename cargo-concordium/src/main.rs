@@ -419,7 +419,6 @@ struct BuildOptions {
     #[structopt(
         name = "verifiable",
         long = "verifiable",
-        requires = "out",
         short = "r",
         help = "The image to use for a build of a contract that can be verified. If this is not \
                 supplied then the contract will be built in the context of the host, which is \

@@ -414,9 +414,9 @@ pub(crate) fn build_contract(
 
     let package_version_string = format!("{}-{}", package.name, package.version);
 
-    // If the output path is supplied make sure up-front before building anything
-    // that it points to a sensible location
-    let out_filename = match &out {
+    // Make sure up-front before building anything that the output path points to a
+    // sensible location
+    let mut out_filename = match &out {
         Some(out) => {
             // A path and a filename need to be provided when using the `--out` flag.
             if out.file_name().is_none() || out.is_dir() {
@@ -492,10 +492,9 @@ pub(crate) fn build_contract(
         let cwd = env::current_dir()
             .context("Unable to get working directory. Does it exist?")?
             .canonicalize()?;
-        let out_filename =
-            cwd.join(out.context("`--out` must be supplied when using verifiable builds.")?);
-        // The archive will be named after the `--out` parameter, by appending `.tar` to
-        // it.
+        out_filename = cwd.join(out_filename);
+        // The archive will be named after the module output path, by appending `.tar`
+        // to it.
         let tar_filename: PathBuf = {
             // Rust 1.70 has as_mut_os_string, but to support older versions we don't use it
             // here for now, and instead convert from and to OsString to append an

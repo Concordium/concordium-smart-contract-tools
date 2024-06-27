@@ -5,6 +5,8 @@
 - Added a `tag` option to `cargo concordium init`
 - When running integration tests the module output path is now exposed to the
   tests via the `CARGO_CONCORDIUM_TEST_MODULE_OUTPUT_PATH` environment variable.
+- Change the default build output path to `concordium-out/module.wasm.v1`.
+- Remove requirement for `--out` flag when using the `--verifiable` flag.
 
 ## 3.3.0
 

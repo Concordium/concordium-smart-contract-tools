@@ -7,6 +7,7 @@
   tests via the `CARGO_CONCORDIUM_TEST_MODULE_OUTPUT_PATH` environment variable.
 - Change the default build output path to `concordium-out/module.wasm.v1`.
 - Remove requirement for `--out` flag when using the `--verifiable` flag.
+- Embed the schema in the Wasm module by default. This can be disabled with the `--no-schema-embed` flag.
 
 ## 3.3.0
 

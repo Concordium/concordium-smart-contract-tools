@@ -365,9 +365,19 @@ struct BuildOptions {
         name = "schema-embed",
         long = "schema-embed",
         short = "e",
-        help = "Builds the contract schema and embeds it into the wasm module."
+        hidden = true,
+        help = "(DEPRECATED, now default behaviour) Builds the contract schema and embeds it into \
+                the wasm module."
     )]
     schema_embed:        bool,
+    #[structopt(
+        name = "no-schema-embed",
+        long = "no-schema-embed",
+        short = "n",
+        conflicts_with = "schema-embed",
+        help = "Do not embed the contract schema into the wasm module."
+    )]
+    no_schema_embed:     bool,
     #[structopt(
         name = "schema-out",
         long = "schema-out",
@@ -457,7 +467,7 @@ struct BuildOptions {
 impl BuildOptions {
     /// Determine the [`SchemaBuildOptions`] based on the input from the user.
     fn schema_build_options(&self) -> SchemaBuildOptions {
-        if self.schema_embed {
+        if !self.no_schema_embed {
             SchemaBuildOptions::BuildAndEmbed
         } else if self.schema_out.is_some()
             || self.schema_json_out.is_some()
@@ -1086,7 +1096,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
                     .context("Could not write base64 schema file.")?;
             }
         }
-        if options.schema_embed && print_extra_info {
+        if !options.no_schema_embed && print_extra_info {
             eprintln!("   Embedding schema into module.\n");
         }
     }
@@ -1111,6 +1121,16 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
             success_style.paint("Finished"),
             bold_style.paint(size)
         );
+    }
+    if options.schema_embed {
+        let error_style = ansi_term::Color::Yellow;
+        eprintln!(
+            "{}",
+            error_style.paint(
+                "\n\nThe `--schema-embed`/`-e` flag is no longer necessary, as it is now the \
+                 default behaviour."
+            )
+        )
     }
     if !is_verifiable_build {
         let error_style = ansi_term::Color::Yellow;

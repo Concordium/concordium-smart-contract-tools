@@ -416,7 +416,7 @@ pub(crate) fn build_contract(
 
     // Make sure up-front before building anything that the output path points to a
     // sensible location
-    let mut out_filename = match &out {
+    let mut out_filename = match out {
         Some(out) => {
             // A path and a filename need to be provided when using the `--out` flag.
             if out.file_name().is_none() || out.is_dir() {
@@ -425,7 +425,7 @@ pub(crate) fn build_contract(
                      `./my/path/my_smart_contract.wasm.v1`)"
                 );
             }
-            out.clone()
+            out
         }
         None => {
             let extension = match version {

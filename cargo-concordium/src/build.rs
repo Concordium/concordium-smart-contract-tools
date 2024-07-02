@@ -397,20 +397,49 @@ pub(crate) fn build_contract(
         }
     }
 
-    // If the output path is supplied make sure up-front before building anything
-    // that it points to a sensible location
-    if let Some(out) = &out {
-        // A path and a filename need to be provided when using the `--out` flag.
-        if out.file_name().is_none() || out.is_dir() {
-            anyhow::bail!(
-                "The `--out` flag requires a path and a filename (expected input: \
-                 `./my/path/my_smart_contract.wasm.v1`)"
-            );
+    let (metadata, args_without_manifest) = get_crate_metadata(cargo_args)?;
+
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package.")?;
+
+    let package_root = package
+        .manifest_path
+        .parent()
+        .context("Unable to get package root path.")?;
+
+    let wasm_file_name = format!("{}.wasm", to_snake_case(package.name.as_str()));
+
+    let package_root_path = package_root.canonicalize()?;
+
+    let package_version_string = format!("{}-{}", package.name, package.version);
+
+    // Make sure up-front before building anything that the output path points to a
+    // sensible location
+    let mut out_filename = match out {
+        Some(out) => {
+            // A path and a filename need to be provided when using the `--out` flag.
+            if out.file_name().is_none() || out.is_dir() {
+                anyhow::bail!(
+                    "The `--out` flag requires a path and a filename (expected input: \
+                     `./my/path/my_smart_contract.wasm.v1`)"
+                );
+            }
+            out
         }
-        if let Some(out_dir) = out.parent() {
-            fs::create_dir_all(out_dir)
-                .context("Unable to create directory for the resulting smart contract module.")?;
+        None => {
+            let extension = match version {
+                WasmVersion::V0 => "v0",
+                WasmVersion::V1 => "v1",
+            };
+            let relative_path = format!("concordium-out/module.wasm.{}", extension);
+            package_root_path.join(relative_path)
         }
+    };
+
+    if let Some(out_dir) = out_filename.parent() {
+        fs::create_dir_all(out_dir)
+            .context("Unable to create directory for the resulting smart contract module.")?;
     }
 
     #[allow(unused_assignments)]
@@ -459,31 +488,13 @@ pub(crate) fn build_contract(
         }
     };
 
-    let (metadata, args_without_manifest) = get_crate_metadata(cargo_args)?;
-
-    let package = metadata
-        .root_package()
-        .context("Unable to determine package.")?;
-
-    let package_root = package
-        .manifest_path
-        .parent()
-        .context("Unable to get package root path.")?;
-
-    let wasm_file_name = format!("{}.wasm", to_snake_case(package.name.as_str()));
-
-    let package_root_path = package_root.canonicalize()?;
-
-    let package_version_string = format!("{}-{}", package.name, package.version);
-
     let (out_filename, wasm, stored_build_info) = if let Some(image) = image {
         let cwd = env::current_dir()
             .context("Unable to get working directory. Does it exist?")?
             .canonicalize()?;
-        let out_filename =
-            cwd.join(out.context("`--out` must be supplied when using verifiable builds.")?);
-        // The archive will be named after the `--out` parameter, by appending `.tar` to
-        // it.
+        out_filename = cwd.join(out_filename);
+        // The archive will be named after the module output path, by appending `.tar`
+        // to it.
         let tar_filename: PathBuf = {
             // Rust 1.70 has as_mut_os_string, but to support older versions we don't use it
             // here for now, and instead convert from and to OsString to append an
@@ -553,17 +564,6 @@ pub(crate) fn build_contract(
                 output_wasm_file.display()
             )
         })?;
-
-        let out_filename = match out {
-            Some(out) => out,
-            None => {
-                let extension = match version {
-                    WasmVersion::V0 => "v0",
-                    WasmVersion::V1 => "v1",
-                };
-                PathBuf::from(format!("{}.{}", output_wasm_file.display(), extension))
-            }
-        };
 
         (out_filename, wasm, None)
     };

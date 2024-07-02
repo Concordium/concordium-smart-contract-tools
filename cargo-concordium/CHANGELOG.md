@@ -7,7 +7,7 @@
   tests via the `CARGO_CONCORDIUM_TEST_MODULE_OUTPUT_PATH` environment variable.
 - Change the default build output path to `concordium-out/module.wasm.v1`.
 - Remove requirement for `--out` flag when using the `--verifiable` flag.
-- Embed the schema in the Wasm module by default. This can be disabled with the `--no-schema-embed` flag.
+- Embed the schema in the Wasm module by default. Therefore, the `--schema-embed` flag is now deprecated. This behavior can be disabled with the `--no-schema-embed` flag.
 
 ## 3.3.0
 
@@ -138,11 +138,13 @@
   - Use v2 schemas when building v1 contracts.
 
 ## 2.0.0
+
 - Add support for V1 contract builds, testing, and execution.
 - The output of `cargo concordium build` is now versioned.
 - Support contracts written with Rust edition 2021.
 
 ## 1.1.1
+
 - Clarify that energy units used by `cargo-concordium` are "interpreter energy"
   and not the same as NRG.
 - Allow the user to only specify the necessary fields in the JSON context files

@@ -1127,7 +1127,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
         eprintln!(
             "{}",
             error_style.paint(
-                "\n\nThe `--schema-embed`/`-e` option is no longer necessary, as it is now the \
+                "\n\nThe `--schema-embed`/`-e` flag is no longer necessary, as it is now the \
                  default behaviour."
             )
         )

@@ -386,7 +386,7 @@ pub(crate) fn build_contract(
     out: Option<PathBuf>,
     cargo_args: &[String],
 ) -> anyhow::Result<BuildInfo> {
-    // Check that the wasm toolchain is installed
+    // Check that the wasm target is installed
     check_wasm_target()?;
 
     // Check immediately if reproducible build is requested that we can execute the
@@ -1257,7 +1257,7 @@ pub fn build_and_run_wasm_test(
     extra_args: &[String],
     seed: Option<u64>,
 ) -> anyhow::Result<bool> {
-    // Check that the wasm toolchain is installed
+    // Check that the wasm target is installed
     check_wasm_target()?;
 
     let (metadata, _) = get_crate_metadata(extra_args)?;

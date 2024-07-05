@@ -35,6 +35,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    str,
 };
 
 /// Encode all base64 strings using the standard alphabet and padding.
@@ -385,6 +386,9 @@ pub(crate) fn build_contract(
     out: Option<PathBuf>,
     cargo_args: &[String],
 ) -> anyhow::Result<BuildInfo> {
+    // Check that the wasm target is installed
+    check_wasm_target()?;
+
     // Check immediately if reproducible build is requested that we can execute the
     // container runtime.
     if let Some(image) = &image {
@@ -1253,6 +1257,9 @@ pub fn build_and_run_wasm_test(
     extra_args: &[String],
     seed: Option<u64>,
 ) -> anyhow::Result<bool> {
+    // Check that the wasm target is installed
+    check_wasm_target()?;
+
     let (metadata, _) = get_crate_metadata(extra_args)?;
 
     let target_dir = format!("{}/concordium", metadata.target_directory);
@@ -1373,4 +1380,35 @@ pub fn build_and_run_wasm_test(
         eprintln!("Unit test result: {}", Color::Red.bold().paint("FAILED"));
         Ok(false)
     }
+}
+
+/// Checks if the `wasm32-unknown-unknown` target is installed, and returns an
+/// error if not.
+fn check_wasm_target() -> anyhow::Result<()> {
+    // Try to check with rustup, which should be reliable, but it may not be
+    // installed. If not, check for a folder named
+    // `$sysroot/lib/rustlib/wasm32-unknown-unknown`.
+    let target_installed = if let Ok(rustup_output) = Command::new("rustup")
+        .args(["target", "list", "--installed"])
+        .output()
+    {
+        str::from_utf8(&rustup_output.stdout)?
+            .lines()
+            .any(|l| l == "wasm32-unknown-unknown")
+    } else {
+        let rustc_output = Command::new("rustc")
+            .args(["--print", "sysroot"])
+            .output()
+            .context("Unable to run `rustc`")?;
+        let mut target_path = PathBuf::from(str::from_utf8(&rustc_output.stdout)?.trim_end());
+        target_path.push("lib/rustlib/wasm32-unknown-unknown");
+        fs::metadata(target_path).is_ok_and(|m| m.is_dir())
+    };
+
+    anyhow::ensure!(
+        target_installed,
+        "Cannot find the `wasm32-unknown-unknown` target. Try installing it by running `rustup \
+         target add wasm32-unknown-unknown`."
+    );
+    Ok(())
 }

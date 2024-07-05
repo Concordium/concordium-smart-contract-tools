@@ -8,6 +8,7 @@
 - Change the default build output path to `concordium-out/module.wasm.v1`.
 - Remove requirement for `--out` flag when using the `--verifiable` flag.
 - Embed the schema in the Wasm module by default. Therefore, the `--schema-embed` flag is now deprecated. This behavior can be disabled with the `--no-schema-embed` flag.
+- Fixed long error message when the `wasm32-unknown-unknown` target is not installed.
 
 ## 3.3.0
 

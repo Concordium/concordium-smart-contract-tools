@@ -127,16 +127,15 @@ async function buildTask(
 
   const schemaArgs =
     schemaSettings === "skip"
-      ? []
+      ? ["--no-schema-embed"]
       : schemaSettings === "embed-and-outDir"
       ? [
-          "--schema-embed",
           "--schema-json-out",
           outDir,
           "--schema-base64-out",
           path.join(outDir, "module-schema.bs64"),
         ]
-      : ["--schema-json-out", outDir];
+      : ["--no-schema-embed", "--schema-json-out", outDir];
   const additionalArgs = config.getAdditionalBuildArgs();
   const moduleOut = path.join(outDir, "module.wasm.v1");
   const args = ["--out", moduleOut].concat(schemaArgs, additionalArgs);

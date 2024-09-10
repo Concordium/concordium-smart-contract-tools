@@ -85,7 +85,6 @@ const taskProvider: vscode.TaskProvider = {
               defaultOutDir,
               "--schema-base64-out",
               path.join(defaultOutDir, "module-schema.bs64"),
-              "--schema-embed",
             ];
             const defaultJsGenArgs = [
               "--module",

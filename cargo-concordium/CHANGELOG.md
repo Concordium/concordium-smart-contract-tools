@@ -9,8 +9,9 @@
   Defaults to `releases/templates/latest`.
 - When running integration tests the module output path is now exposed to the
   tests via the `CARGO_CONCORDIUM_TEST_MODULE_OUTPUT_PATH` environment variable.
-- Introduce a default build output (`--out <PATH>`) path to `concordium-out/module.wasm.v1`.
-- Remove requirement for `--out` flag when using the `--verifiable` flag, now using the default output path.
+- Add the default build output (`--out <PATH>`) path `concordium-out/module.wasm.v1`.
+- Change `--out` flag being optional when using the `--verifiable` flag.
+- Change `--verifiable` flag to use the default output path if the `--out` flag is not set.
 - Embed the schema in the Wasm module by default and can be disabled using the `--no-schema-embed` flag. 
   The `--schema-embed` flag (short `-e`) is now deprecated.
 - Fixed long error message when the `wasm32-unknown-unknown` target is not installed.

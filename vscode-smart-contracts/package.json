@@ -176,7 +176,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "@concordium/ccd-js-gen": "^1.2.0",
+    "@concordium/ccd-js-gen": "^1.2.1",
     "glob": "^8.1.0"
   }
 }

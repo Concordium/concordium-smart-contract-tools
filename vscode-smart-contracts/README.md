@@ -68,7 +68,7 @@ This extension contributes the following settings:
 ## 3.0.0
 
 - Contains `cargo-concordium` version 4.0.0
-- Contains `@concordium/ccd-js-gen` version 1.2.0
+- Contains `@concordium/ccd-js-gen` version 1.2.1
 
 ## 2.2.0
 

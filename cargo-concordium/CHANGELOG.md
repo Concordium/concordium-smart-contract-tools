@@ -2,12 +2,18 @@
 
 ## Unreleased changes
 
-- Added a `tag` option to `cargo concordium init`
+## 4.0.0
+
+- Use smart contract v1 cost configuration when simulating locally (the reduce execution cost introduced as part of Concordium Protocol Version 7)
+- Added a `--tag <RELEASE-TAG>` option to `cargo concordium init` to allow specifying the release tag of the templates.
+  Defaults to `releases/templates/latest`.
 - When running integration tests the module output path is now exposed to the
   tests via the `CARGO_CONCORDIUM_TEST_MODULE_OUTPUT_PATH` environment variable.
-- Change the default build output path to `concordium-out/module.wasm.v1`.
-- Remove requirement for `--out` flag when using the `--verifiable` flag.
-- Embed the schema in the Wasm module by default. Therefore, the `--schema-embed` flag is now deprecated. This behavior can be disabled with the `--no-schema-embed` flag.
+- Add the default build output (`--out <PATH>`) path `concordium-out/module.wasm.v1`.
+- Change `--out` flag being optional when using the `--verifiable` flag.
+- Change `--verifiable` flag to use the default output path if the `--out` flag is not set.
+- Embed the schema in the Wasm module by default and can be disabled using the `--no-schema-embed` flag. 
+  The `--schema-embed` flag (short `-e`) is now deprecated.
 - Fixed long error message when the `wasm32-unknown-unknown` target is not installed.
 
 ## 3.3.0

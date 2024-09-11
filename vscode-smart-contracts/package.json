@@ -4,7 +4,7 @@
   "displayName": "Concordium Smart Contracts",
   "icon": "icon.png",
   "description": "Develop and build smart contracts on Concordium",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/Concordium/concordium-smart-contract-tools.git",
@@ -176,7 +176,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "@concordium/ccd-js-gen": "^1.2.0",
+    "@concordium/ccd-js-gen": "^1.2.1",
     "glob": "^8.1.0"
   }
 }

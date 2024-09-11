@@ -23,6 +23,7 @@ use concordium_wasm::{
     output::{write_custom_section, Output},
     parse::parse_skeleton,
     validate::ValidationConfig,
+    CostConfigurationV1,
 };
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use sha2::Digest;
@@ -1434,6 +1435,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 &name,
                 parameter.as_parameter(),
                 false, // Whether number of logs should be limited. Limit removed in PV5.
+                CostConfigurationV1,
                 runner.energy,
             )
             .context("Initialization failed due to a runtime error.")?;
@@ -1533,6 +1535,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 &init_state,
                 u16::MAX as usize, // Max parameter size in PV5.
                 false,             // Whether to limit number of logs. Limit removed in PV5.
+                CostConfigurationV1,
             )
             .context("Calling receive failed.")?;
             match res {
@@ -1875,6 +1878,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 &name,
                 loader,
                 ValidationConfig::V1,
+                CostConfigurationV1,
                 false, /* Whether number of logs and size of return values should be limited.
                         * Limits removed in PV5. */
             )
@@ -1983,6 +1987,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
 
             let artifact = concordium_wasm::utils::instantiate_with_metering(
                 ValidationConfig::V1,
+                CostConfigurationV1,
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
                     enable_debug:    true, /* we always allow the debug statements in the

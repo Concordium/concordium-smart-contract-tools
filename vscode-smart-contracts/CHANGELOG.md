@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 3.0.1
+
+- On MacOS ARM64, ship with `cargo-concordium` build for ARM64 instead of x86_64.
+
 ## 3.0.0
 
 - Contains `cargo-concordium` version 4.0.0

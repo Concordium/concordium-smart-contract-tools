@@ -4,7 +4,7 @@
   "displayName": "Concordium Smart Contracts",
   "icon": "icon.png",
   "description": "Develop and build smart contracts on Concordium",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/Concordium/concordium-smart-contract-tools.git",

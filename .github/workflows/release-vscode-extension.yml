@@ -47,7 +47,7 @@ jobs:
           # Build ARM64 and rename it.
           rustup target add aarch64-apple-darwin
           cargo build --release --manifest-path cargo-concordium/Cargo.toml --target aarch64-apple-darwin
-          mv cargo-concordium/target/release/aarch64-apple-darwin/cargo-concordium cargo-concordium/target/release/aarch64-apple-darwin/cargo-concordium-aarch64
+          mv cargo-concordium/target/release/aarch64-apple-darwin/cargo-concordium cargo-concordium/target/release/cargo-concordium-aarch64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -55,7 +55,7 @@ jobs:
           name: binary-${{ matrix.platform }}
           path: |
             cargo-concordium/target/release/cargo-concordium
-            cargo-concordium/target/release/aarch64-apple-darwin/cargo-concordium-aarch64
+            cargo-concordium/target/release/cargo-concordium-aarch64
             cargo-concordium/target/release/x86_64-unknown-linux-musl/cargo-concordium
             cargo-concordium/target/release/cargo-concordium.exe
 

@@ -32,15 +32,15 @@ jobs:
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@1.74
       - name: Build on ubuntu
-        if: matrix.platfrom == 'ubuntu-latest'
+        if: matrix.platform == 'ubuntu-latest'
         run: |
           rustup target add x86_64-unknown-linux-musl
           cargo build --release --manifest-path cargo-concordium/Cargo.toml --target x86_64-unknown-linux-musl
       - name: Build on windows
-        if: matrix.platfrom == 'windows-latest'
+        if: matrix.platform == 'windows-latest'
         run: cargo build --release --manifest-path cargo-concordium/Cargo.toml
       - name: Build on macos
-        if: matrix.platfrom == 'macos-latest'
+        if: matrix.platform == 'macos-latest'
         run: |
           # Build x86_64
           cargo build --release --manifest-path cargo-concordium/Cargo.toml
@@ -76,26 +76,26 @@ jobs:
           mkdir out
           mkdir executables
 
-          # Install dependencies
+          echo "Install dependencies"
           npm ci
 
-          # Mac x86_64 first
+          echo "Mac x86_64 first"
           mv ../binary-macos-latest/cargo-concordium executables/cargo-concordium
           chmod +x executables/cargo-concordium
           npx vsce package --target darwin-x64 --out ./out/extension-darwin-x64.vsix
 
-          # Then Mac ARM64
+          echo "Then Mac ARM64"
           rm -rf executables/*
           mv ../binary-macos-latest/cargo-concordium-aarch64 executables/cargo-concordium
           chmod +x executables/cargo-concordium
           npx vsce package --target darwin-arm64 --out ./out/extension-darwin-arm64.vsix
 
-          # Then Windows
+          echo "Then Windows"
           rm -rf executables/*
           mv ../binary-windows-latest/cargo-concordium.exe executables/cargo-concordium.exe
           npx vsce package --target win32-x64 --out ./out/extension-win64.vsix
 
-          # Finally linux
+          echo "Finally linux"
           rm -rf executables/*
           mv ../binary-ubuntu-latest/cargo-concordium executables/cargo-concordium
           npx vsce package --target linux-x64 --out ./out/extension-linux-x64.vsix

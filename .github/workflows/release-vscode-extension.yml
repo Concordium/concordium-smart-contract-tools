@@ -43,12 +43,12 @@ jobs:
       - name: Build on macos
         if: matrix.platform == 'macos-latest'
         run: |
-          # Build x86_64
-          cargo build --release --manifest-path cargo-concordium/Cargo.toml
-          # Build ARM64 and rename it.
-          rustup target add aarch64-apple-darwin
+          # Build ARM64
           cargo build --release --manifest-path cargo-concordium/Cargo.toml --target aarch64-apple-darwin
-          mv cargo-concordium/target/release/aarch64-apple-darwin/cargo-concordium cargo-concordium/target/release/cargo-concordium-aarch64
+          # Build x86_64 and rename it.
+          rustup target add x86_64-apple-darwin
+          cargo build --release --manifest-path cargo-concordium/Cargo.toml --target x86_64-apple-darwin
+          mv cargo-concordium/target/release/x86_64-apple-darwin/cargo-concordium cargo-concordium/target/release/cargo-concordium-x86_64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -56,7 +56,7 @@ jobs:
           name: binary-${{ matrix.platform }}
           path: |
             cargo-concordium/target/release/cargo-concordium
-            cargo-concordium/target/release/cargo-concordium-aarch64
+            cargo-concordium/target/release/cargo-concordium-x86_64
             cargo-concordium/target/release/x86_64-unknown-linux-musl/cargo-concordium
             cargo-concordium/target/release/cargo-concordium.exe
 
@@ -81,13 +81,13 @@ jobs:
           npm ci
 
           echo "Mac x86_64 first"
-          mv ../binary-macos-latest/cargo-concordium executables/cargo-concordium
+          mv ../binary-macos-latest/cargo-concordium-x86_64 executables/cargo-concordium
           chmod +x executables/cargo-concordium
           npx vsce package --target darwin-x64 --out ./out/extension-darwin-x64.vsix
 
           echo "Then Mac ARM64"
           rm -rf executables/*
-          mv ../binary-macos-latest/cargo-concordium-aarch64 executables/cargo-concordium
+          mv ../binary-macos-latest/cargo-concordium executables/cargo-concordium
           chmod +x executables/cargo-concordium
           npx vsce package --target darwin-arm64 --out ./out/extension-darwin-arm64.vsix
 

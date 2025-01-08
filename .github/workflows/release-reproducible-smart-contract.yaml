@@ -4,12 +4,12 @@ on:
         - ekw/SRE-1010/migrate-release-flow-gha
       tags:
         - verifiable-sc/*
-  
-  env:
+
+env:
     SERVICE_NAME: 'verifiable-sc'
     SOURCE_IMAGE_TAG: 'rust:1.75.0'
   
-  jobs:
+jobs:
     release-docker:
       runs-on: ubuntu-latest
       environment: release

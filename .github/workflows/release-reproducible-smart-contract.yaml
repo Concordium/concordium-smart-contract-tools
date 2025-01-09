@@ -43,3 +43,5 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tag }}
+          build-args: |
+            source_image=${{ env.SOURCE_IMAGE_TAG }}

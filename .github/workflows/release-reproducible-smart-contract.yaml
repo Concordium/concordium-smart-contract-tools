@@ -34,7 +34,11 @@ jobs:
             TAG: ${{ github.ref_name }}
         run: |
             SERVICE_TAG=${TAG##${{ env.SERVICE_NAME }}/}
-            echo "tag=${{ env.REGISTRY }}concordium/${{ env.SERVICE_NAME }}-${TAG_VERSION}" >> $GITHUB_OUTPUT
+            if [ $SERVICE_TAG != ${{ env.SOURCE_IMAGE_TAG }} ]; then
+                echo "Tag version does not match the source image version."
+                exit 1
+            fi
+            echo "tag=${{ env.REGISTRY }}concordium/${{ env.SERVICE_NAME }}-${SERVICE_TAG}" >> $GITHUB_OUTPUT
       - name: Build and push Docker image
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:

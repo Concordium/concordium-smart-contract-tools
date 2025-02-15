@@ -1,6 +1,6 @@
 [package]
 name = "cargo-concordium"
-version = "4.0.0"
+version = "4.0.1"
 authors = ["Concordium <developers@concordium.com>"]
 edition = "2021"
 license-file = "../LICENSE"
@@ -35,6 +35,7 @@ tempfile = "3.8"
 reqwest = { version = "0.11", default-features=false, features = ["rustls-tls-webpki-roots", "blocking", "gzip"] }
 infer = "0.15"
 flate2 = "1.0"
+wasm-opt = "0.116.1"
 
 [dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"

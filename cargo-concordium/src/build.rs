@@ -236,6 +236,10 @@ pub fn build_archive(
     }
 
     let filename = artifact_dir.path().join("out.wasm");
+    wasm_opt::OptimizationOptions::new_optimize_for_size()
+        .run(&filename, &filename)
+        .context("Failed running wasm_opt")?;
+
     let wasm = std::fs::read(filename).context("Unable to read generated Wasm artifact.")?;
     Ok(wasm)
 }
@@ -562,6 +566,10 @@ pub(crate) fn build_contract(
             anyhow::bail!("Compilation failed.")
         }
 
+        wasm_opt::OptimizationOptions::new_optimize_for_size()
+            .run(&output_wasm_file, &output_wasm_file)
+            .context("Failed running wasm_opt")?;
+
         let wasm = fs::read(&output_wasm_file).with_context(|| {
             format!(
                 "Could not read cargo build Wasm output from {}.",
@@ -779,6 +787,10 @@ pub fn build_contract_schema<A>(
         target_dir,
         to_snake_case(package.name.as_str())
     );
+
+    wasm_opt::OptimizationOptions::new_optimize_for_size()
+        .run(&filename, &filename)
+        .context("Failed running wasm_opt")?;
 
     let wasm =
         std::fs::read(filename).context("Could not read cargo build contract schema output.")?;

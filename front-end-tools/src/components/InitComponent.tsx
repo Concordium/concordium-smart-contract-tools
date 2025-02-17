@@ -3,7 +3,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
 
-import { WalletConnection } from '@concordium/react-components';
+import { WalletConnection, Network } from '@concordium/react-components';
 import {
     ModuleReference,
     TransactionKindString,
@@ -27,7 +27,6 @@ import {
     REFRESH_INTERVAL,
     INPUT_PARAMETER_TYPES_OPTIONS,
     REG_MODULE_REF,
-    MODULE_REFERENCE_PLACEHOLDER,
     OPTIONS_DERIVE_FROM_MODULE_REFERENCE,
     DO_NOT_DERIVE,
     DERIVE_FROM_STEP_1,
@@ -36,6 +35,7 @@ import {
     INPUT_PARAMETER_TYPE_OBJECT,
     INPUT_PARAMETER_TYPE_STRING,
     INPUT_PARAMETER_TYPE_NUMBER,
+    MODULE_REFERENCE_PLACEHOLDER_MAP,
 } from '../constants';
 import { getModuleSource } from '../reading_from_blockchain';
 
@@ -43,7 +43,7 @@ interface ConnectionProps {
     account: string | undefined;
     client: ConcordiumGRPCClient | undefined;
     connection: WalletConnection | undefined;
-    isTestnet: boolean;
+    network: Network;
     moduleReferenceCalculated: undefined | ModuleReference.Type;
 }
 
@@ -52,7 +52,7 @@ interface ConnectionProps {
  * This components creates an `InitContract` transaction.
  */
 export default function InitComponent(props: ConnectionProps) {
-    const { account, client, connection, isTestnet, moduleReferenceCalculated } = props;
+    const { account, client, connection, network, moduleReferenceCalculated } = props;
 
     type FormType = {
         cCDAmount: number;
@@ -94,13 +94,21 @@ export default function InitComponent(props: ConnectionProps) {
     const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState<string | undefined>(undefined);
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
+    const placeholder = MODULE_REFERENCE_PLACEHOLDER_MAP.get(network.name);
+    if (!placeholder) {
+        // eslint-disable-next-line no-console
+        console.error(`Internal Error: Module reference placeholder should be set for network '${network.name}'.`);
+        return <div />;
+    }
+    const moduleReferencePlaceholder = ModuleReference.fromHexString(placeholder);
+
     const [isModuleReferenceAlreadyDeployed, setIsModuleReferenceAlreadyDeployed] = useState(false);
 
     const [txHash, setTxHash] = useState<string | undefined>(undefined);
 
     const [schema, setSchema] = useState<string | undefined>(undefined);
     const [moduleReference, setModuleReference] = useState<ModuleReference.Type | undefined>(
-        ModuleReference.fromHexString(MODULE_REFERENCE_PLACEHOLDER)
+        moduleReferencePlaceholder
     );
 
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
@@ -404,7 +412,7 @@ export default function InitComponent(props: ConnectionProps) {
                     <Form.Group className="col-md-4 mb-3">
                         <Form.Label> Module Reference</Form.Label>
                         <Form.Control
-                            defaultValue={MODULE_REFERENCE_PLACEHOLDER}
+                            defaultValue={moduleReferencePlaceholder.moduleRef}
                             disabled={deriveFromModuleReference === DERIVE_FROM_STEP_1.value}
                             {...form.register('moduleReferenceString', {
                                 required: true,
@@ -720,7 +728,7 @@ export default function InitComponent(props: ConnectionProps) {
                 {txHash && (
                     <TxHashLink
                         txHash={txHash}
-                        isTestnet={isTestnet}
+                        network={network}
                         message="The smart contract index will appear below once the transaction is finalized."
                     />
                 )}

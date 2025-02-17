@@ -1,11 +1,8 @@
 import React from 'react';
-
-function ccdScanUrl(isTestnet: boolean): string {
-    return `https://${isTestnet ? `testnet.` : ``}ccdscan.io`;
-}
+import { Network } from '@concordium/react-components';
 
 interface TxHashLinkProps {
-    isTestnet: boolean;
+    network: Network;
     txHash: string;
     message: string;
 }
@@ -17,7 +14,7 @@ interface TxHashLinkProps {
  * If `isTestnet` is false, the mainnet CCDScan link is displayed.
  */
 export const TxHashLink = function TxHashLink(props: TxHashLinkProps) {
-    const { isTestnet, txHash, message } = props;
+    const { network, txHash, message } = props;
 
     return (
         <>
@@ -27,7 +24,7 @@ export const TxHashLink = function TxHashLink(props: TxHashLinkProps) {
                     className="link"
                     target="_blank"
                     rel="noreferrer"
-                    href={`${ccdScanUrl(isTestnet)}/?dcount=1&dentity=transaction&dhash=${txHash}`}
+                    href={`${network.ccdScanBaseUrl}/?dcount=1&dentity=transaction&dhash=${txHash}`}
                 >
                     {txHash}
                 </a>
@@ -42,7 +39,7 @@ export const TxHashLink = function TxHashLink(props: TxHashLinkProps) {
 };
 
 interface AccountLinkProps {
-    isTestnet: boolean;
+    network: Network;
     account: string;
 }
 
@@ -52,13 +49,13 @@ interface AccountLinkProps {
  * If `isTestnet` is false, the mainnet CCDScan link is displayed.
  */
 export const AccountLink = function AccountLink(props: AccountLinkProps) {
-    const { isTestnet, account } = props;
+    const { network, account } = props;
 
     return (
         <div>
             <a
                 className="link"
-                href={`${ccdScanUrl(isTestnet)}/?dcount=1&dentity=account&daddress=${account}`}
+                href={`${network.ccdScanBaseUrl}/?dcount=1&dentity=account&daddress=${account}`}
                 target="_blank"
                 rel="noreferrer"
             >

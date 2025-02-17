@@ -3,7 +3,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
 
-import { WalletConnection } from '@concordium/react-components';
+import { WalletConnection, Network } from '@concordium/react-components';
 import {
     ModuleReference,
     TransactionKindString,
@@ -28,7 +28,7 @@ import { getObjectExample, getArrayExample } from '../utils';
 import { REFRESH_INTERVAL, INPUT_PARAMETER_TYPES_OPTIONS } from '../constants';
 
 interface ConnectionProps {
-    isTestnet: boolean;
+    network: Network;
     account: string | undefined;
     connection: WalletConnection | undefined;
     client: ConcordiumGRPCClient | undefined;
@@ -38,7 +38,7 @@ interface ConnectionProps {
  * This components creates an `Update` transaction.
  */
 export default function UpdateComponenet(props: ConnectionProps) {
-    const { isTestnet, account, connection, client } = props;
+    const { network, account, connection, client } = props;
 
     type FormType = {
         smartContractIndex: number;
@@ -609,7 +609,7 @@ export default function UpdateComponenet(props: ConnectionProps) {
                 {txHashUpdate && (
                     <TxHashLink
                         txHash={txHashUpdate}
-                        isTestnet={isTestnet}
+                        network={network}
                         message="The outcome of the transaction will be displayed below."
                     />
                 )}

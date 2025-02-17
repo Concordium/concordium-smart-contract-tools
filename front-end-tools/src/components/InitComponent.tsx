@@ -3,7 +3,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import Select from 'react-select';
 import { Alert, Button, Form, Row } from 'react-bootstrap';
 
-import { WalletConnection } from '@concordium/react-components';
+import { WalletConnection, Network } from '@concordium/react-components';
 import {
     ModuleReference,
     TransactionKindString,
@@ -43,7 +43,7 @@ interface ConnectionProps {
     account: string | undefined;
     client: ConcordiumGRPCClient | undefined;
     connection: WalletConnection | undefined;
-    isTestnet: boolean;
+    network: Network;
     moduleReferenceCalculated: undefined | ModuleReference.Type;
 }
 
@@ -52,7 +52,7 @@ interface ConnectionProps {
  * This components creates an `InitContract` transaction.
  */
 export default function InitComponent(props: ConnectionProps) {
-    const { account, client, connection, isTestnet, moduleReferenceCalculated } = props;
+    const { account, client, connection, network, moduleReferenceCalculated } = props;
 
     type FormType = {
         cCDAmount: number;
@@ -720,7 +720,7 @@ export default function InitComponent(props: ConnectionProps) {
                 {txHash && (
                     <TxHashLink
                         txHash={txHash}
-                        isTestnet={isTestnet}
+                        network={network}
                         message="The smart contract index will appear below once the transaction is finalized."
                     />
                 )}

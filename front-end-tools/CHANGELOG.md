@@ -1,3 +1,7 @@
+## 3.2.1
+
+- Add support for stagenet.
+
 ## 3.2.0
 
 - Change to enable reading from smart contract without wallet connection.

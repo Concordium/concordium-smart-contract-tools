@@ -1,10 +1,39 @@
-import { BrowserWalletConnector, ephemeralConnectorType } from '@concordium/react-components';
+import {
+    BrowserWalletConnector,
+    ephemeralConnectorType,
+    MAINNET,
+    Network,
+    TESTNET,
+} from '@concordium/react-components';
 import moment from 'moment';
 
 // The refresh interval is used by polling at the front end.
 export const REFRESH_INTERVAL = moment.duration(5, 'seconds');
 
 export const BROWSER_WALLET = ephemeralConnectorType(BrowserWalletConnector.create);
+
+export const STAGENET_GENESIS_BLOCK_HASH = '853288fa5a45554d3cbbf8a756b85abcbfddf28e752b13223eb747209a4d0d3c';
+/**
+ * Standard configuration for the Stagenet network.
+ */
+export const STAGENET: Network = {
+    name: 'stagenet',
+    genesisHash: STAGENET_GENESIS_BLOCK_HASH,
+    grpcOpts: {
+        baseUrl: 'https://grpc.stagenet.concordium.com:20000',
+    },
+    ccdScanBaseUrl: 'https://stagenet.ccdscan.io/',
+};
+
+export type SelectedNetworkOption = { value: Network; label: string };
+
+// Available blockchain network options supported by the front-end.
+const MAINNET_SELECT_OPTION: SelectedNetworkOption = { value: MAINNET, label: 'mainnet' };
+const TESTNET_SELECT_OPTION: SelectedNetworkOption = { value: TESTNET, label: 'testnet' };
+const STAGENET_SELECT_OPTION: SelectedNetworkOption = { value: STAGENET, label: 'stagenet' };
+
+// All blockchain network options supported by the front-end.
+export const AVAILABLE_NETWORKS = [MAINNET_SELECT_OPTION, TESTNET_SELECT_OPTION, STAGENET_SELECT_OPTION];
 
 // This is the example JSON object that is shown in the input parameter textarea as a placeholder when the user has no embedded schema in the module
 // or does not want to use the embedded schema (meaning if the checkbox "Use module from step 1" is unchecked).

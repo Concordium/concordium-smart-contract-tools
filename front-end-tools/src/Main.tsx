@@ -5,8 +5,6 @@ import {
     useConnection,
     useConnect,
     useGrpcClient,
-    TESTNET,
-    MAINNET,
     useWalletConnectorSelector,
 } from '@concordium/react-components';
 import { ModuleReference } from '@concordium/web-sdk';
@@ -23,7 +21,6 @@ import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
 
 interface ConnectionProps {
     walletConnectionProps: WalletConnectionProps;
-    isTestnet: boolean;
 }
 
 /** The main component manages the connection to the browser wallet and
@@ -32,16 +29,24 @@ interface ConnectionProps {
  */
 export default function Main(props: ConnectionProps) {
     // Network state
-    const { walletConnectionProps, isTestnet } = props;
-    const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } =
-        walletConnectionProps;
+    const { walletConnectionProps } = props;
+    const {
+        network,
+        activeConnectorType,
+        setActiveConnectorType,
+        activeConnector,
+        activeConnectorError,
+        connectedAccounts,
+        genesisHashes,
+    } = walletConnectionProps;
+
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
     const { isConnected, select } = useWalletConnectorSelector(BROWSER_WALLET, connection, {
         ...walletConnectionProps,
     });
     const { connect, connectError } = useConnect(activeConnector, setConnection);
 
-    const client = useGrpcClient(isTestnet ? TESTNET : MAINNET);
+    const client = useGrpcClient(network);
 
     // Account state
     const [viewErrorAccountInfo, setViewErrorAccountInfo] = useState<string | undefined>(undefined);
@@ -57,22 +62,22 @@ export default function Main(props: ConnectionProps) {
     // eslint-disable-next-line consistent-return
     useEffect(() => {
         if (connection && client && account) {
+            // Call immediately on mount or change of connection, account, or client
+            getAccountInfo(client, account, setAccountBalance, setAccountExistsOnNetwork, setViewErrorAccountInfo);
+
+            // Set up interval to refresh account info
             const interval = setInterval(() => {
                 getAccountInfo(client, account, setAccountBalance, setAccountExistsOnNetwork, setViewErrorAccountInfo);
             }, REFRESH_INTERVAL.asMilliseconds());
+
             return () => clearInterval(interval);
         }
     }, [connection, account, client]);
 
     useEffect(() => {
-        if (connection && client && account) {
-            getAccountInfo(client, account, setAccountBalance, setAccountExistsOnNetwork, setViewErrorAccountInfo);
-        }
-    }, [connection, account, client]);
-
-    useEffect(() => {
+        setActiveConnectorType(activeConnectorType);
         select();
-    }, []);
+    }, [network]);
 
     return (
         <main className="container">
@@ -104,8 +109,8 @@ export default function Main(props: ConnectionProps) {
                             connected to this website.
                         </div>
                         <div className="alert alert-danger" role="alert">
-                            Alternatively, if you intend to use `{isTestnet ? 'mainnet' : 'testnet'}`, switch the
-                            network button at the top of this webpage.
+                            Alternatively, if you intend to use `{network.name}`, switch the network button at the top
+                            of this webpage.
                         </div>
                     </>
                 )}
@@ -120,7 +125,7 @@ export default function Main(props: ConnectionProps) {
                         )}
                         <br />
                         <div className="label">Connected account:</div>
-                        <AccountLink isTestnet={isTestnet} account={account} />
+                        <AccountLink network={network} account={account} />
                         <br />
                         {accountBalance && (
                             <>
@@ -133,7 +138,7 @@ export default function Main(props: ConnectionProps) {
 
                 <div className="col-lg-12">
                     <DeployComponent
-                        isTestnet={isTestnet}
+                        network={network}
                         connection={connection}
                         account={account}
                         client={client}
@@ -142,7 +147,7 @@ export default function Main(props: ConnectionProps) {
                     />
 
                     <InitComponent
-                        isTestnet={isTestnet}
+                        network={network}
                         connection={connection}
                         account={account}
                         client={client}
@@ -151,7 +156,7 @@ export default function Main(props: ConnectionProps) {
 
                     <ReadComponent client={client} />
 
-                    <UpdateComponent isTestnet={isTestnet} connection={connection} account={account} client={client} />
+                    <UpdateComponent network={network} connection={connection} account={account} client={client} />
                     <br />
                     <a
                         href="https://developer.concordium.software/en/mainnet/smart-contracts/guides/on-chain-index.html"

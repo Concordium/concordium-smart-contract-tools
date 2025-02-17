@@ -27,7 +27,6 @@ import {
     REFRESH_INTERVAL,
     INPUT_PARAMETER_TYPES_OPTIONS,
     REG_MODULE_REF,
-    MODULE_REFERENCE_PLACEHOLDER,
     OPTIONS_DERIVE_FROM_MODULE_REFERENCE,
     DO_NOT_DERIVE,
     DERIVE_FROM_STEP_1,
@@ -36,6 +35,7 @@ import {
     INPUT_PARAMETER_TYPE_OBJECT,
     INPUT_PARAMETER_TYPE_STRING,
     INPUT_PARAMETER_TYPE_NUMBER,
+    MODULE_REFERENCE_PLACEHOLDER_MAP,
 } from '../constants';
 import { getModuleSource } from '../reading_from_blockchain';
 
@@ -94,13 +94,21 @@ export default function InitComponent(props: ConnectionProps) {
     const [moduleReferenceLengthError, setModuleReferenceLengthError] = useState<string | undefined>(undefined);
     const [schemaError, setSchemaError] = useState<string | undefined>(undefined);
 
+    const placeholder = MODULE_REFERENCE_PLACEHOLDER_MAP.get(network.name);
+    if (!placeholder) {
+        // eslint-disable-next-line no-console
+        console.error(`Internal Error: Module reference placeholder should be set for network '${network.name}'.`);
+        return <div />;
+    }
+    const moduleReferencePlaceholder = ModuleReference.fromHexString(placeholder);
+
     const [isModuleReferenceAlreadyDeployed, setIsModuleReferenceAlreadyDeployed] = useState(false);
 
     const [txHash, setTxHash] = useState<string | undefined>(undefined);
 
     const [schema, setSchema] = useState<string | undefined>(undefined);
     const [moduleReference, setModuleReference] = useState<ModuleReference.Type | undefined>(
-        ModuleReference.fromHexString(MODULE_REFERENCE_PLACEHOLDER)
+        moduleReferencePlaceholder
     );
 
     const [smartContractIndex, setSmartContractIndex] = useState<string | undefined>(undefined);
@@ -404,7 +412,7 @@ export default function InitComponent(props: ConnectionProps) {
                     <Form.Group className="col-md-4 mb-3">
                         <Form.Label> Module Reference</Form.Label>
                         <Form.Control
-                            defaultValue={MODULE_REFERENCE_PLACEHOLDER}
+                            defaultValue={moduleReferencePlaceholder.moduleRef}
                             disabled={deriveFromModuleReference === DERIVE_FROM_STEP_1.value}
                             {...form.register('moduleReferenceString', {
                                 required: true,

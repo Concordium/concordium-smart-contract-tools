@@ -104,13 +104,12 @@ export default function Main(props: ConnectionProps) {
                 {connection && !accountExistsOnNetwork && (
                     <>
                         <div className="alert alert-danger" role="alert">
-                            Please ensure that your browser wallet is connected to network `
-                            {walletConnectionProps.network.name}` and you have an account in that wallet that is
-                            connected to this website.
+                            Please ensure that your browser wallet is connected to network `{network.name}` and you have
+                            an account in that wallet that is connected to this website.
                         </div>
                         <div className="alert alert-danger" role="alert">
-                            Alternatively, if you intend to use `{network.name}`, switch the network button at the top
-                            of this webpage.
+                            Alternatively, if you intend to use another network, switch the network button at the top of
+                            this webpage.
                         </div>
                     </>
                 )}

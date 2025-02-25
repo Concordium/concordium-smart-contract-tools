@@ -236,10 +236,6 @@ pub fn build_archive(
     }
 
     let filename = artifact_dir.path().join("out.wasm");
-    wasm_opt::OptimizationOptions::new_optimize_for_size()
-        .run(&filename, &filename)
-        .context("Failed running wasm_opt")?;
-
     let wasm = std::fs::read(filename).context("Unable to read generated Wasm artifact.")?;
     Ok(wasm)
 }

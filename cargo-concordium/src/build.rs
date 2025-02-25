@@ -384,6 +384,7 @@ pub(crate) fn build_contract(
     source_link: Option<String>,
     container_runtime: String,
     out: Option<PathBuf>,
+    skip_wasm_opt: bool,
     cargo_args: &[String],
 ) -> anyhow::Result<BuildInfo> {
     // Check that the wasm target is installed
@@ -456,8 +457,12 @@ pub(crate) fn build_contract(
     let schema = match version {
         WasmVersion::V0 => {
             if build_schema.build() {
-                let schema = build_contract_schema(cargo_args, utils::generate_contract_schema_v0)
-                    .context("Could not build module schema.")?;
+                let schema = build_contract_schema(
+                    cargo_args,
+                    skip_wasm_opt,
+                    utils::generate_contract_schema_v0,
+                )
+                .context("Could not build module schema.")?;
                 if build_schema.embed() {
                     schema_bytes = contracts_common::to_bytes(&schema);
                     let custom_section = CustomSection {
@@ -474,8 +479,12 @@ pub(crate) fn build_contract(
         }
         WasmVersion::V1 => {
             if build_schema.build() {
-                let schema = build_contract_schema(cargo_args, utils::generate_contract_schema_v3)
-                    .context("Could not build module schema.")?;
+                let schema = build_contract_schema(
+                    cargo_args,
+                    skip_wasm_opt,
+                    utils::generate_contract_schema_v3,
+                )
+                .context("Could not build module schema.")?;
                 if build_schema.embed() {
                     schema_bytes = contracts_common::to_bytes(&schema);
                     let custom_section = CustomSection {
@@ -560,6 +569,12 @@ pub(crate) fn build_contract(
 
         if !result.status.success() {
             anyhow::bail!("Compilation failed.")
+        }
+
+        if !skip_wasm_opt {
+            wasm_opt::OptimizationOptions::new_optimize_for_size()
+                .run(&output_wasm_file, &output_wasm_file)
+                .context("Failed running wasm_opt")?;
         }
 
         let wasm = fs::read(&output_wasm_file).with_context(|| {
@@ -748,6 +763,7 @@ fn find_closest<'a>(
 /// Then extracts the schema from the schema build
 pub fn build_contract_schema<A>(
     cargo_args: &[String],
+    skip_wasm_opt: bool,
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
     let (metadata, _) = get_crate_metadata(cargo_args)?;
@@ -779,6 +795,12 @@ pub fn build_contract_schema<A>(
         target_dir,
         to_snake_case(package.name.as_str())
     );
+
+    if !skip_wasm_opt {
+        wasm_opt::OptimizationOptions::new_optimize_for_size()
+            .run(&filename, &filename)
+            .context("Failed running wasm_opt")?;
+    }
 
     let wasm =
         std::fs::read(filename).context("Could not read cargo build contract schema output.")?;

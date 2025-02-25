@@ -459,6 +459,12 @@ struct BuildOptions {
     )]
     allow_debug:         bool,
     #[structopt(
+        name = "skip-wasm-opt",
+        long = "skip-wasm-opt",
+        help = "Skip step using wasm-opt to optimize the resulting Wasm module."
+    )]
+    skip_wasm_opt:       bool,
+    #[structopt(
         raw = true,
         help = "Extra arguments passed to `cargo build` when building Wasm module."
     )]
@@ -1006,6 +1012,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
         options.source_link,
         options.container_runtime,
         options.out,
+        options.skip_wasm_opt,
         &cargo_args,
     )
     .context("Could not build smart contract.")?;

@@ -2,6 +2,11 @@
 
 ## Unreleased changes
 
+## 4.1.0
+
+- Add support for `--skip-wasm-opt` flag opting out of the `wasm-opt` step.
+- Optimize build artifacts using `wasm-opt` optimizing for size. Besides optimizations this also acts as a workaround for the `Unexpected byte 0x80. Expected 0x00` error produced when building smart contracts using a rust compiler `1.82` or newer.
+
 ## 4.0.0
 
 - Use smart contract v1 cost configuration when simulating locally (the reduce execution cost introduced as part of Concordium Protocol Version 7)

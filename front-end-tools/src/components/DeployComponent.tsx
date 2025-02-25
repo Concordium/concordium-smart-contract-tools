@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Button, Form } from 'react-bootstrap';
 
-import { WalletConnection } from '@concordium/react-components';
+import { WalletConnection, Network } from '@concordium/react-components';
 import {
     ModuleReference,
     ConcordiumGRPCClient,
@@ -23,7 +23,7 @@ interface ConnectionProps {
     account: string | undefined;
     connection: WalletConnection | undefined;
     client: ConcordiumGRPCClient | undefined;
-    isTestnet: boolean;
+    network: Network;
     setModuleReferenceCalculated: (moduleReferenceCalculated: ModuleReference.Type) => void;
     moduleReferenceCalculated: ModuleReference.Type | undefined;
 }
@@ -33,7 +33,7 @@ interface ConnectionProps {
  *  This components creates a `DeployModule` transaction.
  */
 export default function DeployComponenet(props: ConnectionProps) {
-    const { isTestnet, client, connection, account, setModuleReferenceCalculated, moduleReferenceCalculated } = props;
+    const { network, client, connection, account, setModuleReferenceCalculated, moduleReferenceCalculated } = props;
 
     type FormType = {
         file: FileList | undefined;
@@ -235,7 +235,7 @@ export default function DeployComponenet(props: ConnectionProps) {
             {txHashDeploy && (
                 <TxHashLink
                     txHash={txHashDeploy}
-                    isTestnet={isTestnet}
+                    network={network}
                     message="The outcome of the transaction will be displayed below."
                 />
             )}

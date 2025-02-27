@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased changes
+## 4.1.0
+
+- Updated concordium-base dependency
 
 ## 4.0.0
 

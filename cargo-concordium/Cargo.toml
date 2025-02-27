@@ -1,6 +1,6 @@
 [package]
 name = "cargo-concordium"
-version = "4.0.0"
+version = "4.1.0"
 authors = ["Concordium <developers@concordium.com>"]
 edition = "2021"
 license-file = "../LICENSE"
@@ -46,5 +46,5 @@ path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
 
 [dependencies.concordium_base]
-version = "6.0"
+version = "7.0"
 path = "../concordium-base/rust-src/concordium_base"

@@ -572,7 +572,7 @@ pub(crate) fn build_contract(
         }
 
         if !skip_wasm_opt {
-            wasm_opt::OptimizationOptions::new_optimize_for_size()
+            wasm_opt::OptimizationOptions::new_opt_level_0()
                 .run(&output_wasm_file, &output_wasm_file)
                 .context("Failed running wasm_opt")?;
         }
@@ -797,7 +797,7 @@ pub fn build_contract_schema<A>(
     );
 
     if !skip_wasm_opt {
-        wasm_opt::OptimizationOptions::new_optimize_for_size()
+        wasm_opt::OptimizationOptions::new_opt_level_0()
             .run(&filename, &filename)
             .context("Failed running wasm_opt")?;
     }

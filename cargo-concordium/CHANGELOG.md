@@ -3,7 +3,7 @@
 ## 4.2.0
 
 - Updated concordium-base dependency
-
+  - The cargo concordium test now allow tests to use several getter and setter functions in unit tests.
 ## 4.1.0
 
 - Add support for `--skip-wasm-opt` flag opting out of the `wasm-opt` step.

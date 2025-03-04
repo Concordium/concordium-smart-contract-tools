@@ -5,6 +5,7 @@
 ## 4.1.1
 
 - Tune down the level of optimization during the build step (introduced in 4.1.0) as it resulted in changing behavior for some smart contracts.
+- Run `wasm-opt` step when building WASM unit tests.
 
 ## 4.1.0
 

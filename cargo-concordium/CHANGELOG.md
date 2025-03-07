@@ -4,6 +4,12 @@
 
 - Updated concordium-base dependency
   - The cargo concordium test now allow tests to use several getter and setter functions in unit tests.
+
+## 4.1.1
+
+- Tune down the level of optimization during the build step (introduced in 4.1.0) as it resulted in changing behavior for some smart contracts.
+- Run `wasm-opt` step when building WASM unit tests.
+
 ## 4.1.0
 
 - Add support for `--skip-wasm-opt` flag opting out of the `wasm-opt` step.
@@ -19,7 +25,7 @@
 - Add the default build output (`--out <PATH>`) path `concordium-out/module.wasm.v1`.
 - Change `--out` flag being optional when using the `--verifiable` flag.
 - Change `--verifiable` flag to use the default output path if the `--out` flag is not set.
-- Embed the schema in the Wasm module by default and can be disabled using the `--no-schema-embed` flag. 
+- Embed the schema in the Wasm module by default and can be disabled using the `--no-schema-embed` flag.
   The `--schema-embed` flag (short `-e`) is now deprecated.
 - Fixed long error message when the `wasm32-unknown-unknown` target is not installed.
 

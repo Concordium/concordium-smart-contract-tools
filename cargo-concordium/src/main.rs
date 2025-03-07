@@ -687,9 +687,13 @@ pub fn main() -> anyhow::Result<()> {
             only_unit_tests,
             test_targets,
         } => {
-            let unit_test_success =
-                build_and_run_wasm_test(build_options.allow_debug, &build_options.cargo_args, seed)
-                    .context("Could not build and run unit tests.")?;
+            let unit_test_success = build_and_run_wasm_test(
+                build_options.allow_debug,
+                &build_options.cargo_args,
+                seed,
+                build_options.skip_wasm_opt,
+            )
+            .context("Could not build and run unit tests.")?;
             if !only_unit_tests {
                 build_and_run_integration_tests(build_options, test_targets)
                     .context("Could not build and run integration tests.")?;

@@ -572,7 +572,7 @@ pub(crate) fn build_contract(
         }
 
         if !skip_wasm_opt {
-            wasm_opt::OptimizationOptions::new_optimize_for_size()
+            wasm_opt::OptimizationOptions::new_opt_level_0()
                 .run(&output_wasm_file, &output_wasm_file)
                 .context("Failed running wasm_opt")?;
         }
@@ -797,7 +797,7 @@ pub fn build_contract_schema<A>(
     );
 
     if !skip_wasm_opt {
-        wasm_opt::OptimizationOptions::new_optimize_for_size()
+        wasm_opt::OptimizationOptions::new_opt_level_0()
             .run(&filename, &filename)
             .context("Failed running wasm_opt")?;
     }
@@ -1278,6 +1278,7 @@ pub fn build_and_run_wasm_test(
     enable_debug: bool,
     extra_args: &[String],
     seed: Option<u64>,
+    skip_wasm_opt: bool,
 ) -> anyhow::Result<bool> {
     // Check that the wasm target is installed
     check_wasm_target()?;
@@ -1339,6 +1340,11 @@ pub fn build_and_run_wasm_test(
         target_dir,
         to_snake_case(package.name.as_str())
     );
+    if !skip_wasm_opt {
+        wasm_opt::OptimizationOptions::new_opt_level_0()
+            .run(&filename, &filename)
+            .context("Failed running wasm_opt")?;
+    }
 
     let wasm = std::fs::read(filename).context("Failed reading contract test output artifact.")?;
 

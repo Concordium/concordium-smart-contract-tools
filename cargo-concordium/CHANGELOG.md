@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased changes
+## 4.2.0
+
+- Updated concordium-base dependency
+  - The cargo concordium test now allow tests to use several getter and setter functions in unit tests.
 
 ## 4.1.1
 

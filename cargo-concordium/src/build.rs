@@ -15,17 +15,21 @@ use concordium_base::{
     smart_contracts::{ContractName, ReceiveName, WasmModule},
 };
 use concordium_smart_contract_engine::{
-    utils::{self, TestResult, WasmVersion, BUILD_INFO_SECTION_NAME},
-    v0, v1, ExecResult,
+    utils::{self, NoDuplicateImport, ReportError, TestHost, WasmVersion, BUILD_INFO_SECTION_NAME},
+    v0,
+    v1::{self, trie, InstanceState},
+    ExecResult,
 };
 use concordium_wasm::{
+    artifact::{Artifact, ArtifactNamedImport, CompiledFunction},
     output::{write_custom_section, Output},
     parse::parse_skeleton,
-    types::{CustomSection, ExportDescription, Module},
+    types::{CustomSection, ExportDescription, Module, Name},
     utils::strip,
     validate::{validate_module, ValidationConfig},
 };
-use rand::{thread_rng, Rng};
+use rand::{prelude::*, thread_rng, Rng};
+use rayon::prelude::*;
 use serde_json::Value;
 use sha2::Digest;
 use std::{
@@ -1265,6 +1269,72 @@ pub(crate) fn build_and_run_integration_tests(
     Ok(())
 }
 
+/// Runs a single unit test and prints out the result, returns an option so that
+/// succesful cases can be filtered
+fn get_test_result(
+    name: &Name,
+    seed: u64,
+    artifact: &Artifact<ArtifactNamedImport, CompiledFunction>,
+    enable_debug: bool,
+) -> Option<()> {
+    let mut is_err = false;
+    let test_name = name.as_ref().strip_prefix("concordium_test ")?;
+
+    // create a `TestHost` instance for each test with the usage flag set to `false`
+    let mut initial_state = trie::MutableState::initial_state();
+    let mut loader = trie::Loader::new(Vec::new());
+    let mut test_host = {
+        let inner = initial_state.get_inner(&mut loader);
+        let state = InstanceState::new(loader, inner);
+        TestHost::new(SmallRng::seed_from_u64(seed), state)
+    };
+
+    let test_result = artifact.run(&mut test_host, name, &[]).err().map(|msg| {
+        msg.downcast_ref::<ReportError>()
+            .cloned()
+            .unwrap_or_else(|| ReportError::Other {
+                msg: msg.to_string(),
+            })
+    });
+
+    match test_result {
+        Some(err) => {
+            is_err = true;
+            eprintln!(
+                "  - {} ... {}",
+                test_name,
+                Color::Red.bold().paint("FAILED")
+            );
+            eprintln!(
+                "    {} ... {}",
+                Color::Red.bold().paint("Error"),
+                Style::new().italic().paint(err.to_string())
+            );
+            if test_host.rng_used {
+                eprintln!(
+                    "    {}: {}",
+                    Style::new().bold().paint("Seed"),
+                    Style::new().bold().paint(seed.to_string())
+                )
+            };
+        }
+        None => {
+            eprintln!("  - {} ... {}", test_name, Color::Green.bold().paint("ok"));
+        }
+    }
+    if enable_debug {
+        eprintln!("    Emitted debug events.");
+        for event in test_host.debug_events {
+            eprintln!("    {event}");
+        }
+    }
+
+    match is_err {
+        true => Some(()),
+        false => None,
+    }
+}
+
 /// Build tests and run them. If errors occur in building the tests, or there
 /// are runtime exceptions that are not expected then this function returns
 /// Err(...).
@@ -1360,46 +1430,18 @@ pub fn build_and_run_wasm_test(
         }
     };
 
-    let results = utils::run_module_tests(&wasm, seed_u64)?;
-    let mut num_failed = 0;
-    for TestResult {
-        test_name,
-        result,
-        debug_events,
-    } in results
-    {
-        match result {
-            Some((err, is_randomized)) => {
-                num_failed += 1;
-                eprintln!(
-                    "  - {} ... {}",
-                    test_name,
-                    Color::Red.bold().paint("FAILED")
-                );
-                eprintln!(
-                    "    {} ... {}",
-                    Color::Red.bold().paint("Error"),
-                    Style::new().italic().paint(err.to_string())
-                );
-                if is_randomized {
-                    eprintln!(
-                        "    {}: {}",
-                        Style::new().bold().paint("Seed"),
-                        Style::new().bold().paint(seed_u64.to_string())
-                    )
-                };
-            }
-            None => {
-                eprintln!("  - {} ... {}", test_name, Color::Green.bold().paint("ok"));
-            }
-        }
-        if enable_debug {
-            eprintln!("    Emitted debug events.");
-            for event in debug_events {
-                eprintln!("    {event}");
-            }
-        }
-    }
+    let artifact = concordium_wasm::utils::instantiate::<ArtifactNamedImport, _>(
+        ValidationConfig::V1,
+        &NoDuplicateImport,
+        &wasm,
+    )?
+    .artifact;
+    let artifact_keys: Vec<_> = artifact.export.keys().collect();
+
+    let num_failed = artifact_keys
+        .into_par_iter()
+        .filter_map(|name| get_test_result(name, seed_u64, &artifact, enable_debug))
+        .count();
 
     if num_failed == 0 {
         eprintln!("Unit test result: {}", Color::Green.bold().paint("ok"));

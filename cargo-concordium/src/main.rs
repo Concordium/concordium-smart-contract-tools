@@ -88,6 +88,13 @@ This command also builds a deployable Wasm module for integration testing, and i
         )]
         only_unit_tests: bool,
         #[structopt(
+            name = "test-threads",
+            long = "test-threads",
+            help = "How many threads should be used for running unit tests. Defaults to the \
+                    number of logical CPUs."
+        )]
+        test_threads:    Option<usize>,
+        #[structopt(
             name = "test",
             long = "test",
             short = "t",
@@ -666,6 +673,7 @@ pub fn main() -> anyhow::Result<()> {
         let CargoCommand::Concordium(cmd) = CargoCommand::from_clap(&matches);
         cmd
     };
+
     match cmd {
         Command::Run(run_cmd) => {
             let runner = match *run_cmd {
@@ -684,9 +692,15 @@ pub fn main() -> anyhow::Result<()> {
         Command::Test {
             seed,
             build_options,
+            test_threads,
             only_unit_tests,
             test_targets,
         } => {
+            if let Some(test_threads) = test_threads {
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(test_threads)
+                    .build_global()?;
+            }
             let unit_test_success = build_and_run_wasm_test(
                 build_options.allow_debug,
                 &build_options.cargo_args,

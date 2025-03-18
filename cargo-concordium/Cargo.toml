@@ -1,6 +1,6 @@
 [package]
 name = "cargo-concordium"
-version = "4.1.1"
+version = "4.2.0"
 authors = ["Concordium <developers@concordium.com>"]
 edition = "2021"
 license-file = "../LICENSE"
@@ -25,7 +25,8 @@ ansi_term = "0.12"
 ptree = "0.4"
 strsim = "0.10"
 which = "4.3"
-rand = { version = "=0.7", features = ["small_rng"] }
+rayon = "1.10"
+rand = { version = "=0.8", features = ["small_rng"] }
 cargo_metadata = "0.15"
 ignore = "0.4"
 tar = "0.4"
@@ -42,10 +43,10 @@ path = "../concordium-base/smart-contracts/wasm-transform"
 version = "5.0"
 
 [dependencies.concordium-smart-contract-engine]
-version = "6.0"
+version = "6.1"
 path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
 
 [dependencies.concordium_base]
-version = "6.0"
+version = "7.0"
 path = "../concordium-base/rust-src/concordium_base"

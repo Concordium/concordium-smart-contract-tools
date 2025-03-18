@@ -88,6 +88,13 @@ This command also builds a deployable Wasm module for integration testing, and i
         )]
         only_unit_tests: bool,
         #[structopt(
+            name = "test-threads",
+            long = "test-threads",
+            help = "How many threads Rayon should have available. Defaults to Rayon's default \
+                    (generally all available threads)."
+        )]
+        test_threads:    Option<usize>,
+        #[structopt(
             name = "test",
             long = "test",
             short = "t",
@@ -459,14 +466,6 @@ struct BuildOptions {
     )]
     allow_debug:         bool,
     #[structopt(
-        name = "threads",
-        long = "threads",
-        help = "How many threads Rayon should have available. Set to zero for Rayon default \
-                (generally all available threads).",
-        default_value = "0"
-    )]
-    threads:               usize,
-    #[structopt(
         name = "skip-wasm-opt",
         long = "skip-wasm-opt",
         help = "Skip step using wasm-opt to optimize the resulting Wasm module."
@@ -693,12 +692,15 @@ pub fn main() -> anyhow::Result<()> {
         Command::Test {
             seed,
             build_options,
+            test_threads,
             only_unit_tests,
             test_targets,
         } => {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(build_options.threads)
-                .build_global()?;
+            if let Some(test_threads) = test_threads {
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(test_threads)
+                    .build_global()?;
+            }
             let unit_test_success = build_and_run_wasm_test(
                 build_options.allow_debug,
                 &build_options.cargo_args,

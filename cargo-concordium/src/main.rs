@@ -90,8 +90,8 @@ This command also builds a deployable Wasm module for integration testing, and i
         #[structopt(
             name = "test-threads",
             long = "test-threads",
-            help = "How many threads Rayon should have available. Defaults to Rayon's default \
-                    (generally all available threads)."
+            help = "How many threads should be used for running unit tests. Defaults to the \
+                    number of logical CPUs."
         )]
         test_threads:    Option<usize>,
         #[structopt(

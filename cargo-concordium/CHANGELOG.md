@@ -2,6 +2,7 @@
 
 ## 4.2.0
 
+- Unit tests now run in parallel and the results are printed sequentially.
 - Updated concordium-base dependency
   - The cargo concordium test now allow tests to use several getter and setter functions in unit tests.
 

@@ -1277,7 +1277,6 @@ fn get_test_result(
     artifact: &Artifact<ArtifactNamedImport, CompiledFunction>,
     enable_debug: bool,
 ) -> Option<()> {
-    let mut is_err = false;
     let test_name = name.as_ref().strip_prefix("concordium_test ")?;
 
     // create a `TestHost` instance for each test with the usage flag set to `false`
@@ -1297,42 +1296,44 @@ fn get_test_result(
             })
     });
 
+    let mut print_vec = Vec::new();
     match test_result {
-        Some(err) => {
-            is_err = true;
-            eprintln!(
+        Some(ref err) => {
+            print_vec.push(format!(
                 "  - {} ... {}",
                 test_name,
                 Color::Red.bold().paint("FAILED")
-            );
-            eprintln!(
+            ));
+            print_vec.push(format!(
                 "    {} ... {}",
                 Color::Red.bold().paint("Error"),
                 Style::new().italic().paint(err.to_string())
-            );
+            ));
             if test_host.rng_used {
-                eprintln!(
+                print_vec.push(format!(
                     "    {}: {}",
                     Style::new().bold().paint("Seed"),
                     Style::new().bold().paint(seed.to_string())
-                )
+                ));
             };
         }
         None => {
-            eprintln!("  - {} ... {}", test_name, Color::Green.bold().paint("ok"));
+            print_vec.push(format!(
+                "  - {} ... {}",
+                test_name,
+                Color::Green.bold().paint("ok")
+            ));
         }
     }
-    if enable_debug {
-        eprintln!("    Emitted debug events.");
+    if enable_debug && !test_host.debug_events.is_empty() {
+        print_vec.push("    Emitted debug events.".to_string());
         for event in test_host.debug_events {
-            eprintln!("    {event}");
+            print_vec.push(format!("    {event}"));
         }
     }
+    eprintln!("{}", print_vec.join("\n"));
 
-    match is_err {
-        true => Some(()),
-        false => None,
-    }
+    test_result.map(|_| ())
 }
 
 /// Build tests and run them. If errors occur in building the tests, or there

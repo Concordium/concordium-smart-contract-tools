@@ -156,10 +156,7 @@ fn create_archive(
     tar.mode(tar::HeaderMode::Deterministic);
     // Ignore files that are ignored by Git.
     let files = ignore::WalkBuilder::new(package_root_path)
-        .git_global(true)
-        .git_ignore(true)
-        .parents(true)
-        .hidden(true)
+        .standard_filters(true)
         .sort_by_file_path(std::cmp::Ord::cmp)
         .build();
     let mut lock_file_found = false;
@@ -180,6 +177,12 @@ fn create_archive(
         // We put the files in the tar archive under the `in_package_root_dir`
         // directory. This then matches the behaviour of cargo package.
         tar.append_path_with_name(file.path(), in_package_root_dir.join(relative_path))?;
+    }
+    let cargo_lock_exists = package_root_path.join("Cargo.lock").is_file();
+    if !lock_file_found && cargo_lock_exists {
+        anyhow::bail!(
+            "Unable to proceed with a verifiable build. Cargo.lock seem to be included in .gitignore."
+        );
     }
     anyhow::ensure!(
         lock_file_found,

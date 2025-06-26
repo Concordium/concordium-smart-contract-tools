@@ -5,11 +5,12 @@
 # to copy data in and out of the container. The image also adds
 # wasm32-unknown-unknown target.
 
-ARG source_image
-FROM ${source_image} AS build
+FROM rust:1.85 AS build
 
 RUN rustup target add wasm32-unknown-unknown
 
 RUN mkdir /b
+
+RUN cargo install wasm-opt --version 0.116.1
 
 COPY run-copy.sh /run-copy.sh

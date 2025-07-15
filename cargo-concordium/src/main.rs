@@ -313,9 +313,9 @@ struct VerifyOptions {
     #[structopt(
         name = "source",
         long = "source",
-        help = "Path to the source code of the code, this would be the tar produced during the \
-                reproducible build. If not present then the sources will be downloaded from an \
-                embedded link in the build info."
+        help = "Path to the source code, this would be the tar produced during the reproducible \
+                build. If not present then the sources will be downloaded from an embedded link \
+                in the build info."
     )]
     source_path:       Option<PathBuf>,
     #[structopt(

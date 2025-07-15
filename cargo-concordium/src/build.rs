@@ -184,7 +184,8 @@ fn create_archive(
     let cargo_lock_exists = package_root_path.join("Cargo.lock").is_file();
     if !lock_file_found && cargo_lock_exists {
         anyhow::bail!(
-            "Unable to proceed with a verifiable build. Cargo.lock seem to be included in .gitignore."
+            "Unable to proceed with a verifiable build. Cargo.lock seem to be included in \
+             .gitignore."
         );
     }
     anyhow::ensure!(

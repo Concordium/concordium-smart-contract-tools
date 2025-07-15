@@ -156,7 +156,10 @@ fn create_archive(
     tar.mode(tar::HeaderMode::Deterministic);
     // Ignore files that are ignored by Git.
     let files = ignore::WalkBuilder::new(package_root_path)
-        .standard_filters(true)
+        .git_global(true)
+        .git_ignore(true)
+        .parents(true)
+        .hidden(true)
         .sort_by_file_path(std::cmp::Ord::cmp)
         .build();
     let mut lock_file_found = false;

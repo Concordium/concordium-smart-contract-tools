@@ -321,7 +321,7 @@ struct VerifyOptions {
     #[structopt(
         name = "module",
         long = "module",
-        help = "Path to the module WASM file to verify."
+        help = "Path to the smart contract module file to verify."
     )]
     source:            PathBuf,
     #[structopt(

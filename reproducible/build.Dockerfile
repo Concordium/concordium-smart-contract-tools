@@ -11,6 +11,6 @@ RUN rustup target add wasm32-unknown-unknown
 
 RUN mkdir /b
 
-RUN cargo install wasm-opt --version 0.116.1
+RUN cargo install wasm-opt --locked --version 0.116.1
 
 COPY run-copy.sh /run-copy.sh

@@ -1022,7 +1022,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
     } else {
         options.cargo_args
     };
-    let build_info = build_contract(
+    let build_info =  build_contract(
         options.version,
         build_schema,
         options.allow_debug,

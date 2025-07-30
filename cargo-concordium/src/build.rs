@@ -2,7 +2,7 @@ use crate::BuildOptions;
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
-use cargo_metadata::{Metadata, MetadataCommand};
+use cargo_metadata::{Message, Metadata, MetadataCommand};
 use concordium_base::{
     contracts_common::{
         self,
@@ -28,10 +28,12 @@ use concordium_wasm::{
     utils::strip,
     validate::{validate_module, ValidationConfig},
 };
+use itertools::Itertools;
 use rand::{prelude::*, thread_rng, Rng};
 use rayon::prelude::*;
 use serde_json::Value;
 use sha2::Digest;
+use std::fmt::Debug;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
@@ -49,7 +51,9 @@ const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
 ///
 /// Used for converting crate names, which often contain `-`, to module names,
 /// which cannot have `-`.
-fn to_snake_case(string: &str) -> String { string.replace('-', "_") }
+fn to_snake_case(string: &str) -> String {
+    string.replace('-', "_")
+}
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
@@ -110,32 +114,34 @@ impl SchemaBuildOptions {
     }
 
     /// Return whether the schema should be embedded.
-    pub fn embed(self) -> bool { matches!(self, SchemaBuildOptions::BuildAndEmbed) }
+    pub fn embed(self) -> bool {
+        matches!(self, SchemaBuildOptions::BuildAndEmbed)
+    }
 }
 
 /// Build information returned by the [`build_contract`] function.
 pub struct BuildInfo {
     /// Size of the module that was built, including custom section.
-    pub total_module_len:  usize,
+    pub total_module_len: usize,
     /// The schema, if any was built.
-    pub schema:            Option<schema::VersionedModuleSchema>,
+    pub schema: Option<schema::VersionedModuleSchema>,
     /// The metadata used for building the contract (the actual code, not the
     /// schema).
-    pub metadata:          cargo_metadata::Metadata,
+    pub metadata: cargo_metadata::Metadata,
     /// If a reproducible/verifiable build is requested, this contains the build
     /// information that should be embedded in the module, together with a
     /// list of file paths that were used to build the artifact. The file
     /// paths are relative to the package root.
     pub stored_build_info: Option<(utils::VersionedBuildInfo, Vec<PathBuf>)>,
     /// The path to the file of the built module.
-    pub out_filename:      PathBuf,
+    pub out_filename: PathBuf,
 }
 
 /// Result of [`create_archive`]. It contains the actual archive with a
 /// list of files that were included.
 pub struct TarArchiveData {
     /// The archive itself.
-    tar_archive:    Vec<u8>,
+    tar_archive: Vec<u8>,
     /// The list of files in the archive, the paths are relative to the root of
     /// the archive.
     archived_files: Vec<PathBuf>,
@@ -248,7 +254,7 @@ struct ContainerBuildOutput {
     /// The output Wasm file containing the unprocessed contract module.
     output_wasm: Vec<u8>,
     /// Information about the build so that it can be reproduced.
-    build_info:  utils::VersionedBuildInfo,
+    build_info: utils::VersionedBuildInfo,
     /// The sources that were built, archived as a tar file.
     tar_archive: TarArchiveData,
 }
@@ -257,9 +263,9 @@ struct ContainerBuildOutput {
 struct PackageData<'a> {
     /// The target directory of the package that is being
     /// built. This is used to exclude it from bundling.
-    package_target_dir:     &'a Path,
+    package_target_dir: &'a Path,
     /// The root of the package to build.
-    package_root_path:      &'a Path,
+    package_root_path: &'a Path,
     /// The package-name-version pair to mimics the behaviour or cargo package.
     /// The paths in the tar archive are
     package_version_string: &'a str,
@@ -291,11 +297,11 @@ fn build_in_container<'a>(
     tar_path: &Path,
     source_link: Option<String>,
 ) -> anyhow::Result<ContainerBuildOutput> {
-    let tar_archive = create_archive(package_root_path, package_version_string, &[
-        out_path,
-        tar_path,
-        package_target_dir,
-    ])?;
+    let tar_archive = create_archive(
+        package_root_path,
+        package_version_string,
+        &[out_path, tar_path, package_target_dir],
+    )?;
 
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
 
@@ -417,8 +423,6 @@ pub(crate) fn build_contract(
         .parent()
         .context("Unable to get package root path.")?;
 
-    let wasm_file_name = format!("{}.wasm", to_snake_case(package.name.as_str()));
-
     let package_root_path = package_root.canonicalize()?;
 
     let package_version_string = format!("{}-{}", package.name, package.version);
@@ -470,7 +474,7 @@ pub(crate) fn build_contract(
                 if build_schema.embed() {
                     schema_bytes = contracts_common::to_bytes(&schema);
                     let custom_section = CustomSection {
-                        name:     "concordium-schema".into(),
+                        name: "concordium-schema".into(),
                         contents: &schema_bytes,
                     };
                     Some((Some(custom_section), schema))
@@ -492,7 +496,7 @@ pub(crate) fn build_contract(
                 if build_schema.embed() {
                     schema_bytes = contracts_common::to_bytes(&schema);
                     let custom_section = CustomSection {
-                        name:     "concordium-schema".into(),
+                        name: "concordium-schema".into(),
                         contents: &schema_bytes,
                     };
                     Some((Some(custom_section), schema))
@@ -534,8 +538,8 @@ pub(crate) fn build_contract(
         } = build_in_container(
             image,
             PackageData {
-                package_target_dir:     package_target_dir.as_path(),
-                package_root_path:      package_root_path.as_path(),
+                package_target_dir: package_target_dir.as_path(),
+                package_root_path: package_root_path.as_path(),
                 package_version_string: &package_version_string,
             },
             args_without_manifest,
@@ -553,17 +557,12 @@ pub(crate) fn build_contract(
         (out_filename, output_wasm, Some((build_info, tar_archive)))
     } else {
         let target_dir = metadata.target_directory.as_std_path().join("concordium");
-        let output_wasm_file = target_dir
-            .join("wasm32-unknown-unknown/release")
-            .join(wasm_file_name);
-
-        let mut cmd = Command::new("cargo");
-        cmd.arg("build")
-            .args(["--target", "wasm32-unknown-unknown"])
-            .args(["--release"])
-            .arg("--target-dir")
-            .arg(target_dir)
-            .args(cargo_args);
+        let (mut cmd, output_wasm_file) = cargo_build_cmd(cargo_args, target_dir, &metadata)?;
+        println!(
+            "smart contract: {:?} {:?}",
+            cmd.get_program(),
+            cmd.get_args().format(" ")
+        );
 
         let result = cmd
             .stdout(Stdio::inherit())
@@ -645,7 +644,7 @@ pub(crate) fn build_contract(
     // Embed build info section if present.
     if let Some((build_info, _)) = &stored_build_info {
         let cs = CustomSection {
-            name:     BUILD_INFO_SECTION_NAME.into(),
+            name: BUILD_INFO_SECTION_NAME.into(),
             contents: &contracts_common::to_bytes(&build_info),
         };
         write_custom_section(&mut output_bytes, &cs)?;
@@ -772,19 +771,16 @@ pub fn build_contract_schema<A>(
 ) -> anyhow::Result<A> {
     let (metadata, _) = get_crate_metadata(cargo_args)?;
 
-    let target_dir = format!("{}/concordium", metadata.target_directory);
+    let target_dir = metadata.target_directory.as_std_path().join("concordium");
 
-    let package = metadata
-        .root_package()
-        .context("Unable to determine package.")?;
-
-    let result = Command::new("cargo")
-        .arg("build")
-        .args(["--target", "wasm32-unknown-unknown"])
-        .arg("--release")
-        .args(["--features", "concordium-std/build-schema"])
-        .args(["--target-dir", target_dir.as_str()])
-        .args(cargo_args)
+    let (mut cmd, filename) = cargo_build_cmd(cargo_args, target_dir, &metadata)?;
+    cmd.args(["--features", "concordium-std/build-schema"]);
+    println!(
+        "schema: {:?} {:?}",
+        cmd.get_program(),
+        cmd.get_args().format(" ")
+    );
+    let result = cmd
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -793,12 +789,6 @@ pub fn build_contract_schema<A>(
     if !result.status.success() {
         anyhow::bail!("Compilation failed.");
     }
-
-    let filename = format!(
-        "{}/wasm32-unknown-unknown/release/{}.wasm",
-        target_dir,
-        to_snake_case(package.name.as_str())
-    );
 
     if !skip_wasm_opt {
         wasm_opt::OptimizationOptions::new_opt_level_0()
@@ -1482,4 +1472,56 @@ fn check_wasm_target() -> anyhow::Result<()> {
          target add wasm32-unknown-unknown`."
     );
     Ok(())
+}
+
+/// Create cargo build command. Returns the command and the path
+/// to the WASM output file of the build.
+///
+/// # Arguments
+/// * `cargo_args`: Additional cargo arguments
+/// * `target_dir`: Target directory to use for build
+/// * `metadata`: Cargo metadata
+fn cargo_build_cmd(
+    cargo_args: &[String],
+    target_dir: PathBuf,
+    metadata: &Metadata,
+) -> anyhow::Result<(Command, PathBuf)> {
+    let mut profile_in_cargo_cargs: Option<String> = None;
+    let mut args_iter = cargo_args.iter().peekable();
+    while let Some(arg) = args_iter.next() {
+        if arg == "--release" {
+            profile_in_cargo_cargs = Some("release".to_string());
+        } else if arg == "--profile" {
+            if let Some(val) = args_iter.next() {
+                profile_in_cargo_cargs = Some(val.clone());
+            }
+        } else if let Some(val) = arg.strip_prefix("--profile=") {
+            profile_in_cargo_cargs = Some(val.to_string());
+        }
+    }
+
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package.")?;
+    let wasm_file_name = format!("{}.wasm", to_snake_case(package.name.as_str()));
+    let output_wasm_file = target_dir
+        .join("wasm32-unknown-unknown")
+        .join(profile_in_cargo_cargs.as_deref().unwrap_or("release"))
+        .join(wasm_file_name);
+
+    println!("{:?}", output_wasm_file);
+    
+    let mut cmd = Command::new("cargo");
+    cmd.arg("build")
+        .args(["--target", "wasm32-unknown-unknown"])
+        .arg("--target-dir")
+        .arg(target_dir)
+        .args(cargo_args);
+
+    println!("{:?}", &cargo_args);
+    if profile_in_cargo_cargs.is_none() {
+        println!("add --release");
+        cmd.arg("--release");
+    }
+    Ok((cmd, output_wasm_file))
 }

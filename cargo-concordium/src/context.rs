@@ -31,8 +31,8 @@ impl v0::HasChainMetadata for ChainMetadataOpt {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct InitContextOpt {
     #[serde(default)]
-    metadata:        ChainMetadataOpt,
-    init_origin:     Option<AccountAddress>,
+    metadata: ChainMetadataOpt,
+    init_origin: Option<AccountAddress>,
     #[serde(default, deserialize_with = "deserialize_policy_bytes_from_json")]
     sender_policies: Option<Vec<u8>>,
 }
@@ -40,7 +40,9 @@ pub(crate) struct InitContextOpt {
 impl v0::HasInitContext for InitContextOpt {
     type MetadataType = ChainMetadataOpt;
 
-    fn metadata(&self) -> &Self::MetadataType { &self.metadata }
+    fn metadata(&self) -> &Self::MetadataType {
+        &self.metadata
+    }
 
     fn init_origin(&self) -> ExecResult<&AccountAddress> {
         unwrap_ctx_field(self.init_origin.as_ref(), "initOrigin")
@@ -85,22 +87,24 @@ fn deserialize_optional_address<'de, D: serde::de::Deserializer<'de>>(
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ReceiveContextOpt {
     #[serde(default)]
-    metadata:                ChainMetadataOpt,
-    invoker:                 Option<AccountAddress>,
-    self_address:            Option<ContractAddress>,
+    metadata: ChainMetadataOpt,
+    invoker: Option<AccountAddress>,
+    self_address: Option<ContractAddress>,
     // This is pub(crate) because it is overwritten when `--balance` is used.
     pub(crate) self_balance: Option<Amount>,
     #[serde(deserialize_with = "deserialize_optional_address")]
-    sender:                  Option<Address>,
-    owner:                   Option<AccountAddress>,
+    sender: Option<Address>,
+    owner: Option<AccountAddress>,
     #[serde(default, deserialize_with = "deserialize_policy_bytes_from_json")]
-    sender_policies:         Option<Vec<u8>>,
+    sender_policies: Option<Vec<u8>>,
 }
 
 impl v0::HasReceiveContext for ReceiveContextOpt {
     type MetadataType = ChainMetadataOpt;
 
-    fn metadata(&self) -> &Self::MetadataType { &self.metadata }
+    fn metadata(&self) -> &Self::MetadataType {
+        &self.metadata
+    }
 
     fn invoker(&self) -> ExecResult<&AccountAddress> {
         unwrap_ctx_field(self.invoker.as_ref(), "invoker")
@@ -114,7 +118,9 @@ impl v0::HasReceiveContext for ReceiveContextOpt {
         unwrap_ctx_field(self.self_balance, "selfBalance")
     }
 
-    fn sender(&self) -> ExecResult<&Address> { unwrap_ctx_field(self.sender.as_ref(), "sender") }
+    fn sender(&self) -> ExecResult<&Address> {
+        unwrap_ctx_field(self.sender.as_ref(), "sender")
+    }
 
     fn owner(&self) -> ExecResult<&AccountAddress> {
         unwrap_ctx_field(self.owner.as_ref(), "owner")
@@ -150,13 +156,15 @@ fn unwrap_ctx_field<A>(opt: Option<A>, name: &str) -> ExecResult<A> {
 pub(crate) struct ReceiveContextV1Opt {
     #[serde(flatten)]
     pub(crate) common: ReceiveContextOpt,
-    entrypoint:        Option<OwnedEntrypointName>,
+    entrypoint: Option<OwnedEntrypointName>,
 }
 
 impl v0::HasReceiveContext for ReceiveContextV1Opt {
     type MetadataType = ChainMetadataOpt;
 
-    fn metadata(&self) -> &Self::MetadataType { &self.common.metadata }
+    fn metadata(&self) -> &Self::MetadataType {
+        &self.common.metadata
+    }
 
     fn invoker(&self) -> ExecResult<&AccountAddress> {
         unwrap_ctx_field(self.common.invoker.as_ref(), "invoker")

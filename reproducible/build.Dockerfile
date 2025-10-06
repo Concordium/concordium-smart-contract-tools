@@ -5,7 +5,7 @@
 # to copy data in and out of the container. The image also adds
 # wasm32-unknown-unknown target.
 
-ARG source_image=rust:1.90.0
+ARG source_image=rust:1.86.0
 FROM ${source_image} AS build
 
 RUN rustup target add wasm32-unknown-unknown

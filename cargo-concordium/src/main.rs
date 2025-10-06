@@ -78,9 +78,9 @@ This command also builds a deployable Wasm module for integration testing, and i
     )]
     Test {
         #[structopt(name = "seed", long = "seed", help = "Seed for randomized testing")]
-        seed:            Option<u64>,
+        seed: Option<u64>,
         #[structopt(flatten)]
-        build_options:   BuildOptions,
+        build_options: BuildOptions,
         #[structopt(
             name = "only-unit-tests",
             long = "only-unit-tests",
@@ -93,14 +93,14 @@ This command also builds a deployable Wasm module for integration testing, and i
             help = "How many threads should be used for running unit tests. Defaults to the \
                     number of logical CPUs."
         )]
-        test_threads:    Option<usize>,
+        test_threads: Option<usize>,
         #[structopt(
             name = "test",
             long = "test",
             short = "t",
             help = "Test only the specified test target (can be provided multiple times)"
         )]
-        test_targets:    Vec<String>,
+        test_targets: Vec<String>,
     },
     #[structopt(
         name = "init",
@@ -124,7 +124,7 @@ This command also builds a deployable Wasm module for integration testing, and i
             default_value = "releases/templates/latest",
             help = "The release tag of the template to use."
         )]
-        tag:  String,
+        tag: String,
     },
     #[structopt(
         name = "schema-json",
@@ -143,7 +143,7 @@ A schema has to be provided either as part of a smart contract module or with th
                     the smart contract names at the specified location (expected input: \
                     `./my/path/`)."
         )]
-        out:          PathBuf,
+        out: PathBuf,
         #[structopt(
             name = "schema",
             long = "schema",
@@ -153,7 +153,7 @@ A schema has to be provided either as part of a smart contract module or with th
             help = "Path and filename to a file with a schema (expected input: \
                     `./my/path/schema.bin`)."
         )]
-        schema_path:  Option<PathBuf>,
+        schema_path: Option<PathBuf>,
         #[structopt(
             name = "wasm-version",
             long = "wasm-version",
@@ -172,7 +172,7 @@ A schema has to be provided either as part of a smart contract module or with th
             help = "Path and filename to a file with a smart contract module (expected input: \
                     `./my/path/module.wasm.v1`)."
         )]
-        module_path:  Option<PathBuf>,
+        module_path: Option<PathBuf>,
     },
     #[structopt(
         name = "schema-base64",
@@ -191,7 +191,7 @@ A schema has to be provided either as part of a smart contract module or with th
                     default value `-` to print the base64 schema to the console (expected input: \
                     `./my/path/base64_schema.b64` or `-`)."
         )]
-        out:          PathBuf,
+        out: PathBuf,
         #[structopt(
             name = "schema",
             long = "schema",
@@ -201,7 +201,7 @@ A schema has to be provided either as part of a smart contract module or with th
             help = "Path and filename to a file with a schema (expected input: \
                     `./my/path/schema.bin`)."
         )]
-        schema_path:  Option<PathBuf>,
+        schema_path: Option<PathBuf>,
         #[structopt(
             name = "wasm-version",
             long = "wasm-version",
@@ -220,7 +220,7 @@ A schema has to be provided either as part of a smart contract module or with th
             help = "Path and filename to a file with a smart contract module (expected input: \
                     `./my/path/module.wasm.v1`)."
         )]
-        module_path:  Option<PathBuf>,
+        module_path: Option<PathBuf>,
     },
     #[structopt(
         name = "schema-template",
@@ -239,7 +239,7 @@ A schema has to be provided either as part of a smart contract module or with th
                     the default value `-` to print the template schema to the console (expected \
                     input: `./my/path/template_schema.txt` or `-`)."
         )]
-        out:          PathBuf,
+        out: PathBuf,
         #[structopt(
             name = "schema",
             long = "schema",
@@ -249,7 +249,7 @@ A schema has to be provided either as part of a smart contract module or with th
             help = "Path and filename to a file with a schema (expected input: \
                     `./my/path/schema.bin`)."
         )]
-        schema_path:  Option<PathBuf>,
+        schema_path: Option<PathBuf>,
         #[structopt(
             name = "wasm-version",
             long = "wasm-version",
@@ -268,7 +268,7 @@ A schema has to be provided either as part of a smart contract module or with th
             help = "Path and filename to a file with a smart contract module (expected input: \
                     `./my/path/module.wasm.v1`)."
         )]
-        module_path:  Option<PathBuf>,
+        module_path: Option<PathBuf>,
     },
     #[structopt(
         name = "build",
@@ -317,13 +317,13 @@ struct VerifyOptions {
                 build. If not present then the sources will be downloaded from an embedded link \
                 in the build info."
     )]
-    source_path:       Option<PathBuf>,
+    source_path: Option<PathBuf>,
     #[structopt(
         name = "module",
         long = "module",
         help = "Path to the smart contract module file to verify."
     )]
-    source:            PathBuf,
+    source: PathBuf,
     #[structopt(
         name = "crt",
         long = "container-runtime",
@@ -355,14 +355,14 @@ struct EditOptions {
         long = "module",
         help = "Module to add the URL to. This will be overwritten."
     )]
-    source:      PathBuf,
+    source: PathBuf,
     #[structopt(
         name = "verify",
         long = "verify",
         help = "If a source link is supplied, verify that the data at the URL matches the \
                 embedded archive hash."
     )]
-    verify:      bool,
+    verify: bool,
 }
 
 // The build options used in the build and test command.
@@ -382,7 +382,7 @@ struct BuildOptions {
         help = "(DEPRECATED, now default behaviour) Builds the contract schema and embeds it into \
                 the wasm module."
     )]
-    schema_embed:        bool,
+    schema_embed: bool,
     #[structopt(
         name = "no-schema-embed",
         long = "no-schema-embed",
@@ -390,14 +390,14 @@ struct BuildOptions {
         conflicts_with = "schema-embed",
         help = "Do not embed the contract schema into the wasm module."
     )]
-    no_schema_embed:     bool,
+    no_schema_embed: bool,
     #[structopt(
         name = "schema-out",
         long = "schema-out",
         short = "s",
         help = "Builds the contract schema and writes it to file at specified location."
     )]
-    schema_out:          Option<PathBuf>,
+    schema_out: Option<PathBuf>,
     #[structopt(
         name = "schema-json-out",
         long = "schema-json-out",
@@ -405,7 +405,7 @@ struct BuildOptions {
         help = "Builds the contract schema and writes it in JSON format to the specified \
                 directory."
     )]
-    schema_json_out:     Option<PathBuf>,
+    schema_json_out: Option<PathBuf>,
     #[structopt(
         name = "schema-template-out",
         long = "schema-template-out",
@@ -423,14 +423,14 @@ struct BuildOptions {
                 location or prints the base64 schema to the console if the value `-` is used \
                 (expected input: `./my/path/base64_schema.b64` or `-`)."
     )]
-    schema_base64_out:   Option<PathBuf>,
+    schema_base64_out: Option<PathBuf>,
     #[structopt(
         name = "out",
         long = "out",
         short = "o",
         help = "Write the resulting smart contract module to the specified file."
     )]
-    out:                 Option<PathBuf>,
+    out: Option<PathBuf>,
     #[structopt(
         name = "contract-version",
         long = "contract-version",
@@ -438,7 +438,7 @@ struct BuildOptions {
         help = "Build a module of the given version.",
         default_value = "V1"
     )]
-    version:             WasmVersion,
+    version: WasmVersion,
     #[structopt(
         name = "verifiable",
         long = "verifiable",
@@ -447,7 +447,7 @@ struct BuildOptions {
                 supplied then the contract will be built in the context of the host, which is \
                 usually not verifiable."
     )]
-    image:               Option<String>,
+    image: Option<String>,
     #[structopt(
         name = "crt",
         long = "container-runtime",
@@ -456,31 +456,31 @@ struct BuildOptions {
         default_value = "docker",
         env = "CARGO_CONCORDIUM_CONTAINER_RUNTIME"
     )]
-    container_runtime:   String,
+    container_runtime: String,
     #[structopt(
         name = "source-link",
         long = "source-link",
         help = "If a verifiable build is requested, a source link can be embedded in the module."
     )]
-    source_link:         Option<String>,
+    source_link: Option<String>,
     #[structopt(
         name = "allow-debug",
         long = "allow-debug",
         help = "Allow debug options when building the contract. This is useful for local testing, \
                 but the use of debug prints is not allowed when deploying to the chain."
     )]
-    allow_debug:         bool,
+    allow_debug: bool,
     #[structopt(
         name = "skip-wasm-opt",
         long = "skip-wasm-opt",
         help = "Skip step using wasm-opt to optimize the resulting Wasm module."
     )]
-    skip_wasm_opt:       bool,
+    skip_wasm_opt: bool,
     #[structopt(
         raw = true,
         help = "Extra arguments passed to `cargo build` when building Wasm module."
     )]
-    cargo_args:          Vec<String>,
+    cargo_args: Vec<String>,
 }
 
 impl BuildOptions {
@@ -504,13 +504,13 @@ impl BuildOptions {
 #[structopt(name = "runner")]
 struct Runner {
     #[structopt(name = "module", long = "module", help = "Binary module source.")]
-    module:              PathBuf,
+    module: PathBuf,
     #[structopt(
         name = "out-bin",
         long = "out-bin",
         help = "Where to write the new contract state to in binary format."
     )]
-    out_bin:             Option<PathBuf>,
+    out_bin: Option<PathBuf>,
     #[structopt(
         name = "out-json",
         long = "out-json",
@@ -518,7 +518,7 @@ struct Runner {
                 have an appropriate schema embedded or otherwise provided by --schema. This only \
                 applies to V0 contracts."
     )]
-    out_json:            Option<PathBuf>,
+    out_json: Option<PathBuf>,
     #[structopt(
         name = "ignore-state-schema",
         long = "ignore-state-schema",
@@ -532,14 +532,14 @@ struct Runner {
         help = "The amount of CCD to invoke the method with.",
         default_value = "0"
     )]
-    amount:              Amount,
+    amount: Amount,
     #[structopt(
         name = "schema",
         long = "schema",
         help = "Path to a file with a schema for parsing parameter (or state only for V0 \
                 contracts) in JSON."
     )]
-    schema_path:         Option<PathBuf>,
+    schema_path: Option<PathBuf>,
     #[structopt(
         name = "parameter-bin",
         long = "parameter-bin",
@@ -547,7 +547,7 @@ struct Runner {
         help = "Path to a binary file with a parameter to invoke the method with. Parameter \
                 defaults to an empty array if this is not given."
     )]
-    parameter_bin_path:  Option<PathBuf>,
+    parameter_bin_path: Option<PathBuf>,
     #[structopt(
         name = "parameter-json",
         long = "parameter-json",
@@ -565,7 +565,7 @@ struct Runner {
                 them.",
         default_value = "1000000"
     )]
-    energy:              InterpreterEnergy,
+    energy: InterpreterEnergy,
 }
 
 #[derive(Debug, StructOpt)]
@@ -578,14 +578,14 @@ enum RunCommand {
             short = "c",
             help = "Name of the contract to instantiate."
         )]
-        contract_name:        String,
+        contract_name: String,
         #[structopt(
             name = "context",
             long = "context",
             short = "t",
             help = "Path to the init context file."
         )]
-        context:              Option<PathBuf>,
+        context: Option<PathBuf>,
         #[structopt(
             name = "display-state",
             long = "display-state",
@@ -597,9 +597,9 @@ enum RunCommand {
             long = "emit-debug",
             help = "Emit debug information at the end of the run."
         )]
-        emit_debug:           bool,
+        emit_debug: bool,
         #[structopt(flatten)]
-        runner:               Runner,
+        runner: Runner,
     },
     #[structopt(name = "update", about = "Invoke a receive method of a module.")]
     Receive {
@@ -616,7 +616,7 @@ enum RunCommand {
             short = "f",
             help = "Name of the entrypoint to invoke."
         )]
-        entrypoint:    String,
+        entrypoint: String,
 
         #[structopt(
             name = "state-json",
@@ -624,27 +624,27 @@ enum RunCommand {
             help = "File with existing state of the contract in JSON, requires a schema is \
                     present either embedded or using --schema."
         )]
-        state_json_path:      Option<PathBuf>,
+        state_json_path: Option<PathBuf>,
         #[structopt(
             name = "state-bin",
             long = "state-bin",
             help = "File with existing state of the contract in binary."
         )]
-        state_bin_path:       Option<PathBuf>,
+        state_bin_path: Option<PathBuf>,
         #[structopt(
             name = "balance",
             long = "balance",
             help = "Balance on the contract at the time it is invoked. Overrides the balance in \
                     the receive context."
         )]
-        balance:              Option<u64>,
+        balance: Option<u64>,
         #[structopt(
             name = "context",
             long = "context",
             short = "t",
             help = "Path to the receive context file."
         )]
-        context:              Option<PathBuf>,
+        context: Option<PathBuf>,
         #[structopt(
             name = "display-state",
             long = "display-state",
@@ -656,9 +656,9 @@ enum RunCommand {
             long = "emit-debug",
             help = "Emit debug information at the end of the run."
         )]
-        emit_debug:           bool,
+        emit_debug: bool,
         #[structopt(flatten)]
-        runner:               Runner,
+        runner: Runner,
     },
 }
 
@@ -962,7 +962,7 @@ fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
 
     let out_module = WasmModule {
         version: module.version,
-        source:  out_buf.into(),
+        source: out_buf.into(),
     };
     std::fs::write(
         options.source,
@@ -1557,10 +1557,10 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 module,
                 receive_ctx,
                 v0::ReceiveInvocation {
-                    amount:       runner.amount.micro_ccd,
+                    amount: runner.amount.micro_ccd,
                     receive_name: &name,
-                    parameter:    parameter.as_parameter(),
-                    energy:       runner.energy,
+                    parameter: parameter.as_parameter(),
+                    energy: runner.energy,
                 },
                 &init_state,
                 u16::MAX as usize, // Max parameter size in PV5.
@@ -1898,10 +1898,10 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
             let mut loader = v1::trie::Loader::new(&[][..]);
             let res = v1::invoke_init_with_metering_from_source::<_, DebugTracker>(
                 v1::InvokeFromSourceCtx {
-                    source:          module,
-                    amount:          runner.amount,
-                    parameter:       parameter.as_ref(),
-                    energy:          runner.energy,
+                    source: module,
+                    amount: runner.amount,
+                    parameter: parameter.as_ref(),
+                    energy: runner.energy,
                     support_upgrade: true, // Upgrades are supported in PV5 and onward.
                 },
                 init_ctx,
@@ -2020,10 +2020,10 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 CostConfigurationV1,
                 &v1::ConcordiumAllowedImports {
                     support_upgrade: true,
-                    enable_debug:    true, /* we always allow the debug statements in the
-                                            * module, even if emit-debug is false since
-                                            * the user might want to just run the existing
-                                            * module */
+                    enable_debug: true, /* we always allow the debug statements in the
+                                         * module, even if emit-debug is false since
+                                         * the user might want to just run the existing
+                                         * module */
                 },
                 module,
             )?
@@ -2070,10 +2070,10 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
                 std::sync::Arc::new(artifact),
                 receive_ctx,
                 v1::ReceiveInvocation {
-                    amount:       runner.amount,
+                    amount: runner.amount,
                     receive_name: name.as_receive_name(),
-                    parameter:    parameter.as_ref(),
-                    energy:       runner.energy,
+                    parameter: parameter.as_ref(),
+                    energy: runner.energy,
                 },
                 instance_state,
                 v1::ReceiveParams::new_p6(),

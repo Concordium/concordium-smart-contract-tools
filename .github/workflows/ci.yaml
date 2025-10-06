@@ -24,9 +24,7 @@ on:
   workflow_dispatch: # allows manual trigger
 
 env:
-  # from concordium/rustfmt:0.17
-  RUST_FMT: nightly-2023-04-01-x86_64-unknown-linux-gnu
-  RUST_CLIPPY: 1.85
+  RUST_VERSION: 1.86
 
 jobs:
   "lint_fmt":
@@ -45,7 +43,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_FMT }}
+          toolchain: ${{ env.RUST_VERSION }}
           override: true
           components: rustfmt
       - name: Format
@@ -73,7 +71,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_CLIPPY }}
+          toolchain: ${{ env.RUST_VERSION }}
           override: true
           components: clippy
       - name: Clippy
@@ -101,7 +99,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_CLIPPY }}
+          toolchain: ${{ env.RUST_VERSION }}
           override: true
           components: clippy
       - name: Cargo check
@@ -126,7 +124,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_CLIPPY }}
+          toolchain: ${{ env.RUST_VERSION }}
           override: true
       - name: Test
         working-directory: ${{ matrix.build-dir }}

@@ -21,6 +21,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Extract version from git tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Extract version by splitting on "/" and taking the second part
+          TAG_VERSION=$(echo "$TAG" | cut -d '/' -f2)
+          if [ "$TAG_VERSION" != "$RUST_VERSION" ]; then
+              echo "Tag version does not match the declared rust version."
+              exit 1
+          fi
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -32,16 +42,6 @@ jobs:
             CARGO_CONCORDIUM="cargo run --manifest-path $GITHUB_WORKSPACE/cargo-concordium/Cargo.toml --target x86_64-unknown-linux-gnu -- concordium"
             $CARGO_CONCORDIUM build --verifiable "concordium/$SERVICE_NAME:$RUST_VERSION"
             $CARGO_CONCORDIUM verify-build --module ./concordium-out/module.wasm.v1 --source ./concordium-out/module.wasm.v1.tar
-      - name: Extract version from git tag
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          # Extract version by splitting on "/" and taking the second part
-          TAG_VERSION=$(echo "$TAG" | cut -d '/' -f2)
-          if [ "$TAG_VERSION" != "$RUST_VERSION" ]; then
-              echo "Tag version does not match the declared rust version."
-              exit 1
-          fi
       # - name: Log in to the Container registry
       #   uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
       #   with:

@@ -1,5 +1,7 @@
 //! Simple smart contract module implementation for testing reproducible builds.
-//! The CI pipeline will build and verify a build of this smart contract during release of a new docker image for reproducible builds using cargo-concordium.
+//! 
+//! The CI pipeline will build and verify a build of this smart contract during
+//! release of a new docker image for reproducible builds using cargo-concordium.
 use concordium_std::*;
 
 #[derive(Debug, SchemaType, Serialize, PartialEq, Eq, Clone, Copy)]

@@ -1,0 +1,16 @@
+[package]
+name = "test-contract"
+version = "0.1.0"
+authors = ["Concordium <developers@concordium.com>"]
+edition = "2021"
+license = "MPL-2.0"
+description = "Reproducible builds test smart contract."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+concordium-std = "10"
+
+[profile.release]
+opt-level = "s"

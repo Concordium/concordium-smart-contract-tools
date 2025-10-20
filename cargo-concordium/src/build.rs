@@ -185,6 +185,13 @@ fn create_archive(
         // directory. This then matches the behaviour of cargo package.
         tar.append_path_with_name(file.path(), in_package_root_dir.join(relative_path))?;
     }
+    let cargo_lock_exists = package_root_path.join("Cargo.lock").is_file();
+    if !lock_file_found && cargo_lock_exists {
+        anyhow::bail!(
+            "Unable to proceed with a verifiable build. Cargo.lock seem to be included in \
+             .gitignore."
+        );
+    }
     anyhow::ensure!(
         lock_file_found,
         "Unable to proceed with a verifiable build. A Cargo.lock file must be available and up to \

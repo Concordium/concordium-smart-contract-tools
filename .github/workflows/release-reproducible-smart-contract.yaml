@@ -42,11 +42,11 @@ jobs:
             CARGO_CONCORDIUM="cargo run --manifest-path $GITHUB_WORKSPACE/cargo-concordium/Cargo.toml --target x86_64-unknown-linux-gnu -- concordium"
             $CARGO_CONCORDIUM build --verifiable "concordium/$SERVICE_NAME:$RUST_VERSION"
             $CARGO_CONCORDIUM verify-build --module ./concordium-out/module.wasm.v1 --source ./concordium-out/module.wasm.v1.tar
-      # - name: Log in to the Container registry
-      #   uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-      #   with:
-      #     registry: ${{ env.REGISTRY }}
-      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # - name: Push the image
-      #   run: docker push "concordium/$SERVICE_NAME:$RUST_VERSION"
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Push the image
+        run: docker push "concordium/$SERVICE_NAME:$RUST_VERSION"

@@ -10,7 +10,6 @@ on:
 env:
   REGISTRY: docker.io
   SERVICE_NAME: 'verifiable-sc'
-  RUST_VERSION: 1.86.0
 
 jobs:
   build-and-push-image:
@@ -22,22 +21,27 @@ jobs:
         with:
           submodules: recursive
       - name: Extract version from git tag
+        id: meta
         env:
           TAG: ${{ github.ref_name }}
         run: |
           # Extract version by splitting on "/" and taking the second part
-          TAG_VERSION=$(echo "$TAG" | cut -d '/' -f2)
-          if [ "$TAG_VERSION" != "$RUST_VERSION" ]; then
-              echo "Tag version does not match the declared rust version."
-              exit 1
-          fi
+          RUST_VERSION=$(echo "$TAG" | cut -d '/' -f2)
+          echo "$RUST_VERSION"
+          echo "$TAG"
+          echo "rust_version=$RUST_VERSION" > "$GITHUB_OUTPUT"
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: ${{ env.RUST_VERSION }}
+          toolchain: ${{ steps.meta.outputs.rust_version }}
           target: wasm32-unknown-unknown
-      - run: docker build -f ./reproducible/build.Dockerfile --build-arg source_image="rust:$RUST_VERSION" -t "concordium/$SERVICE_NAME:$RUST_VERSION" ./reproducible
+      - name: Build Docker image
+        env:
+          RUST_VERSION: ${{ steps.meta.outputs.rust_version }}
+        run: docker build -f ./reproducible/build.Dockerfile --build-arg source_image="rust:$RUST_VERSION" -t "concordium/$SERVICE_NAME:$RUST_VERSION" ./reproducible
       - name: Test smart contract
         working-directory: ./reproducible/example-contract
+        env:
+          RUST_VERSION: ${{ steps.meta.outputs.rust_version }}
         run: |
             CARGO_CONCORDIUM="cargo run --manifest-path $GITHUB_WORKSPACE/cargo-concordium/Cargo.toml --target x86_64-unknown-linux-gnu -- concordium"
             $CARGO_CONCORDIUM build --verifiable "concordium/$SERVICE_NAME:$RUST_VERSION"
@@ -49,4 +53,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Push the image
+        env:
+          RUST_VERSION: ${{ steps.meta.outputs.rust_version }}
         run: docker push "concordium/$SERVICE_NAME:$RUST_VERSION"

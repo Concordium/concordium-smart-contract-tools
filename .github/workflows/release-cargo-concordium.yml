@@ -24,21 +24,14 @@ jobs:
           submodules: recursive
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@1.74
-      - name: Build on ubuntu
-        if: matrix.platfrom == 'ubuntu-latest'
-        run: |
-          rustup target add x86_64-unknown-linux-musl
-          cargo build --release --manifest-path cargo-concordium/Cargo.toml --target x86_64-unknown-linux-musl
-      - name: Build on other platforms
-        if: matrix.platfrom != 'ubuntu-latest'
-        run: cargo build --release --manifest-path cargo-concordium/Cargo.toml
+      - name: Build
+        run: cargo build --lock --release --manifest-path cargo-concordium/Cargo.toml
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.platform }}
           path: |
             cargo-concordium/target/release/cargo-concordium
-            cargo-concordium/target/release/x86_64-unknown-linux-musl/cargo-concordium
             cargo-concordium/target/release/cargo-concordium.exe
 
   # Attach binaries to the release identified by the tag.

@@ -25,12 +25,12 @@ jobs:
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@1.74
       - name: Build on ubuntu
-        if: matrix.platfrom == 'ubuntu-latest'
+        if: matrix.platform == 'ubuntu-latest'
         run: |
           rustup target add x86_64-unknown-linux-musl
           cargo build --release --manifest-path cargo-concordium/Cargo.toml --target x86_64-unknown-linux-musl
       - name: Build on other platforms
-        if: matrix.platfrom != 'ubuntu-latest'
+        if: matrix.platform != 'ubuntu-latest'
         run: cargo build --release --manifest-path cargo-concordium/Cargo.toml
       - name: Upload artifact
         uses: actions/upload-artifact@v4

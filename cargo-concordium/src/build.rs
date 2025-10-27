@@ -28,6 +28,7 @@ use concordium_wasm::{
     utils::strip,
     validate::{validate_module, ValidationConfig},
 };
+use itertools::Itertools;
 use rand::{prelude::*, thread_rng, Rng};
 use rayon::prelude::*;
 use serde_json::Value;
@@ -35,7 +36,10 @@ use sha2::Digest;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
-    env, fs,
+    env,
+    ffi::OsStr,
+    fmt::Debug,
+    fs,
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -309,6 +313,11 @@ fn build_in_container<'a>(
     )?;
 
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
+    
+    println!("package_target_dir: {:?}", package_target_dir);
+    println!("package_root_path: {:?}", package_root_path);
+    println!("package_version_string: {:?}", package_version_string);
+    println!("tar_path: {:?}", tar_path);
 
     let build_command = [
         "cargo",
@@ -428,7 +437,11 @@ pub(crate) fn build_contract(
         .parent()
         .context("Unable to get package root path.")?;
 
-    let wasm_file_name = format!("{}.wasm", to_snake_case(package.name.as_str()));
+
+    println!("resolve: {:#?}", metadata.resolve.is_some());
+    println!("package: {:#?}", package.name);
+    println!("package_root: {:#?}", package_root);
+    // println!("metadata: {:#?}", metadata);p
 
     let package_root_path = package_root.canonicalize()?;
 
@@ -564,17 +577,12 @@ pub(crate) fn build_contract(
         (out_filename, output_wasm, Some((build_info, tar_archive)))
     } else {
         let target_dir = metadata.target_directory.as_std_path().join("concordium");
-        let output_wasm_file = target_dir
-            .join("wasm32-unknown-unknown/release")
-            .join(wasm_file_name);
-
-        let mut cmd = Command::new("cargo");
-        cmd.arg("build")
-            .args(["--target", "wasm32-unknown-unknown"])
-            .args(["--release"])
-            .arg("--target-dir")
-            .arg(target_dir)
-            .args(cargo_args);
+        let (mut cmd, output_wasm_file) = cargo_build_cmd(cargo_args, target_dir, &metadata)?;
+        println!(
+            "smart contract: {:?} {:?}",
+            cmd.get_program(),
+            cmd.get_args().format(" ")
+        );
 
         let result = cmd
             .stdout(Stdio::inherit())
@@ -783,19 +791,16 @@ pub fn build_contract_schema<A>(
 ) -> anyhow::Result<A> {
     let (metadata, _) = get_crate_metadata(cargo_args)?;
 
-    let target_dir = format!("{}/concordium", metadata.target_directory);
+    let target_dir = metadata.target_directory.as_std_path().join("concordium");
 
-    let package = metadata
-        .root_package()
-        .context("Unable to determine package.")?;
-
-    let result = Command::new("cargo")
-        .arg("build")
-        .args(["--target", "wasm32-unknown-unknown"])
-        .arg("--release")
-        .args(["--features", "concordium-std/build-schema"])
-        .args(["--target-dir", target_dir.as_str()])
-        .args(cargo_args)
+    let (mut cmd, filename) = cargo_build_cmd(cargo_args, target_dir, &metadata)?;
+    cmd.args(["--features", "concordium-std/build-schema"]);
+    println!(
+        "schema: {:?} {:?}",
+        cmd.get_program(),
+        cmd.get_args().format(" ")
+    );
+    let result = cmd
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -804,12 +809,6 @@ pub fn build_contract_schema<A>(
     if !result.status.success() {
         anyhow::bail!("Compilation failed.");
     }
-
-    let filename = format!(
-        "{}/wasm32-unknown-unknown/release/{}.wasm",
-        target_dir,
-        to_snake_case(package.name.as_str())
-    );
 
     if !skip_wasm_opt {
         wasm_opt::OptimizationOptions::new_opt_level_0()
@@ -1367,44 +1366,25 @@ pub fn build_and_run_wasm_test(
 
     let (metadata, _) = get_crate_metadata(extra_args)?;
 
-    let target_dir = format!("{}/concordium", metadata.target_directory);
+    let target_dir = metadata.target_directory.as_std_path().join("concordium");
 
-    let package = metadata
-        .root_package()
-        .context("Unable to determine package.")?;
-
-    let cargo_args = [
-        "build",
-        "--release",
-        "--target",
-        "wasm32-unknown-unknown",
-        "--features",
-        if enable_debug {
-            "concordium-std/wasm-test,concordium-std/debug"
-        } else {
-            "concordium-std/wasm-test"
-        },
-        "--target-dir",
-        target_dir.as_str(),
-    ];
+    let (mut cmd, filename) = cargo_build_cmd(extra_args, target_dir, &metadata)?;
+    cmd.arg("--features").arg(if enable_debug {
+        "concordium-std/wasm-test,concordium-std/debug"
+    } else {
+        "concordium-std/wasm-test"
+    });
 
     // Output what we are doing so that it is easier to debug if the user
     // has their own features or options.
-    eprint!(
-        "{} cargo {}",
+    eprintln!(
+        "{} {} {}",
         Color::Green.bold().paint("Running"),
-        cargo_args.join(" ")
+        cmd.get_program().to_string_lossy(),
+        cmd.get_args().map(OsStr::to_string_lossy).format(" "),
     );
-    if extra_args.is_empty() {
-        // This branch is just to avoid the extra trailing space in the case when
-        // there are no extra arguments.
-        eprintln!()
-    } else {
-        eprintln!(" {}", extra_args.join(" "));
-    }
-    let result = Command::new("cargo")
-        .args(cargo_args)
-        .args(extra_args)
+
+    let result = cmd
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -1415,13 +1395,6 @@ pub fn build_and_run_wasm_test(
         Color::Red.bold().paint("Could not build contract tests.")
     );
 
-    // If we compiled successfully the artifact is in the place listed below.
-    // So we load it, and try to run it.s
-    let filename = format!(
-        "{}/wasm32-unknown-unknown/release/{}.wasm",
-        target_dir,
-        to_snake_case(package.name.as_str())
-    );
     if !skip_wasm_opt {
         wasm_opt::OptimizationOptions::new_opt_level_0()
             .run(&filename, &filename)
@@ -1493,4 +1466,56 @@ fn check_wasm_target() -> anyhow::Result<()> {
          target add wasm32-unknown-unknown`."
     );
     Ok(())
+}
+
+/// Create cargo build command. Returns the command and the path
+/// to the WASM output file of the build.
+///
+/// # Arguments
+/// * `cargo_args`: Additional cargo arguments
+/// * `target_dir`: Target directory to use for build
+/// * `metadata`: Cargo metadata
+fn cargo_build_cmd(
+    cargo_args: &[String],
+    target_dir: PathBuf,
+    metadata: &Metadata,
+) -> anyhow::Result<(Command, PathBuf)> {
+    let mut profile_in_cargo_cargs: Option<String> = None;
+    let mut args_iter = cargo_args.iter().peekable();
+    while let Some(arg) = args_iter.next() {
+        if arg == "--release" {
+            profile_in_cargo_cargs = Some("release".to_string());
+        } else if arg == "--profile" {
+            if let Some(val) = args_iter.next() {
+                profile_in_cargo_cargs = Some(val.clone());
+            }
+        } else if let Some(val) = arg.strip_prefix("--profile=") {
+            profile_in_cargo_cargs = Some(val.to_string());
+        }
+    }
+
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package.")?;
+    let wasm_file_name = format!("{}.wasm", to_snake_case(package.name.as_str()));
+    let output_wasm_file = target_dir
+        .join("wasm32-unknown-unknown")
+        .join(profile_in_cargo_cargs.as_deref().unwrap_or("release"))
+        .join(wasm_file_name);
+
+    println!("{:?}", output_wasm_file);
+
+    let mut cmd = Command::new("cargo");
+    cmd.arg("build")
+        .args(["--target", "wasm32-unknown-unknown"])
+        .arg("--target-dir")
+        .arg(target_dir)
+        .args(cargo_args);
+
+    println!("{:?}", &cargo_args);
+    if profile_in_cargo_cargs.is_none() {
+        println!("add --release");
+        cmd.arg("--release");
+    }
+    Ok((cmd, output_wasm_file))
 }

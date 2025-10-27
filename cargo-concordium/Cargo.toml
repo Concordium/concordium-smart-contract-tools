@@ -37,6 +37,8 @@ reqwest = { version = "0.11", default-features=false, features = ["rustls-tls-we
 infer = "0.15"
 flate2 = "1.0"
 wasm-opt = "0.116.1"
+#todo ar
+itertools = "0.14.0"
 
 [dependencies.concordium-wasm]
 path = "../concordium-base/smart-contracts/wasm-transform"

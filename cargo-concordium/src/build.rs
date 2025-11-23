@@ -55,12 +55,6 @@ fn to_snake_case(string: &str) -> String {
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
-///
-/// If successful, the return value is a pair of metadata and all of the
-/// `cargo_args` except the `--manifest-path` and the path to the manifest file.
-/// This last part is used for reproducible builds. There we want to keep the
-/// remaining `cargo` arguments, but the manifest path does not make sense since
-/// the project is built from a specific location inside the container.
 pub fn get_crate_metadata(cargo_args: &[String]) -> anyhow::Result<Metadata> {
     let mut cmd = MetadataCommand::new();
     let mut args = cargo_args
@@ -170,7 +164,6 @@ fn create_archive(
     for file in files {
         let file = file?;
         let file_path = file.path();
-        println!("{file_path:?}");
         if file_path == workspace_root || omit_files.iter().any(|f| file_path.starts_with(f)) {
             // We don't want to add the root path since we are adding all
             // relative paths under it.
@@ -268,16 +261,18 @@ struct ContainerBuildOutput {
 /// tar archive. The arguments are
 ///
 /// - `image`, the docker image that will be used to build.
-/// - `package_target_dir`,
-/// - `package_root_path`,
+/// - `package`, the package to build.
+/// - `package_root_path`, the cargo metadata object.
 /// - `extra_args`, the extra arguments to pass to the cargo build command.
 /// - `container_runtime`, the container runtime to use, e.g. `docker` or
 ///   `podman`
-/// - `out_path`, - the path to the out file for the wasm artifact. This should
+/// - `out_path`, the path to the out file for the wasm artifact. This should
 ///   be a fully expanded, canonical path.
-/// - `tar_path`, - the path to the tar archive. This should be a fully
+/// - `tar_path`, the path to the tar archive. This should be a fully
 ///   expanded, canonical path.
-fn build_in_container<'a>(
+/// - `source_link`, the link to where the source code will be located
+#[allow(clippy::too_many_arguments)]
+fn build_in_container(
     image: String,
     package: &Package,
     metadata: &Metadata,
@@ -307,7 +302,7 @@ fn build_in_container<'a>(
         locked: true,
         features: &[],
         package: Some(&package.name),
-        extra_args: &extra_args,
+        extra_args,
     }
     .get_cargo_cmd_as_strings()?;
 
@@ -376,7 +371,6 @@ fn build_in_container<'a>(
 ///
 /// Note that even if a verifiable build is requested the schemas are built on
 /// the host machine.
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_contract(
     options: BuildOptions,
     cargo_args: &[String],
@@ -526,7 +520,7 @@ pub(crate) fn build_contract(
         } = build_in_container(
             image,
             package,
-            &metadata,
+            metadata,
             &args_without_manifest,
             &container_runtime,
             &out_filename,
@@ -774,11 +768,10 @@ pub fn build_contract_schema<A>(
         anyhow::bail!("Compilation failed.");
     }
 
-    let filename = format!(
-        "{}/wasm32-unknown-unknown/release/{}.wasm",
-        target_dir,
-        to_snake_case(package.name.as_str())
-    );
+    let filename = target_dir
+        .join("wasm32-unknown-unknown")
+        .join("release")
+        .join(format!("{}.wasm", to_snake_case(package.name.as_str())));
 
     if !skip_wasm_opt {
         wasm_opt::OptimizationOptions::new_opt_level_0()
@@ -1493,6 +1486,7 @@ struct CargoBuildParameters<'a> {
 }
 
 impl<'a> CargoBuildParameters<'a> {
+    /// Get the cargo arguments as a list of strings, i.e. `Vec!["cargo", "build", ...]`.
     fn get_cargo_cmd_as_strings(&self) -> anyhow::Result<Vec<String>> {
         let mut args = vec![
             "cargo",
@@ -1524,6 +1518,7 @@ impl<'a> CargoBuildParameters<'a> {
         Ok(args)
     }
 
+    /// Run the `cargo build` command with the specified parameters.
     fn run_cargo_cmd(&self) -> anyhow::Result<std::process::Output> {
         let mut args = self.get_cargo_cmd_as_strings()?;
         let executable = args.remove(0); // "cargo"

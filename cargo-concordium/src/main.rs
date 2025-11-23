@@ -1077,7 +1077,7 @@ fn handle_package(
             fs::write(schema_out, &module_schema_bytes).context("Could not write schema file.")?;
         }
         if let Some(schema_json_out) = &options.schema_json_out {
-            write_json_schema(&schema_json_out, module_schema)
+            write_json_schema(schema_json_out, module_schema)
                 .context("Could not write JSON schema files.")?;
         }
         if let Some(schema_template_out) = &options.schema_template_out {
@@ -1163,6 +1163,8 @@ fn handle_package(
     Ok(())
 }
 
+/// Get a list of packages in the workspace from the metadata.
+/// If it's a non-workspace package, get the single package.
 fn get_packages(metadata: &Metadata) -> anyhow::Result<Vec<Package>> {
     let root_package = metadata.root_package();
     if let Some(package) = root_package {
@@ -1170,7 +1172,7 @@ fn get_packages(metadata: &Metadata) -> anyhow::Result<Vec<Package>> {
     } else {
         let smart_contract_pkgs: Vec<Package> =
             metadata.workspace_packages().into_iter().cloned().collect();
-        if smart_contract_pkgs.len() != 0 {
+        if smart_contract_pkgs.is_empty() {
             Ok(smart_contract_pkgs)
         } else {
             bail!("Error: No package found!");

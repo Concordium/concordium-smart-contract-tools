@@ -21,5 +21,6 @@ pkg
 *.state
 **/.idea
 
-*.nix
-flake.lock
+**/*.nix
+**/flake.lock
+**/result

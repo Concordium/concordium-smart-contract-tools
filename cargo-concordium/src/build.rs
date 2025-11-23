@@ -1485,7 +1485,7 @@ struct CargoBuildParameters<'a> {
     extra_args: &'a [String],
 }
 
-impl<'a> CargoBuildParameters<'a> {
+impl CargoBuildParameters<'_> {
     /// Get the cargo arguments as a list of strings, i.e. `Vec!["cargo", "build", ...]`.
     fn get_cargo_cmd_as_strings(&self) -> anyhow::Result<Vec<String>> {
         let mut args = vec![

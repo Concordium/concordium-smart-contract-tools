@@ -1,8 +1,8 @@
-use crate::BuildOptions;
+use crate::{get_packages, BuildOptions};
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
-use cargo_metadata::{Metadata, MetadataCommand};
+use cargo_metadata::{camino::Utf8Path, Metadata, MetadataCommand, Package};
 use concordium_base::{
     contracts_common::{
         self,
@@ -61,12 +61,12 @@ fn to_snake_case(string: &str) -> String {
 /// This last part is used for reproducible builds. There we want to keep the
 /// remaining `cargo` arguments, but the manifest path does not make sense since
 /// the project is built from a specific location inside the container.
-fn get_crate_metadata(
-    cargo_args: &[String],
-) -> anyhow::Result<(Metadata, impl Iterator<Item = &String>)> {
-    let pred = |val: &&String| !val.starts_with("--manifest-path");
-    let mut args = cargo_args.iter().skip_while(pred);
+pub fn get_crate_metadata(cargo_args: &[String]) -> anyhow::Result<Metadata> {
     let mut cmd = MetadataCommand::new();
+    let mut args = cargo_args
+        .iter()
+        .skip_while(|val| !val.starts_with("--manifest-path"));
+
     match args.next() {
         Some(p) if *p == "--manifest-path" => {
             // If a `--manifest-path` is provided, look for the `Cargo.toml` file there.
@@ -90,9 +90,7 @@ fn get_crate_metadata(
     };
 
     let metadata = cmd.exec().context("Could not access cargo metadata.")?;
-
-    let init_args = cargo_args.iter().take_while(pred);
-    Ok((metadata, init_args.chain(args)))
+    Ok(metadata)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -151,15 +149,16 @@ pub struct TarArchiveData {
 /// All those paths are expected to be relative to the same root as the
 /// `package_root_path`.
 fn create_archive(
-    package_root_path: &Path,
-    package_version_string: &str,
+    package: &Package,
+    workspace_root: PathBuf,
     omit_files: &[&Path],
 ) -> anyhow::Result<TarArchiveData> {
-    let in_package_root_dir = std::path::Path::new(package_version_string);
+    let package_version_string = format!("{}-{}", package.name, package.version);
+    let in_package_root_dir = std::path::Path::new(&package_version_string);
     let mut tar = tar::Builder::new(Vec::new());
     tar.mode(tar::HeaderMode::Deterministic);
     // Ignore files that are ignored by Git.
-    let files = ignore::WalkBuilder::new(package_root_path)
+    let files = ignore::WalkBuilder::new(&workspace_root)
         .git_global(true)
         .git_ignore(true)
         .parents(true)
@@ -171,12 +170,13 @@ fn create_archive(
     for file in files {
         let file = file?;
         let file_path = file.path();
-        if file_path == package_root_path || omit_files.iter().any(|f| file_path.starts_with(f)) {
+        println!("{file_path:?}");
+        if file_path == workspace_root || omit_files.iter().any(|f| file_path.starts_with(f)) {
             // We don't want to add the root path since we are adding all
             // relative paths under it.
             continue;
         }
-        let relative_path = file.path().strip_prefix(package_root_path)?;
+        let relative_path = file.path().strip_prefix(&workspace_root)?;
         if relative_path == std::path::Path::new("Cargo.lock") {
             lock_file_found = true;
         }
@@ -185,7 +185,7 @@ fn create_archive(
         // directory. This then matches the behaviour of cargo package.
         tar.append_path_with_name(file.path(), in_package_root_dir.join(relative_path))?;
     }
-    let cargo_lock_exists = package_root_path.join("Cargo.lock").is_file();
+    let cargo_lock_exists = workspace_root.join("Cargo.lock").is_file();
     if !lock_file_found && cargo_lock_exists {
         anyhow::bail!(
             "Unable to proceed with a verifiable build. Cargo.lock seem to be included in \
@@ -264,18 +264,6 @@ struct ContainerBuildOutput {
     tar_archive: TarArchiveData,
 }
 
-/// Package data for building inside a container.
-struct PackageData<'a> {
-    /// The target directory of the package that is being
-    /// built. This is used to exclude it from bundling.
-    package_target_dir: &'a Path,
-    /// The root of the package to build.
-    package_root_path: &'a Path,
-    /// The package-name-version pair to mimics the behaviour or cargo package.
-    /// The paths in the tar archive are
-    package_version_string: &'a str,
-}
-
 /// Build the provided directory in the container. Return the built module and
 /// tar archive. The arguments are
 ///
@@ -291,39 +279,37 @@ struct PackageData<'a> {
 ///   expanded, canonical path.
 fn build_in_container<'a>(
     image: String,
-    PackageData {
-        package_target_dir,
-        package_root_path,
-        package_version_string,
-    }: PackageData,
-    extra_args: impl Iterator<Item = &'a String>,
+    package: &Package,
+    metadata: &Metadata,
+    extra_args: &[String],
     container_runtime: &str,
     out_path: &Path,
     tar_path: &Path,
     source_link: Option<String>,
 ) -> anyhow::Result<ContainerBuildOutput> {
-    let tar_archive = create_archive(
-        package_root_path,
-        package_version_string,
-        &[out_path, tar_path, package_target_dir],
-    )?;
+    // NOTE: Also works without workspaces.
+    let workspace_root = metadata.workspace_root.canonicalize()?;
+    let mut target_dir = metadata.target_directory.as_std_path().to_path_buf();
+
+    if target_dir
+        .try_exists()
+        .context("Unable to check if target directory exists.")?
+    {
+        target_dir = target_dir.canonicalize()?;
+    };
+    let tar_archive = create_archive(package, workspace_root, &[out_path, tar_path, &target_dir])?;
 
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
 
-    let build_command = [
-        "cargo",
-        "--locked",
-        "build",
-        "--target",
-        "wasm32-unknown-unknown",
-        "--release",
-        "--target-dir",
-        "/b/t",
-    ]
-    .into_iter()
-    .map(String::from)
-    .chain(extra_args.cloned())
-    .collect::<Vec<String>>();
+    let build_command = CargoBuildParameters {
+        target_dir: Path::new("/b/t"),
+        profile: "release",
+        locked: true,
+        features: &[],
+        package: Some(&package.name),
+        extra_args: &extra_args,
+    }
+    .get_cargo_cmd_as_strings()?;
 
     // If both the potential output files exist check if there is no point
     // rebuilding.
@@ -392,18 +378,29 @@ fn build_in_container<'a>(
 /// the host machine.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build_contract(
-    version: WasmVersion,
-    build_schema: SchemaBuildOptions,
-    enable_debug: bool,
-    image: Option<String>,
-    source_link: Option<String>,
-    container_runtime: String,
-    out: Option<PathBuf>,
-    skip_wasm_opt: bool,
+    options: BuildOptions,
     cargo_args: &[String],
+    package: &Package,
+    metadata: &Metadata,
 ) -> anyhow::Result<BuildInfo> {
     // Check that the wasm target is installed
     check_wasm_target()?;
+
+    let build_schema = options.schema_build_options();
+    let image = options.image;
+    let container_runtime = options.container_runtime;
+    let out = options.out;
+    let version = options.version;
+    let skip_wasm_opt = options.skip_wasm_opt;
+    let source_link = options.source_link;
+    let enable_debug = options.allow_debug;
+    let profile = options.profile;
+    let target_dir = metadata.target_directory.join("concordium");
+    let args_without_manifest: Vec<String> = cargo_args
+        .iter()
+        .take_while(|val| !val.starts_with("--manifest-path"))
+        .cloned()
+        .collect();
 
     // Check immediately if reproducible build is requested that we can execute the
     // container runtime.
@@ -417,22 +414,13 @@ pub(crate) fn build_contract(
         }
     }
 
-    let (metadata, args_without_manifest) = get_crate_metadata(cargo_args)?;
-
-    let package = metadata
-        .root_package()
-        .context("Unable to determine package.")?;
-
-    let package_root = package
+    let package_root_path = package
         .manifest_path
         .parent()
-        .context("Unable to get package root path.")?;
+        .context("Unable to get package root path.")?
+        .canonicalize()?;
 
     let wasm_file_name = format!("{}.wasm", to_snake_case(package.name.as_str()));
-
-    let package_root_path = package_root.canonicalize()?;
-
-    let package_version_string = format!("{}-{}", package.name, package.version);
 
     // Make sure up-front before building anything that the output path points to a
     // sensible location
@@ -475,6 +463,8 @@ pub(crate) fn build_contract(
                 let schema = build_contract_schema(
                     cargo_args,
                     skip_wasm_opt,
+                    package,
+                    &target_dir,
                     utils::generate_contract_schema_v0,
                 )
                 .context("Could not build module schema.")?;
@@ -497,6 +487,8 @@ pub(crate) fn build_contract(
                 let schema = build_contract_schema(
                     cargo_args,
                     skip_wasm_opt,
+                    package,
+                    &target_dir,
                     utils::generate_contract_schema_v3,
                 )
                 .context("Could not build module schema.")?;
@@ -521,35 +513,21 @@ pub(crate) fn build_contract(
             .context("Unable to get working directory. Does it exist?")?
             .canonicalize()?;
         out_filename = cwd.join(out_filename);
+
         // The archive will be named after the module output path, by appending `.tar`
         // to it.
-        let tar_filename: PathBuf = {
-            // Rust 1.70 has as_mut_os_string, but to support older versions we don't use it
-            // here for now, and instead convert from and to OsString to append an
-            // extension.
-            let mut tar_filename = out_filename.clone().into_os_string();
-            tar_filename.push(".tar");
-            tar_filename.into()
-        };
-        let mut package_target_dir = metadata.target_directory.as_std_path().to_path_buf();
-        if package_target_dir
-            .try_exists()
-            .context("Unable to check if target directory exists.")?
-        {
-            package_target_dir = package_target_dir.canonicalize()?;
-        };
+        let mut tar_filename = out_filename.to_owned();
+        tar_filename.as_mut_os_string().push(".tar");
+
         let ContainerBuildOutput {
             output_wasm,
             build_info,
             tar_archive,
         } = build_in_container(
             image,
-            PackageData {
-                package_target_dir: package_target_dir.as_path(),
-                package_root_path: package_root_path.as_path(),
-                package_version_string: &package_version_string,
-            },
-            args_without_manifest,
+            package,
+            &metadata,
+            &args_without_manifest,
             &container_runtime,
             &out_filename,
             &tar_filename,
@@ -568,19 +546,16 @@ pub(crate) fn build_contract(
             .join("wasm32-unknown-unknown/release")
             .join(wasm_file_name);
 
-        let mut cmd = Command::new("cargo");
-        cmd.arg("build")
-            .args(["--target", "wasm32-unknown-unknown"])
-            .args(["--release"])
-            .arg("--target-dir")
-            .arg(target_dir)
-            .args(cargo_args);
-
-        let result = cmd
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()
-            .context("Could not use cargo build.")?;
+        let result = CargoBuildParameters {
+            target_dir: &target_dir,
+            profile: &profile,
+            locked: false,
+            features: &[],
+            package: Some(&package.name),
+            extra_args: &[],
+        }
+        .run_cargo_cmd()
+        .context("Could not use cargo build.")?;
 
         if !result.status.success() {
             anyhow::bail!("Compilation failed.")
@@ -676,7 +651,7 @@ pub(crate) fn build_contract(
         total_module_len,
         schema: return_schema,
         stored_build_info: stored_build_info.map(|(bi, a)| (bi, a.archived_files)),
-        metadata,
+        metadata: metadata.clone(),
         out_filename,
     })
 }
@@ -779,16 +754,10 @@ fn find_closest<'a>(
 pub fn build_contract_schema<A>(
     cargo_args: &[String],
     skip_wasm_opt: bool,
+    package: &Package,
+    target_dir: &Utf8Path,
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let (metadata, _) = get_crate_metadata(cargo_args)?;
-
-    let target_dir = format!("{}/concordium", metadata.target_directory);
-
-    let package = metadata
-        .root_package()
-        .context("Unable to determine package.")?;
-
     let result = Command::new("cargo")
         .arg("build")
         .args(["--target", "wasm32-unknown-unknown"])
@@ -1177,12 +1146,26 @@ pub(crate) fn build_and_run_integration_tests(
     build_options: BuildOptions,
     test_targets: Vec<String>,
 ) -> anyhow::Result<()> {
-    let cargo_args = build_options.cargo_args.clone();
     let allow_debug = build_options.allow_debug;
 
     // Build the module in the same way as `cargo concordium build`, except that
     // schema information shouldn't be printed.
-    let build_info = crate::handle_build(build_options, false)?;
+    let cargo_args = if build_options.allow_debug {
+        // prepend the features at the beginning of the build_options
+        // since the user might have added some build_options after `--`.
+        let mut args = Vec::with_capacity(build_options.cargo_args.len() + 1);
+        args.push("--features=concordium-std/debug".into());
+        args.extend(build_options.cargo_args.clone());
+        args
+    } else {
+        build_options.cargo_args.clone()
+    };
+    crate::handle_build(build_options.clone(), false)?;
+    let metadata = get_crate_metadata(&cargo_args)?;
+    let package = metadata.root_package().unwrap();
+    let build_info = build_contract(build_options.clone(), &cargo_args, package, &metadata)?;
+
+    let cargo_args = build_options.cargo_args.clone();
 
     let mut cargo_test_args = vec!["test"];
 
@@ -1365,35 +1348,32 @@ pub fn build_and_run_wasm_test(
     // Check that the wasm target is installed
     check_wasm_target()?;
 
-    let (metadata, _) = get_crate_metadata(extra_args)?;
+    let metadata = get_crate_metadata(extra_args)?;
+    let pkgs = get_packages(&metadata)?;
+    let target_dir = metadata
+        .target_directory
+        .into_std_path_buf()
+        .join("concordium");
 
-    let target_dir = format!("{}/concordium", metadata.target_directory);
-
-    let package = metadata
-        .root_package()
-        .context("Unable to determine package.")?;
-
-    let cargo_args = [
-        "build",
-        "--release",
-        "--target",
-        "wasm32-unknown-unknown",
-        "--features",
-        if enable_debug {
-            "concordium-std/wasm-test,concordium-std/debug"
+    let cargo_cmd = CargoBuildParameters {
+        target_dir: &target_dir,
+        profile: "release",
+        locked: false,
+        package: None,
+        features: if enable_debug {
+            &["concordium-std/wasm-test", "concordium-std/debug"]
         } else {
-            "concordium-std/wasm-test"
+            &["concordium-std/wasm-test"]
         },
-        "--target-dir",
-        target_dir.as_str(),
-    ];
+        extra_args,
+    };
 
     // Output what we are doing so that it is easier to debug if the user
     // has their own features or options.
     eprint!(
         "{} cargo {}",
         Color::Green.bold().paint("Running"),
-        cargo_args.join(" ")
+        cargo_cmd.get_cargo_cmd_as_strings()?.join(" ")
     );
     if extra_args.is_empty() {
         // This branch is just to avoid the extra trailing space in the case when
@@ -1402,33 +1382,14 @@ pub fn build_and_run_wasm_test(
     } else {
         eprintln!(" {}", extra_args.join(" "));
     }
-    let result = Command::new("cargo")
-        .args(cargo_args)
-        .args(extra_args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
+    let result = cargo_cmd
+        .run_cargo_cmd()
         .context("Failed building contract tests.")?;
     // Make sure that compilation succeeded before proceeding.
     anyhow::ensure!(
         result.status.success(),
         Color::Red.bold().paint("Could not build contract tests.")
     );
-
-    // If we compiled successfully the artifact is in the place listed below.
-    // So we load it, and try to run it.s
-    let filename = format!(
-        "{}/wasm32-unknown-unknown/release/{}.wasm",
-        target_dir,
-        to_snake_case(package.name.as_str())
-    );
-    if !skip_wasm_opt {
-        wasm_opt::OptimizationOptions::new_opt_level_0()
-            .run(&filename, &filename)
-            .context("Failed running wasm_opt")?;
-    }
-
-    let wasm = std::fs::read(filename).context("Failed reading contract test output artifact.")?;
 
     eprintln!("\n{}", Color::Green.bold().paint("Running unit tests ..."));
 
@@ -1442,18 +1403,43 @@ pub fn build_and_run_wasm_test(
         }
     };
 
-    let artifact = concordium_wasm::utils::instantiate::<ArtifactNamedImport, _>(
-        ValidationConfig::V1,
-        &NoDuplicateImport,
-        &wasm,
-    )?
-    .artifact;
-    let artifact_keys: Vec<_> = artifact.export.keys().collect();
+    let mut artifacts = Vec::new();
+    for pkg in pkgs {
+        // If we compiled successfully the artifact is in the place listed below.
+        // So we load it, and try to run it.
+        let file_path = target_dir
+            .join("wasm32-unknown-unknown")
+            .join("release")
+            .join(format!("{}.wasm", to_snake_case(pkg.name.as_str())));
+        if !skip_wasm_opt {
+            wasm_opt::OptimizationOptions::new_opt_level_0()
+                .run(&file_path, &file_path)
+                .context("Failed running wasm_opt")?;
+        }
 
-    let num_failed = artifact_keys
+        let wasm =
+            std::fs::read(file_path).context("Failed reading contract test output artifact.")?;
+
+        let artifact = concordium_wasm::utils::instantiate::<ArtifactNamedImport, _>(
+            ValidationConfig::V1,
+            &NoDuplicateImport,
+            &wasm,
+        )?
+        .artifact;
+
+        artifacts.push(artifact);
+    }
+
+    let num_failed = artifacts
         .into_par_iter()
-        .filter_map(|name| get_test_result(name, seed_u64, &artifact, enable_debug))
-        .count();
+        .map(|artifact| {
+            let artifact_keys: Vec<_> = artifact.export.keys().collect();
+            artifact_keys
+                .into_par_iter()
+                .filter_map(|name| get_test_result(name, seed_u64, &artifact, enable_debug))
+                .count()
+        })
+        .sum::<usize>();
 
     if num_failed == 0 {
         eprintln!("Unit test result: {}", Color::Green.bold().paint("ok"));
@@ -1464,6 +1450,7 @@ pub fn build_and_run_wasm_test(
     }
 }
 
+// NOTE: This seems to not work if there's a rust-toolchain file
 /// Checks if the `wasm32-unknown-unknown` target is installed, and returns an
 /// error if not.
 fn check_wasm_target() -> anyhow::Result<()> {
@@ -1493,4 +1480,61 @@ fn check_wasm_target() -> anyhow::Result<()> {
          target add wasm32-unknown-unknown`."
     );
     Ok(())
+}
+
+/// The parameters to pass to CargoBuildParameters
+struct CargoBuildParameters<'a> {
+    target_dir: &'a Path,
+    profile: &'a str,
+    locked: bool,
+    features: &'a [&'a str],
+    package: Option<&'a str>,
+    extra_args: &'a [String],
+}
+
+impl<'a> CargoBuildParameters<'a> {
+    fn get_cargo_cmd_as_strings(&self) -> anyhow::Result<Vec<String>> {
+        let mut args = vec![
+            "cargo",
+            "build",
+            "--target",
+            "wasm32-unknown-unknown",
+            "--profile",
+            self.profile,
+            "--target-dir",
+            self.target_dir
+                .to_str()
+                .context("target_dir is not valid UTF-8")?,
+        ];
+        if let Some(pkg) = self.package {
+            args.push("--package");
+            args.push(pkg);
+        }
+        if self.locked {
+            args.push("--locked");
+        }
+        args.extend(self.extra_args.iter().map(|x| x.as_str()));
+
+        let mut args: Vec<_> = args.into_iter().map(|x| x.to_string()).collect();
+        if !self.features.is_empty() {
+            args.push("--features".to_string());
+            args.push(self.features.join(","));
+        }
+
+        Ok(args)
+    }
+
+    fn run_cargo_cmd(&self) -> anyhow::Result<std::process::Output> {
+        let mut args = self.get_cargo_cmd_as_strings()?;
+        let executable = args.remove(0); // "cargo"
+        let mut cmd = Command::new(&executable);
+        cmd.args(&args);
+
+        let output = cmd
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()?;
+
+        Ok(output)
+    }
 }

@@ -22,5 +22,6 @@ shift 2
 # execute the supplied command which consists of everything apart from the first
 # 2 arguments to the `run-copy` script.
 "$@"
+ls "$BUILD_DIR"
 mv "$BUILD_DIR"/*.wasm "$TMP"/out.wasm
 wasm-opt -O0 -o /artifacts/out.wasm "$TMP"/out.wasm

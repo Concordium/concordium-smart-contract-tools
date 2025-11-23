@@ -48,5 +48,5 @@ path = "../concordium-base/smart-contracts/wasm-chain-integration/"
 features = ["display-state"]
 
 [dependencies.concordium_base]
-version = "7.0"
+version = "9.0"
 path = "../concordium-base/rust-src/concordium_base"

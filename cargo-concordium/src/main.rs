@@ -4,6 +4,7 @@ use crate::{
 };
 use ansi_term::Color;
 use anyhow::{bail, ensure, Context};
+use cargo_metadata::{Metadata, Package};
 use clap::AppSettings;
 use concordium_base::{
     contracts_common::{
@@ -28,6 +29,7 @@ use concordium_wasm::{
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use sha2::Digest;
 use std::{
+    fmt::Debug,
     fs::{self, File},
     io::Read,
     path::{Path, PathBuf},
@@ -372,7 +374,7 @@ struct EditOptions {
 // The issue is known (https://github.com/TeXitoi/structopt/issues/391) but won't
 // be fixed in `structopt` as it is in maintenance mode and is now integrated
 // in `clap` v3+. Once we migrate to `clap` v3+, this can become a doc comment.
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 struct BuildOptions {
     #[structopt(
         name = "schema-embed",
@@ -424,6 +426,13 @@ struct BuildOptions {
                 (expected input: `./my/path/base64_schema.b64` or `-`)."
     )]
     schema_base64_out: Option<PathBuf>,
+    #[structopt(
+        name = "profile",
+        long = "profile",
+        help = "The build profile to use for the smart contract.",
+        default_value = "release"
+    )]
+    profile: String,
     #[structopt(
         name = "out",
         long = "out",
@@ -1006,39 +1015,15 @@ fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Build the smart contract module using the provided options.
-///
-/// This method is used by both the build and test command.
-/// When building, i.e. when running `cargo concordium build`, the schema
-/// information is outputted, but that is not the case when testing.
-/// This behaviour is configurable via the parameter `print_schema_info`.
-fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result<BuildInfo> {
+fn handle_package(
+    build_info: &BuildInfo,
+    options: &BuildOptions,
+    print_extra_info: bool,
+) -> anyhow::Result<()> {
     let success_style = ansi_term::Color::Green.bold();
     let bold_style = ansi_term::Style::new().bold();
-    let build_schema = options.schema_build_options();
     let is_verifiable_build = options.image.is_some();
-    let cargo_args = if options.allow_debug {
-        // prepend the features at the beginning of the options
-        // since the user might have added some options after `--`.
-        let mut args = Vec::with_capacity(options.cargo_args.len() + 1);
-        args.push("--features=concordium-std/debug".into());
-        args.extend(options.cargo_args);
-        args
-    } else {
-        options.cargo_args
-    };
-    let build_info = build_contract(
-        options.version,
-        build_schema,
-        options.allow_debug,
-        options.image,
-        options.source_link,
-        options.container_runtime,
-        options.out,
-        options.skip_wasm_opt,
-        &cargo_args,
-    )
-    .context("Could not build smart contract.")?;
+
     if let Some(module_schema) = &build_info.schema {
         let module_schema_bytes = to_bytes(module_schema);
         if print_extra_info {
@@ -1075,7 +1060,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
             );
         }
 
-        if let Some(schema_out) = options.schema_out {
+        if let Some(schema_out) = &options.schema_out {
             // A path and a filename need to be provided when using the `--schema-out`
             // flag.
             if schema_out.file_name().is_none() || schema_out.is_dir() {
@@ -1091,11 +1076,11 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
             }
             fs::write(schema_out, &module_schema_bytes).context("Could not write schema file.")?;
         }
-        if let Some(schema_json_out) = options.schema_json_out {
+        if let Some(schema_json_out) = &options.schema_json_out {
             write_json_schema(&schema_json_out, module_schema)
                 .context("Could not write JSON schema files.")?;
         }
-        if let Some(schema_template_out) = options.schema_template_out {
+        if let Some(schema_template_out) = &options.schema_template_out {
             if schema_template_out.as_path() == Path::new("-") {
                 write_schema_template(None, module_schema)
                     .context("Could not print the template of the schema.")?;
@@ -1107,11 +1092,11 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
                     );
                 }
 
-                write_schema_template(Some(schema_template_out), module_schema)
+                write_schema_template(Some(schema_template_out.to_path_buf()), module_schema)
                     .context("Could not write template schema files.")?;
             }
         }
-        if let Some(schema_base64_out) = options.schema_base64_out {
+        if let Some(schema_base64_out) = &options.schema_base64_out {
             if schema_base64_out.as_path() == Path::new("-") {
                 write_schema_base64(None, module_schema)
                     .context("Could not print base64 schema.")?;
@@ -1123,7 +1108,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
                     );
                 }
 
-                write_schema_base64(Some(schema_base64_out), module_schema)
+                write_schema_base64(Some(schema_base64_out.to_path_buf()), module_schema)
                     .context("Could not write base64 schema file.")?;
             }
         }
@@ -1174,7 +1159,53 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
             )
         )
     }
-    Ok(build_info)
+
+    Ok(())
+}
+
+fn get_packages(metadata: &Metadata) -> anyhow::Result<Vec<Package>> {
+    let root_package = metadata.root_package();
+    if let Some(package) = root_package {
+        Ok(vec![package.clone()])
+    } else {
+        let smart_contract_pkgs: Vec<Package> =
+            metadata.workspace_packages().into_iter().cloned().collect();
+        if smart_contract_pkgs.len() != 0 {
+            Ok(smart_contract_pkgs)
+        } else {
+            bail!("Error: No package found!");
+        }
+    }
+}
+
+/// Build the smart contract module using the provided options.
+///
+/// This method is used by both the build and test command.
+/// When building, i.e. when running `cargo concordium build`, the schema
+/// information is outputted, but that is not the case when testing.
+/// This behaviour is configurable via the parameter `print_schema_info`.
+fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result<()> {
+    let cargo_args = if options.allow_debug {
+        // prepend the features at the beginning of the options
+        // since the user might have added some options after `--`.
+        let mut args = Vec::with_capacity(options.cargo_args.len() + 1);
+        args.push("--features=concordium-std/debug".into());
+        args.extend(options.cargo_args.clone());
+        args
+    } else {
+        options.cargo_args.clone()
+    };
+
+    let metadata = get_crate_metadata(&cargo_args)?;
+    let pkgs = get_packages(&metadata)?;
+
+    for package in pkgs {
+        let build_info = build_contract(options.clone(), &cargo_args, &package, &metadata)
+            .context("Could not build smart contract.")?;
+        handle_package(&build_info, &options, print_extra_info)?;
+    }
+
+    Ok(())
 }
 
 /// Loads the contract state from file and displays it as a tree by printing to

@@ -21,6 +21,8 @@ pkg
 *.state
 **/.idea
 
+**/concordium-out
+
 **/*.nix
 **/flake.lock
 **/result

@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Support specifying a profile using the `--profile` flag.
-- Support for workspaces.
+- Building/testing a single package in a workspace is now possible by calling
+  `cargo concordium` from the smart contract directory in the workspace.
 
 ## 4.2.0
 

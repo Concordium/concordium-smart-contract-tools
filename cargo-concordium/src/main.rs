@@ -1015,6 +1015,7 @@ fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Handles the build of a single package.
 fn handle_package(
     build_info: &BuildInfo,
     options: &BuildOptions,
@@ -1163,24 +1164,23 @@ fn handle_package(
     Ok(())
 }
 
-/// Get a list of packages in the workspace from the metadata.
-/// If it's a non-workspace package, get the single package.
+/// Gets the `root_package` from the workspace i.e. the package of the current dir.
+///
+/// It returns a `Vec<Package>` to support getting all the packages in the
+/// workspace if there is no `root_package`.
 fn get_packages(metadata: &Metadata) -> anyhow::Result<Vec<Package>> {
     let root_package = metadata.root_package();
     if let Some(package) = root_package {
         Ok(vec![package.clone()])
     } else {
-        let smart_contract_pkgs: Vec<Package> =
-            metadata.workspace_packages().into_iter().cloned().collect();
-        if smart_contract_pkgs.is_empty() {
-            Ok(smart_contract_pkgs)
-        } else {
-            bail!("Error: No package found!");
-        }
+        bail!("Error: No package found!");
     }
 }
 
 /// Build the smart contract module using the provided options.
+/// If it's in a workspace context it will build the smart contract in the
+// current directory, if one exists otherwise it will build all smart contracts
+// in the workspace.
 ///
 /// This method is used by both the build and test command.
 /// When building, i.e. when running `cargo concordium build`, the schema

@@ -292,7 +292,12 @@ fn build_in_container(
     {
         target_dir = target_dir.canonicalize()?;
     };
-    let tar_archive = create_archive(package, workspace_root, &[out_path, tar_path, &target_dir])?;
+    let toolchain_file = workspace_root.join("rust-toolchain.toml");
+    let tar_archive = create_archive(
+        package,
+        workspace_root,
+        &[out_path, tar_path, &target_dir, &toolchain_file],
+    )?;
 
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
 
@@ -1155,7 +1160,9 @@ pub(crate) fn build_and_run_integration_tests(
     };
     crate::handle_build(build_options.clone(), false)?;
     let metadata = get_crate_metadata(&cargo_args)?;
-    let package = metadata.root_package().unwrap();
+    let package = metadata
+        .root_package()
+        .context("Unable to determine root package")?;
     let build_info = build_contract(build_options.clone(), &cargo_args, package, &metadata)?;
 
     let cargo_args = build_options.cargo_args.clone();
@@ -1443,7 +1450,10 @@ pub fn build_and_run_wasm_test(
     }
 }
 
-// NOTE: This seems to not work if there's a rust-toolchain file
+// NOTE: This seems to not work if there's a rust-toolchain file, reproducible
+// builds still fail without proper error messages if a toolchain file is
+// provided without the wasm target.
+//
 /// Checks if the `wasm32-unknown-unknown` target is installed, and returns an
 /// error if not.
 fn check_wasm_target() -> anyhow::Result<()> {

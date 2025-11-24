@@ -262,7 +262,7 @@ struct ContainerBuildOutput {
 ///
 /// - `image`, the docker image that will be used to build.
 /// - `package`, the package to build.
-/// - `package_root_path`, the cargo metadata object.
+/// - `metadata`, the cargo metadata object.
 /// - `extra_args`, the extra arguments to pass to the cargo build command.
 /// - `container_runtime`, the container runtime to use, e.g. `docker` or
 ///   `podman`

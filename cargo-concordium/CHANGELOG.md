@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Support specifying a profile using the `--profile` flag for both builds
+  and tests. Default is `release` as previously.
+
 ## 4.2.0
 
 - Unit tests now run in parallel and the results are printed sequentially. Pass

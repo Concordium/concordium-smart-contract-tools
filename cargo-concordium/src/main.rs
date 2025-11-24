@@ -1040,7 +1040,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
         .root_package()
         .context("Unable to determine package.")?;
 
-    let build_info = build_contract(options.clone(), &cargo_args, &package, &metadata)
+    let build_info = build_contract(options.clone(), &cargo_args, package, &metadata)
         .context("Could not build smart contract.")?;
     if let Some(module_schema) = &build_info.schema {
         let module_schema_bytes = to_bytes(module_schema);

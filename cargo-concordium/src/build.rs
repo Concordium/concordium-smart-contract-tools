@@ -281,7 +281,7 @@ struct PackageData<'a> {
 ///   be a fully expanded, canonical path.
 /// - `tar_path`, - the path to the tar archive. This should be a fully
 ///   expanded, canonical path.
-fn build_in_container<'a>(
+fn build_in_container(
     image: String,
     PackageData {
         package_target_dir,
@@ -1360,7 +1360,7 @@ pub fn build_and_run_wasm_test(
 
     let cargo_cmd = CargoBuildParameters {
         target_dir: &target_dir,
-        profile: &profile,
+        profile,
         locked: false,
         package: None,
         features: if enable_debug {

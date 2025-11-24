@@ -14,7 +14,3 @@ concordium-std = "10"
 
 [profile.release]
 opt-level = "s"
-
-[profile.test-profile]
-inherits = "release"
-opt-level = "s"

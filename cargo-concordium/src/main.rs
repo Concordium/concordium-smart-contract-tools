@@ -1,9 +1,15 @@
 use crate::{
     build::*,
     context::{InitContextOpt, ReceiveContextOpt, ReceiveContextV1Opt},
+    contract_schema::print_contract_schema,
+    json_schema::write_json_schema,
+    reproducible_builds::build_archive,
+    tests::{build_and_run_integration_tests, build_and_run_wasm_test},
+    utils::{get_crate_metadata, ENCODER},
 };
 use ansi_term::Color;
 use anyhow::{bail, ensure, Context};
+use base64::Engine;
 use clap::AppSettings;
 use concordium_base::{
     contracts_common::{
@@ -15,7 +21,11 @@ use concordium_base::{
     smart_contracts::WasmModule,
 };
 use concordium_smart_contract_engine::{
-    utils, v0,
+    utils::{
+        get_build_info_from_skeleton, get_embedded_schema_v0, get_embedded_schema_v1,
+        VersionedBuildInfo, BUILD_INFO_SECTION_NAME,
+    },
+    v0,
     v1::{self, DebugTracker, ReturnValue},
     InterpreterEnergy,
 };
@@ -28,13 +38,21 @@ use concordium_wasm::{
 use ptree::{print_tree_with, PrintConfig, TreeBuilder};
 use sha2::Digest;
 use std::{
+    env,
     fs::{self, File},
-    io::Read,
+    io::{Read, Write},
     path::{Path, PathBuf},
+    process::Stdio,
 };
 use structopt::StructOpt;
+
 mod build;
 mod context;
+mod contract_schema;
+mod json_schema;
+mod reproducible_builds;
+mod tests;
+mod utils;
 
 /// Versioned schemas always start with two fully set bytes.
 /// This is used to determine whether we are looking at a versioned or
@@ -732,7 +750,7 @@ pub fn main() -> anyhow::Result<()> {
             eprintln!("{}", Color::Green.bold().paint("All tests passed"));
         }
         Command::Init { path, tag } => {
-            init_concordium_project(path, &tag)
+            handle_init(path, &tag)
                 .context("Could not create a new Concordium smart contract project.")?;
         }
         Command::SchemaJSON {
@@ -812,6 +830,8 @@ pub fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+// -------------------- Helper Functions -------------------- //
+
 /// Download the file into the provided writer and return the amount of data
 /// that was downloaded.
 fn download_tar_file_into(url: &str, out: &mut impl std::io::Write) -> anyhow::Result<usize> {
@@ -863,14 +883,249 @@ fn gunzip_if(buf: &[u8], out: &mut impl std::io::Write) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Loads the contract state from file and displays it as a tree by printing to
+/// stdout.
+fn display_state_from_file(file_path: PathBuf) -> anyhow::Result<()> {
+    let file = File::open(&file_path)
+        .with_context(|| format!("Could not read state file {}.", file_path.display()))?;
+    let mut reader = std::io::BufReader::new(file);
+    let state = v1::trie::PersistentState::deserialize(&mut reader)
+        .context("Could not deserialize the provided state.")?;
+
+    display_state(&state)
+}
+
+/// Displays the contract state as a tree by printing to stdout.
+fn display_state(state: &v1::trie::PersistentState) -> Result<(), anyhow::Error> {
+    let mut loader = v1::trie::Loader::new([]);
+
+    let mut tree_builder = TreeBuilder::new("StateRoot".into());
+    state.display_tree(&mut tree_builder, &mut loader);
+    let tree = tree_builder.build();
+    // We don't want to depend on some global config as it opens up for all sorts of
+    // corner-case bugs since we are not in control and thus inconsistent user
+    // experience.
+    let config = PrintConfig::default();
+    print_tree_with(&tree, &config).context("Could not print the state as a tree.")
+}
+
+fn print_debug(trace: DebugTracker) {
+    let summary = trace.host_call_summary();
+    let DebugTracker {
+        operation,
+        memory_alloc,
+        host_call_trace: _,
+        emitted_events,
+        ..
+    } = trace;
+    eprintln!("Debug information recorded during the run.");
+    eprintln!("- {operation} interpreter energy spent on Wasm instruction execution.");
+    eprintln!("- {memory_alloc} interpreter energy spent on memory allocation.");
+    eprintln!("- Host calls summary.");
+    for (host_fn, (multiplicity, total_energy)) in summary {
+        eprintln!(
+            "  - {host_fn} called {multiplicity} times totalling {total_energy} interpreter \
+             energy spent."
+        );
+    }
+
+    eprintln!("- Emitted debug events.");
+    for (_, event) in emitted_events {
+        eprintln!("  - {event}");
+    }
+}
+
+/// Attempt to get a parameter (for either init or receive function) from the
+/// supplied paths, signalling failure if this is not possible.
+fn get_parameter(
+    bin_path: Option<&Path>,
+    json_path: Option<&Path>,
+    has_contract_schema: bool,
+    parameter_schema: Option<&Type>,
+) -> anyhow::Result<OwnedParameter> {
+    if let Some(param_file) = bin_path {
+        Ok(OwnedParameter::new_unchecked(
+            fs::read(param_file).context("Could not read parameter-bin file.")?,
+        ))
+    } else if let Some(param_file) = json_path {
+        if !has_contract_schema {
+            bail!(
+                "No schema found for contract, a schema is required for using --parameter-json. \
+                 Either embed the schema in the module or provide it using the `--schema` option."
+            )
+        } else {
+            let parameter_schema = parameter_schema
+                .context("Contract schema did not contain a schema for this parameter.")?;
+
+            let file = fs::read(param_file).context("Could not read parameter file.")?;
+            let parameter_json: serde_json::Value = serde_json::from_slice(&file)
+                .context("Could not parse the JSON in parameter-json file.")?;
+            let mut parameter_bytes = Vec::new();
+            parameter_schema
+                .serial_value_into(&parameter_json, &mut parameter_bytes)
+                .context("Could not generate parameter bytes using schema and JSON.")?;
+            Ok(OwnedParameter::new_unchecked(parameter_bytes))
+        }
+    } else {
+        Ok(OwnedParameter::empty())
+    }
+}
+
+/// Attempt to get a schema (either from a smart contract module file or a
+/// schema file) from the supplied paths, signalling failure if this is not
+/// possible.
+fn get_schema(
+    module_path: Option<PathBuf>,
+    schema_path: Option<PathBuf>,
+    wasm_version: Option<WasmVersion>,
+) -> anyhow::Result<VersionedModuleSchema> {
+    let schema = if let Some(module_path) = module_path {
+        let bytes = fs::read(module_path).context("Could not read module file.")?;
+
+        let mut cursor = std::io::Cursor::new(&bytes[..]);
+        let (wasm_version, module) = match wasm_version {
+            Some(v) => (v, &bytes[..]),
+            None => {
+                let wasm_version: WasmVersion =
+                    concordium_base::common::Deserial::deserial(&mut cursor).context(
+                        "Could not read module version from the supplied module file. Supply the \
+                         version using `--wasm-version`.",
+                    )?;
+                (wasm_version, &cursor.into_inner()[8..])
+            }
+        };
+
+        match wasm_version {
+            WasmVersion::V0 => get_embedded_schema_v0(module).context(
+                "Failed to get schema embedded in the module.\nPlease provide a smart contract \
+                 module with an embedded schema.",
+            )?,
+            WasmVersion::V1 => get_embedded_schema_v1(module).context(
+                "Failed to get schema embedded in the module.\nPlease provide a smart contract \
+                 module with an embedded schema.",
+            )?,
+        }
+    } else if let Some(schema_path) = schema_path {
+        let bytes = fs::read(schema_path).context("Could not read schema file.")?;
+
+        if bytes.starts_with(VERSIONED_SCHEMA_MAGIC_HASH) {
+            from_bytes::<VersionedModuleSchema>(&bytes)?
+        } else if let Some(wv) = wasm_version {
+            match wv {
+                WasmVersion::V0 => from_bytes(&bytes).map(VersionedModuleSchema::V0)?,
+                WasmVersion::V1 => from_bytes(&bytes).map(VersionedModuleSchema::V1)?,
+            }
+        } else {
+            bail!(
+                "Legacy unversioned schema was supplied, but no version was provided. Use \
+                 `--wasm-version` to specify the version."
+            );
+        }
+    } else {
+        bail!("Exactly one of `--schema` or `--module` must be provided.");
+    };
+    Ok(schema)
+}
+
+/// Write the template of the schema to a file or print it
+/// to the console if `out` is None.
+pub fn write_schema_template(
+    out: Option<PathBuf>,
+    schema: &VersionedModuleSchema,
+) -> anyhow::Result<()> {
+    match out {
+        // writing the template of the schema to a file
+        Some(out) => {
+            println!(
+                "   Writing the template of the schema to {}.",
+                out.display()
+            );
+
+            if let Some(out_dir) = out.parent() {
+                fs::create_dir_all(out_dir).context(
+                    "Unable to create directory for the resulting template of the schema.",
+                )?;
+            }
+            // saving the template of the schema to the file
+            let mut out_file =
+                std::fs::File::create(out).context("Unable to create the output file.")?;
+            write!(&mut out_file, "{}", schema)
+                .context("Unable to write template schema output.")?;
+        }
+        // printing template of the schema to console
+        None => {
+            println!("   The template of the schema is:\n{}", schema)
+        }
+    }
+
+    Ok(())
+}
+
+/// Write the provided schema in its base64 representation to a file or print it
+/// to the console if `out` is None.
+pub fn write_schema_base64(
+    out: Option<PathBuf>,
+    schema: &VersionedModuleSchema,
+) -> anyhow::Result<()> {
+    let schema_base64 = ENCODER.encode(contracts_common::to_bytes(schema));
+
+    match out {
+        // writing base64 schema to file
+        Some(out) => {
+            println!("   Writing base64 schema to {}.", out.display());
+            if let Some(out_dir) = out.parent() {
+                fs::create_dir_all(out_dir)
+                    .context("Unable to create directory for the resulting base64 schema.")?;
+            }
+            // saving the schema base64 representation to the file
+            let mut out_file =
+                std::fs::File::create(out).context("Unable to create the output file.")?;
+            write!(&mut out_file, "{}", schema_base64)
+                .context("Unable to write schema base64 output.")?;
+        }
+        // printing base64 schema to console
+        None => {
+            println!(
+                "   The base64 conversion of the schema is:\n{}",
+                schema_base64
+            )
+        }
+    }
+
+    Ok(())
+}
+
+fn print_build_info(VersionedBuildInfo::V0(bi): &VersionedBuildInfo) {
+    let bold_style = ansi_term::Style::new().bold();
+    eprintln!("    - Build image used: {}", bold_style.paint(&bi.image));
+    eprintln!(
+        "    - Build command used: {}",
+        bold_style.paint(bi.build_command.join(" "))
+    );
+    eprintln!(
+        "    - Hash of the archive: {}",
+        bold_style.paint(bi.archive_hash.to_string())
+    );
+    if let Some(link) = &bi.source_link {
+        eprintln!("    - Link to source code: {}", bold_style.paint(link));
+    } else {
+        eprintln!(
+            "{}",
+            WARNING_STYLE.paint("    - No link to source code embedded.")
+        );
+    }
+}
+
+// -------------------- Main Case Handlers -------------------- //
+
 /// Handler for the command to verify a build.
 fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
     let module = WasmModule::from_file(&options.source)?;
     let mut skeleton = parse_skeleton(module.source.as_ref())
         .context("The supplied module is not a valid Wasm module")?;
 
-    let utils::VersionedBuildInfo::V0(build_info) =
-        utils::get_build_info_from_skeleton(&skeleton).context("Unable to extract build info.")?;
+    let VersionedBuildInfo::V0(build_info) =
+        get_build_info_from_skeleton(&skeleton).context("Unable to extract build info.")?;
 
     let tar_file_contents = if let Some(path) = options.source_path {
         let archive_data =
@@ -888,7 +1143,7 @@ fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
     };
 
     eprintln!("Building source and checking ...");
-    let rebuilt_source = build::build_archive(
+    let rebuilt_source = build_archive(
         &build_info.image,
         &tar_file_contents,
         &options.container_runtime,
@@ -927,12 +1182,12 @@ fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
     let mut build_context_section = None;
     for (i, ucs) in skeleton.custom.iter_mut().enumerate() {
         let cs = concordium_wasm::parse::parse_custom(ucs)?;
-        if cs.name.as_ref() == utils::BUILD_INFO_SECTION_NAME
+        if cs.name.as_ref() == BUILD_INFO_SECTION_NAME
             && build_context_section.replace((i, cs)).is_some()
         {
             anyhow::bail!(
                 "Multiple sections {}. The module is malformed.",
-                utils::BUILD_INFO_SECTION_NAME
+                BUILD_INFO_SECTION_NAME
             );
         }
     }
@@ -940,9 +1195,9 @@ fn handle_edit(options: EditOptions) -> anyhow::Result<()> {
         anyhow::bail!("No embedded build information found.");
     };
     skeleton.custom.remove(i);
-    let mut info: utils::VersionedBuildInfo =
+    let mut info: VersionedBuildInfo =
         from_bytes(cs.contents).context("Failed parsing build info")?;
-    let utils::VersionedBuildInfo::V0(ref mut inner) = info;
+    let VersionedBuildInfo::V0(ref mut inner) = info;
     if let Some(ref link) = options.source_link {
         if options.verify {
             eprintln!("Verifying data consistency.");
@@ -994,12 +1249,12 @@ fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
     let mut build_context_section = None;
     for ucs in skeleton.custom.iter_mut() {
         let cs = concordium_wasm::parse::parse_custom(ucs)?;
-        if cs.name.as_ref() == utils::BUILD_INFO_SECTION_NAME
+        if cs.name.as_ref() == BUILD_INFO_SECTION_NAME
             && build_context_section.replace(cs).is_some()
         {
             anyhow::bail!(
                 "Multiple sections {}. The module is malformed.",
-                utils::BUILD_INFO_SECTION_NAME
+                BUILD_INFO_SECTION_NAME
             );
         }
     }
@@ -1007,8 +1262,7 @@ fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
         anyhow::bail!("No embedded build information found.");
     };
 
-    let info: utils::VersionedBuildInfo =
-        from_bytes(cs.contents).context("Failed parsing build info")?;
+    let info: VersionedBuildInfo = from_bytes(cs.contents).context("Failed parsing build info")?;
     print_build_info(&info);
 
     Ok(())
@@ -1020,7 +1274,10 @@ fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
 /// When building, i.e. when running `cargo concordium build`, the schema
 /// information is outputted, but that is not the case when testing.
 /// This behaviour is configurable via the parameter `print_schema_info`.
-fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result<BuildInfo> {
+pub(crate) fn handle_build(
+    options: BuildOptions,
+    print_extra_info: bool,
+) -> anyhow::Result<BuildInfo> {
     let success_style = ansi_term::Color::Green.bold();
     let bold_style = ansi_term::Style::new().bold();
     let is_verifiable_build = options.image.is_some();
@@ -1045,32 +1302,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
     if let Some(module_schema) = &build_info.schema {
         let module_schema_bytes = to_bytes(module_schema);
         if print_extra_info {
-            match module_schema {
-                VersionedModuleSchema::V0(module_schema) => {
-                    eprintln!("\n   Module schema includes:");
-                    for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                        print_contract_schema_v0(contract_name, contract_schema);
-                    }
-                }
-                VersionedModuleSchema::V1(module_schema) => {
-                    eprintln!("\n   Module schema includes:");
-                    for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                        print_contract_schema_v1(contract_name, contract_schema);
-                    }
-                }
-                VersionedModuleSchema::V2(module_schema) => {
-                    eprintln!("\n   Module schema includes:");
-                    for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                        print_contract_schema_v2(contract_name, contract_schema);
-                    }
-                }
-                VersionedModuleSchema::V3(module_schema) => {
-                    eprintln!("\n   Module schema includes:");
-                    for (contract_name, contract_schema) in module_schema.contracts.iter() {
-                        print_contract_schema_v3(contract_name, contract_schema);
-                    }
-                }
-            };
+            print_contract_schema(module_schema);
             eprintln!(
                 "\n   Total size of the module schema is {} {}",
                 bold_style.paint(module_schema_bytes.len().to_string()),
@@ -1135,9 +1367,11 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
         }
     }
     if print_extra_info {
-        if let Some((bi, archived_files)) = &build_info.stored_build_info {
+        if let Some((versioned_build_info, archived_files)) = &build_info.stored_build_info {
             eprintln!("  Embedded build information information:\n",);
-            print_build_info(bi);
+
+            print_build_info(versioned_build_info);
+
             eprintln!();
             eprintln!("    - Archived source files:");
             for file in archived_files {
@@ -1180,160 +1414,48 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
     Ok(build_info)
 }
 
-/// Loads the contract state from file and displays it as a tree by printing to
-/// stdout.
-fn display_state_from_file(file_path: PathBuf) -> anyhow::Result<()> {
-    let file = File::open(&file_path)
-        .with_context(|| format!("Could not read state file {}.", file_path.display()))?;
-    let mut reader = std::io::BufReader::new(file);
-    let state = v1::trie::PersistentState::deserialize(&mut reader)
-        .context("Could not deserialize the provided state.")?;
+/// Create a new Concordium smart contract project from a template, or there
+/// are runtime exceptions that are not expected then this function returns
+/// `Err(...)`.
+pub(crate) fn handle_init(path: impl AsRef<Path>, tag: &str) -> anyhow::Result<()> {
+    let path = path.as_ref();
 
-    display_state(&state)
-}
+    let absolute_path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        env::current_dir()?.join(path)
+    };
 
-/// Displays the contract state as a tree by printing to stdout.
-fn display_state(state: &v1::trie::PersistentState) -> Result<(), anyhow::Error> {
-    let mut loader = v1::trie::Loader::new([]);
+    if let Err(which::Error::CannotFindBinaryPath) = which::which("cargo-generate") {
+        anyhow::bail!(
+            "`cargo concordium init` requires `cargo-generate` which does not appear to be \
+             installed. You can install it by running `cargo install --locked cargo-generate`"
+        )
+    }
 
-    let mut tree_builder = TreeBuilder::new("StateRoot".into());
-    state.display_tree(&mut tree_builder, &mut loader);
-    let tree = tree_builder.build();
-    // We don't want to depend on some global config as it opens up for all sorts of
-    // corner-case bugs since we are not in control and thus inconsistent user
-    // experience.
-    let config = PrintConfig::default();
-    print_tree_with(&tree, &config).context("Could not print the state as a tree.")
-}
+    let result = std::process::Command::new("cargo")
+        .arg("generate")
+        .args([
+            "--git",
+            "https://github.com/Concordium/concordium-rust-smart-contracts",
+            "templates",
+            "--tag",
+            tag,
+        ])
+        .args(["--destination", absolute_path.to_str().unwrap()])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .stdin(Stdio::inherit())
+        .output()
+        .context("Could not obtain the template.")?;
 
-/// Print the summary of the contract schema.
-fn print_schema_info(contract_name: &str, len: usize) {
-    eprintln!(
-        "\n     Contract schema: '{}' in total {} B.",
-        contract_name, len,
+    anyhow::ensure!(
+        result.status.success(),
+        "Could not use the template to initialize the project."
     );
-}
 
-/// Based on the list of receive names compute the colon position for aligning
-/// prints.
-fn get_colon_position<'a>(iter: impl Iterator<Item = &'a str>) -> usize {
-    let max_length_receive_opt = iter.map(|n| n.chars().count()).max();
-    max_length_receive_opt.map_or(5, |m| m.max(5))
-}
-
-/// Print the contract name and its entrypoints
-fn print_contract_schema_v0(
-    contract_name: &str,
-    contract_schema: &contracts_common::schema::ContractV0,
-) {
-    let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
-    let colon_position = get_colon_position(receive_iter);
-
-    print_schema_info(contract_name, to_bytes(contract_schema).len());
-
-    if let Some(state_schema) = &contract_schema.state {
-        eprintln!("       state   : {} B", to_bytes(state_schema).len());
-    }
-    if let Some(init_schema) = &contract_schema.init {
-        eprintln!("       init    : {} B", to_bytes(init_schema).len())
-    }
-
-    if !contract_schema.receive.is_empty() {
-        eprintln!("       receive");
-        for (method_name, param_type) in contract_schema.receive.iter() {
-            eprintln!(
-                "        - {:width$} : {} B",
-                format!("'{}'", method_name),
-                to_bytes(param_type).len(),
-                width = colon_position + 2
-            );
-        }
-    }
-}
-
-/// Print the contract name and its entrypoints.
-fn print_contract_schema_v1(
-    contract_name: &str,
-    contract_schema: &contracts_common::schema::ContractV1,
-) {
-    let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
-    let colon_position = get_colon_position(receive_iter);
-
-    print_schema_info(contract_name, to_bytes(contract_schema).len());
-
-    if let Some(init_schema) = &contract_schema.init {
-        eprintln!("       init    : {} B", to_bytes(init_schema).len())
-    }
-
-    if !contract_schema.receive.is_empty() {
-        eprintln!("       receive");
-        for (method_name, param_type) in contract_schema.receive.iter() {
-            eprintln!(
-                "        - {:width$} : {} B",
-                format!("'{}'", method_name),
-                to_bytes(param_type).len(),
-                width = colon_position + 2
-            );
-        }
-    }
-}
-
-/// Print the contract name and its entrypoints.
-fn print_contract_schema_v2(
-    contract_name: &str,
-    contract_schema: &contracts_common::schema::ContractV2,
-) {
-    let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
-    let colon_position = get_colon_position(receive_iter);
-
-    print_schema_info(contract_name, to_bytes(contract_schema).len());
-
-    if let Some(init_schema) = &contract_schema.init {
-        eprintln!("       init    : {} B", to_bytes(init_schema).len())
-    }
-
-    if !contract_schema.receive.is_empty() {
-        eprintln!("       receive");
-        for (method_name, param_type) in contract_schema.receive.iter() {
-            eprintln!(
-                "        - {:width$} : {} B",
-                format!("'{}'", method_name),
-                to_bytes(param_type).len(),
-                width = colon_position + 2
-            );
-        }
-    }
-}
-
-/// Print the contract name and its entrypoints.
-fn print_contract_schema_v3(
-    contract_name: &str,
-    contract_schema: &contracts_common::schema::ContractV3,
-) {
-    let receive_iter = contract_schema.receive.keys().map(|n| n.as_str());
-    let colon_position = get_colon_position(receive_iter);
-
-    print_schema_info(contract_name, to_bytes(contract_schema).len());
-
-    if let Some(init_schema) = &contract_schema.init {
-        eprintln!("       init    : {} B", to_bytes(init_schema).len())
-    }
-
-    if let Some(event_schema) = &contract_schema.event {
-        eprintln!("       event   : {} B", to_bytes(event_schema).len())
-    }
-
-    if !contract_schema.receive.is_empty() {
-        eprintln!("       receive");
-        for (method_name, param_type) in contract_schema.receive.iter() {
-            eprintln!(
-                "        - {:width$} : {} B",
-                format!("'{}'", method_name),
-                to_bytes(param_type).len(),
-                width = colon_position + 2
-            );
-        }
-    }
+    eprintln!("Created the smart contract template.");
+    Ok(())
 }
 
 fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
@@ -1361,7 +1483,7 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         };
         Some(schema.map_err(|_| anyhow::anyhow!("Could not deserialize schema file."))?)
     } else {
-        let res = utils::get_embedded_schema_v0(module);
+        let res = get_embedded_schema_v0(module);
         if let Err(err) = &res {
             eprintln!(
                 "{}",
@@ -1638,32 +1760,6 @@ fn handle_run_v0(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn print_debug(trace: DebugTracker) {
-    let summary = trace.host_call_summary();
-    let DebugTracker {
-        operation,
-        memory_alloc,
-        host_call_trace: _,
-        emitted_events,
-        ..
-    } = trace;
-    eprintln!("Debug information recorded during the run.");
-    eprintln!("- {operation} interpreter energy spent on Wasm instruction execution.");
-    eprintln!("- {memory_alloc} interpreter energy spent on memory allocation.");
-    eprintln!("- Host calls summary.");
-    for (host_fn, (multiplicity, total_energy)) in summary {
-        eprintln!(
-            "  - {host_fn} called {multiplicity} times totalling {total_energy} interpreter \
-             energy spent."
-        );
-    }
-
-    eprintln!("- Emitted debug events.");
-    for (_, event) in emitted_events {
-        eprintln!("  - {event}");
-    }
-}
-
 fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
     let (contract_name, runner, is_receive, emit_debug) = match run_cmd {
         RunCommand::Init {
@@ -1691,7 +1787,7 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         };
         Some(schema.map_err(|_| anyhow::anyhow!("Could not deserialize schema file."))?)
     } else {
-        let res = utils::get_embedded_schema_v1(module);
+        let res = get_embedded_schema_v1(module);
         if let Err(err) = &res {
             eprintln!(
                 "{}",
@@ -2223,155 +2319,4 @@ fn handle_run_v1(run_cmd: RunCommand, module: &[u8]) -> anyhow::Result<()> {
         }
     }
     Ok(())
-}
-
-/// Attempt to get a parameter (for either init or receive function) from the
-/// supplied paths, signalling failure if this is not possible.
-fn get_parameter(
-    bin_path: Option<&Path>,
-    json_path: Option<&Path>,
-    has_contract_schema: bool,
-    parameter_schema: Option<&Type>,
-) -> anyhow::Result<OwnedParameter> {
-    if let Some(param_file) = bin_path {
-        Ok(OwnedParameter::new_unchecked(
-            fs::read(param_file).context("Could not read parameter-bin file.")?,
-        ))
-    } else if let Some(param_file) = json_path {
-        if !has_contract_schema {
-            bail!(
-                "No schema found for contract, a schema is required for using --parameter-json. \
-                 Either embed the schema in the module or provide it using the `--schema` option."
-            )
-        } else {
-            let parameter_schema = parameter_schema
-                .context("Contract schema did not contain a schema for this parameter.")?;
-
-            let file = fs::read(param_file).context("Could not read parameter file.")?;
-            let parameter_json: serde_json::Value = serde_json::from_slice(&file)
-                .context("Could not parse the JSON in parameter-json file.")?;
-            let mut parameter_bytes = Vec::new();
-            parameter_schema
-                .serial_value_into(&parameter_json, &mut parameter_bytes)
-                .context("Could not generate parameter bytes using schema and JSON.")?;
-            Ok(OwnedParameter::new_unchecked(parameter_bytes))
-        }
-    } else {
-        Ok(OwnedParameter::empty())
-    }
-}
-
-/// Attempt to get a schema (either from a smart contract module file or a
-/// schema file) from the supplied paths, signalling failure if this is not
-/// possible.
-fn get_schema(
-    module_path: Option<PathBuf>,
-    schema_path: Option<PathBuf>,
-    wasm_version: Option<WasmVersion>,
-) -> anyhow::Result<VersionedModuleSchema> {
-    let schema = if let Some(module_path) = module_path {
-        let bytes = fs::read(module_path).context("Could not read module file.")?;
-
-        let mut cursor = std::io::Cursor::new(&bytes[..]);
-        let (wasm_version, module) = match wasm_version {
-            Some(v) => (v, &bytes[..]),
-            None => {
-                let wasm_version: WasmVersion =
-                    concordium_base::common::Deserial::deserial(&mut cursor).context(
-                        "Could not read module version from the supplied module file. Supply the \
-                         version using `--wasm-version`.",
-                    )?;
-                (wasm_version, &cursor.into_inner()[8..])
-            }
-        };
-
-        match wasm_version {
-            WasmVersion::V0 => utils::get_embedded_schema_v0(module).context(
-                "Failed to get schema embedded in the module.\nPlease provide a smart contract \
-                 module with an embedded schema.",
-            )?,
-            WasmVersion::V1 => utils::get_embedded_schema_v1(module).context(
-                "Failed to get schema embedded in the module.\nPlease provide a smart contract \
-                 module with an embedded schema.",
-            )?,
-        }
-    } else if let Some(schema_path) = schema_path {
-        let bytes = fs::read(schema_path).context("Could not read schema file.")?;
-
-        if bytes.starts_with(VERSIONED_SCHEMA_MAGIC_HASH) {
-            from_bytes::<VersionedModuleSchema>(&bytes)?
-        } else if let Some(wv) = wasm_version {
-            match wv {
-                WasmVersion::V0 => from_bytes(&bytes).map(VersionedModuleSchema::V0)?,
-                WasmVersion::V1 => from_bytes(&bytes).map(VersionedModuleSchema::V1)?,
-            }
-        } else {
-            bail!(
-                "Legacy unversioned schema was supplied, but no version was provided. Use \
-                 `--wasm-version` to specify the version."
-            );
-        }
-    } else {
-        bail!("Exactly one of `--schema` or `--module` must be provided.");
-    };
-    Ok(schema)
-}
-
-/// Write the JSON representation of the schema into files in the `out`
-/// directory. The files are named after contract_names, except if a
-/// contract_name contains unsuitable characters. Then the counter is used to
-/// name the file.
-fn write_json_schema(out: &Path, schema: &VersionedModuleSchema) -> anyhow::Result<()> {
-    match schema {
-        VersionedModuleSchema::V0(module_schema) => {
-            for (contract_counter, (contract_name, contract_schema)) in
-                module_schema.contracts.iter().enumerate()
-            {
-                write_json_schema_to_file_v0(out, contract_name, contract_counter, contract_schema)?
-            }
-        }
-        VersionedModuleSchema::V1(module_schema) => {
-            for (contract_counter, (contract_name, contract_schema)) in
-                module_schema.contracts.iter().enumerate()
-            {
-                write_json_schema_to_file_v1(out, contract_name, contract_counter, contract_schema)?
-            }
-        }
-        VersionedModuleSchema::V2(module_schema) => {
-            for (contract_counter, (contract_name, contract_schema)) in
-                module_schema.contracts.iter().enumerate()
-            {
-                write_json_schema_to_file_v2(out, contract_name, contract_counter, contract_schema)?
-            }
-        }
-        VersionedModuleSchema::V3(module_schema) => {
-            for (contract_counter, (contract_name, contract_schema)) in
-                module_schema.contracts.iter().enumerate()
-            {
-                write_json_schema_to_file_v3(out, contract_name, contract_counter, contract_schema)?
-            }
-        }
-    }
-    Ok(())
-}
-
-fn print_build_info(utils::VersionedBuildInfo::V0(bi): &utils::VersionedBuildInfo) {
-    let bold_style = ansi_term::Style::new().bold();
-    eprintln!("    - Build image used: {}", bold_style.paint(&bi.image));
-    eprintln!(
-        "    - Build command used: {}",
-        bold_style.paint(bi.build_command.join(" "))
-    );
-    eprintln!(
-        "    - Hash of the archive: {}",
-        bold_style.paint(bi.archive_hash.to_string())
-    );
-    if let Some(link) = &bi.source_link {
-        eprintln!("    - Link to source code: {}", bold_style.paint(link));
-    } else {
-        eprintln!(
-            "{}",
-            WARNING_STYLE.paint("    - No link to source code embedded.")
-        );
-    }
 }

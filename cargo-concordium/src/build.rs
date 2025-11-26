@@ -44,7 +44,7 @@ use std::{
 
 /// Encode all base64 strings using the standard alphabet and padding.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
-const TARGET: &'static str = "wasm32-unknown-unknown";
+const TARGET: &str = "wasm32-unknown-unknown";
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
@@ -263,6 +263,7 @@ struct ContainerBuildOutput {
 ///   be a fully expanded, canonical path.
 /// - `tar_path`, - the path to the tar archive. This should be a fully
 ///   expanded, canonical path.
+#[allow(clippy::too_many_arguments)]
 fn build_in_container(
     image: String,
     package: &Package,
@@ -505,7 +506,7 @@ pub(crate) fn build_contract(
             package,
             &package_root_path,
             metadata,
-            &cargo_args,
+            cargo_args,
             &container_runtime,
             &out_filename,
             &tar_filename,
@@ -525,7 +526,7 @@ pub(crate) fn build_contract(
             profile: &options.profile,
             locked: false,
             features: &[],
-            package: &package,
+            package,
             extra_args: &[],
         }
         .run_cargo_cmd(options.skip_wasm_opt)?;

@@ -44,14 +44,7 @@ use std::{
 
 /// Encode all base64 strings using the standard alphabet and padding.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
-
-/// Convert a string to snake case by replacing `-` with `_`.
-///
-/// Used for converting crate names, which often contain `-`, to module names,
-/// which cannot have `-`.
-fn to_snake_case(string: &str) -> String {
-    string.replace('-', "_")
-}
+const TARGET: &'static str = "wasm32-unknown-unknown";
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
@@ -218,7 +211,7 @@ pub fn build_archive(
     std::fs::write(artifact_dir.path().join(tar_file_name), tar_contents)
         .context("Unable to write archive.")?;
 
-    let container_output_dir = "/b/t/wasm32-unknown-unknown/release";
+    let container_output_dir = format!("/b/t/{TARGET}/release");
     let mut cmd = Command::new(container_runtime);
 
     cmd.arg("run")
@@ -236,7 +229,7 @@ pub fn build_archive(
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .context("Could not use cargo build.")?;
+        .context(format!("Could not use {container_runtime}"))?;
 
     if !result.status.success() {
         anyhow::bail!("Compilation failed.")
@@ -256,24 +249,13 @@ struct ContainerBuildOutput {
     tar_archive: TarArchiveData,
 }
 
-/// Package data for building inside a container.
-struct PackageData<'a> {
-    /// The target directory of the package that is being
-    /// built. This is used to exclude it from bundling.
-    package_target_dir: &'a Path,
-    /// The root of the package to build.
-    package_root_path: &'a Path,
-    /// The package-name-version pair to mimics the behaviour or cargo package.
-    /// The paths in the tar archive are
-    package_version_string: &'a str,
-}
-
 /// Build the provided directory in the container. Return the built module and
 /// tar archive. The arguments are
 ///
 /// - `image`, the docker image that will be used to build.
-/// - `package_target_dir`,
-/// - `package_root_path`,
+/// - `package`, the package being built.
+/// - `package_root_path`, the root path of the package being built.
+/// - `metadata`, cargo metadata.
 /// - `extra_args`, the extra arguments to pass to the cargo build command.
 /// - `container_runtime`, the container runtime to use, e.g. `docker` or
 ///   `podman`
@@ -283,21 +265,21 @@ struct PackageData<'a> {
 ///   expanded, canonical path.
 fn build_in_container(
     image: String,
-    PackageData {
-        package_target_dir,
-        package_root_path,
-        package_version_string,
-    }: PackageData,
+    package: &Package,
+    package_root_path: &Path,
+    metadata: &Metadata,
     extra_args: &[String],
     container_runtime: &str,
     out_path: &Path,
     tar_path: &Path,
     source_link: Option<String>,
 ) -> anyhow::Result<ContainerBuildOutput> {
+    let target_dir = metadata.target_directory.as_std_path();
+    let package_version_string = format!("{}-{}", package.name, package.version);
     let tar_archive = create_archive(
         package_root_path,
-        package_version_string,
-        &[out_path, tar_path, package_target_dir],
+        &package_version_string,
+        &[out_path, tar_path, target_dir],
     )?;
 
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
@@ -307,7 +289,7 @@ fn build_in_container(
         profile: "release",
         locked: true,
         features: &[],
-        package: None,
+        package,
         extra_args,
     }
     .get_cargo_cmd_as_strings()?;
@@ -413,10 +395,6 @@ pub(crate) fn build_contract(
         .context("Unable to get package root path.")?
         .canonicalize()?;
 
-    let wasm_file_name = format!("{}.wasm", to_snake_case(package.name.as_str()));
-
-    let package_version_string = format!("{}-{}", package.name, package.version);
-
     // Make sure up-front before building anything that the output path points to a
     // sensible location
     let mut out_filename = match options.out {
@@ -457,6 +435,7 @@ pub(crate) fn build_contract(
             if build_schema.build() {
                 let schema = build_contract_schema(
                     cargo_args,
+                    &options.profile,
                     options.skip_wasm_opt,
                     utils::generate_contract_schema_v0,
                 )
@@ -479,6 +458,7 @@ pub(crate) fn build_contract(
             if build_schema.build() {
                 let schema = build_contract_schema(
                     cargo_args,
+                    &options.profile,
                     options.skip_wasm_opt,
                     utils::generate_contract_schema_v3,
                 )
@@ -514,24 +494,15 @@ pub(crate) fn build_contract(
             tar_filename.push(".tar");
             tar_filename.into()
         };
-        let mut package_target_dir = metadata.target_directory.as_std_path().to_path_buf();
-        if package_target_dir
-            .try_exists()
-            .context("Unable to check if target directory exists.")?
-        {
-            package_target_dir = package_target_dir.canonicalize()?;
-        };
         let ContainerBuildOutput {
             output_wasm,
             build_info,
             tar_archive,
         } = build_in_container(
             image,
-            PackageData {
-                package_target_dir: package_target_dir.as_path(),
-                package_root_path: package_root_path.as_path(),
-                package_version_string: &package_version_string,
-            },
+            package,
+            &package_root_path,
+            metadata,
             &args_without_manifest,
             &container_runtime,
             &out_filename,
@@ -547,37 +518,15 @@ pub(crate) fn build_contract(
         (out_filename, output_wasm, Some((build_info, tar_archive)))
     } else {
         let target_dir = metadata.target_directory.as_std_path().join("concordium");
-        let output_wasm_file = target_dir
-            .join("wasm32-unknown-unknown/release")
-            .join(wasm_file_name);
-
-        let result = CargoBuildParameters {
+        let wasm = CargoBuildParameters {
             target_dir: &target_dir,
             profile: &options.profile,
             locked: false,
             features: &[],
-            package: Some(&package.name),
+            package: &package,
             extra_args: &[],
         }
-        .run_cargo_cmd()
-        .context("Could not use cargo build.")?;
-
-        if !result.status.success() {
-            anyhow::bail!("Compilation failed.")
-        }
-
-        if !options.skip_wasm_opt {
-            wasm_opt::OptimizationOptions::new_opt_level_0()
-                .run(&output_wasm_file, &output_wasm_file)
-                .context("Failed running wasm_opt")?;
-        }
-
-        let wasm = fs::read(&output_wasm_file).with_context(|| {
-            format!(
-                "Could not read cargo build Wasm output from {}.",
-                output_wasm_file.display()
-            )
-        })?;
+        .run_cargo_cmd(options.skip_wasm_opt)?;
 
         (out_filename, wasm, None)
     };
@@ -758,47 +707,27 @@ fn find_closest<'a>(
 /// Then extracts the schema from the schema build
 pub fn build_contract_schema<A>(
     cargo_args: &[String],
+    profile: &str,
     skip_wasm_opt: bool,
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
     let metadata = get_crate_metadata(cargo_args)?;
 
-    let target_dir = format!("{}/concordium", metadata.target_directory);
+    let target_dir = metadata.target_directory.as_std_path().join("concordium");
 
     let package = metadata
         .root_package()
         .context("Unable to determine package.")?;
 
-    let result = Command::new("cargo")
-        .arg("build")
-        .args(["--target", "wasm32-unknown-unknown"])
-        .arg("--release")
-        .args(["--features", "concordium-std/build-schema"])
-        .args(["--target-dir", target_dir.as_str()])
-        .args(cargo_args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-        .context("Could not run cargo build.")?;
-
-    if !result.status.success() {
-        anyhow::bail!("Compilation failed.");
+    let wasm = CargoBuildParameters {
+        target_dir: &target_dir,
+        profile,
+        locked: false,
+        features: &["concordium-std/build-schema"],
+        package,
+        extra_args: cargo_args,
     }
-
-    let filename = format!(
-        "{}/wasm32-unknown-unknown/release/{}.wasm",
-        target_dir,
-        to_snake_case(package.name.as_str())
-    );
-
-    if !skip_wasm_opt {
-        wasm_opt::OptimizationOptions::new_opt_level_0()
-            .run(&filename, &filename)
-            .context("Failed running wasm_opt")?;
-    }
-
-    let wasm =
-        std::fs::read(filename).context("Could not read cargo build contract schema output.")?;
+    .run_cargo_cmd(skip_wasm_opt)?;
     let schema =
         generate_schema(&wasm).context("Could not generate module schema from Wasm module.")?;
     Ok(schema)
@@ -1358,55 +1287,19 @@ pub fn build_and_run_wasm_test(
         .into_std_path_buf()
         .join("concordium");
 
-    let cargo_cmd = CargoBuildParameters {
+    let wasm = CargoBuildParameters {
         target_dir: &target_dir,
         profile,
         locked: false,
-        package: None,
+        package,
         features: if enable_debug {
             &["concordium-std/wasm-test", "concordium-std/debug"]
         } else {
             &["concordium-std/wasm-test"]
         },
         extra_args,
-    };
-
-    // Output what we are doing so that it is easier to debug if the user
-    // has their own features or options.
-    eprint!(
-        "{} cargo {}",
-        Color::Green.bold().paint("Running"),
-        cargo_cmd.get_cargo_cmd_as_strings()?.join(" ")
-    );
-    if extra_args.is_empty() {
-        // This branch is just to avoid the extra trailing space in the case when
-        // there are no extra arguments.
-        eprintln!()
-    } else {
-        eprintln!(" {}", extra_args.join(" "));
     }
-    let result = cargo_cmd
-        .run_cargo_cmd()
-        .context("Failed building contract tests.")?;
-    // Make sure that compilation succeeded before proceeding.
-    anyhow::ensure!(
-        result.status.success(),
-        Color::Red.bold().paint("Could not build contract tests.")
-    );
-
-    // If we compiled successfully the artifact is in the place listed below.
-    // So we load it, and try to run it.s
-    let file_path = target_dir
-        .join("wasm32-unknown-unknown")
-        .join("release")
-        .join(format!("{}.wasm", to_snake_case(package.name.as_str())));
-    if !skip_wasm_opt {
-        wasm_opt::OptimizationOptions::new_opt_level_0()
-            .run(&file_path, &file_path)
-            .context("Failed running wasm_opt")?;
-    }
-
-    let wasm = std::fs::read(file_path).context("Failed reading contract test output artifact.")?;
+    .run_cargo_cmd(skip_wasm_opt)?;
 
     eprintln!("\n{}", Color::Green.bold().paint("Running unit tests ..."));
 
@@ -1442,33 +1335,33 @@ pub fn build_and_run_wasm_test(
     }
 }
 
-/// Checks if the `wasm32-unknown-unknown` target is installed, and returns an
-/// error if not.
+/// Checks if the target is installed, and returns an error if not.
 fn check_wasm_target() -> anyhow::Result<()> {
     // Try to check with rustup, which should be reliable, but it may not be
     // installed. If not, check for a folder named
-    // `$sysroot/lib/rustlib/wasm32-unknown-unknown`.
+    // `$sysroot/lib/rustlib/{TARGET}`.
     let target_installed = if let Ok(rustup_output) = Command::new("rustup")
         .args(["target", "list", "--installed"])
         .output()
     {
         str::from_utf8(&rustup_output.stdout)?
             .lines()
-            .any(|l| l == "wasm32-unknown-unknown")
+            .any(|l| l == TARGET)
     } else {
         let rustc_output = Command::new("rustc")
             .args(["--print", "sysroot"])
             .output()
             .context("Unable to run `rustc`")?;
         let mut target_path = PathBuf::from(str::from_utf8(&rustc_output.stdout)?.trim_end());
-        target_path.push("lib/rustlib/wasm32-unknown-unknown");
+        target_path.push(format!("lib/rustlib/{TARGET}"));
         fs::metadata(target_path).is_ok_and(|m| m.is_dir())
     };
 
     anyhow::ensure!(
         target_installed,
-        "Cannot find the `wasm32-unknown-unknown` target. Try installing it by running `rustup \
-         target add wasm32-unknown-unknown`."
+        format!(
+            "Cannot find the `{TARGET}` target. Try installing it by running `rustup target add {TARGET}`."
+        )
     );
     Ok(())
 }
@@ -1479,7 +1372,7 @@ struct CargoBuildParameters<'a> {
     profile: &'a str,
     locked: bool,
     features: &'a [&'a str],
-    package: Option<&'a str>,
+    package: &'a Package,
     extra_args: &'a [String],
 }
 
@@ -1490,18 +1383,16 @@ impl CargoBuildParameters<'_> {
             "cargo",
             "build",
             "--target",
-            "wasm32-unknown-unknown",
+            TARGET,
             "--profile",
             self.profile,
+            "--package",
+            &self.package.name,
             "--target-dir",
             self.target_dir
                 .to_str()
                 .context("target_dir is not valid UTF-8")?,
         ];
-        if let Some(pkg) = self.package {
-            args.push("--package");
-            args.push(pkg);
-        }
         if self.locked {
             args.push("--locked");
         }
@@ -1516,18 +1407,48 @@ impl CargoBuildParameters<'_> {
         Ok(args)
     }
 
-    /// Run the `cargo build` command with the specified parameters.
-    fn run_cargo_cmd(&self) -> anyhow::Result<std::process::Output> {
-        let mut args = self.get_cargo_cmd_as_strings()?;
+    /// Run the `cargo build` command with the specified parameters and get the wasm output.
+    fn run_cargo_cmd(&self, skip_wasm_opt: bool) -> anyhow::Result<Vec<u8>> {
+        let cargo_cmd = self.get_cargo_cmd_as_strings()?;
+        let mut args = cargo_cmd.clone();
         let executable = args.remove(0); // "cargo"
         let mut cmd = Command::new(&executable);
         cmd.args(&args);
 
-        let output = cmd
+        let result = cmd
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
-            .output()?;
+            .output()
+            .context("Could not use cargo build.")?;
 
-        Ok(output)
+        if !result.status.success() {
+            anyhow::bail!(
+                "Compilation failed. Unable to build with command: `{}`",
+                cargo_cmd.join(" ")
+            )
+        }
+
+        let wasm_file_name = format!("{}.wasm", self.package.name.as_str()).replace('-', "_");
+
+        let output_wasm_file = self
+            .target_dir
+            .join(TARGET)
+            .join(self.profile)
+            .join(wasm_file_name);
+
+        if !skip_wasm_opt {
+            wasm_opt::OptimizationOptions::new_opt_level_0()
+                .run(&output_wasm_file, &output_wasm_file)
+                .context("Failed running wasm_opt")?;
+        }
+
+        let wasm = fs::read(&output_wasm_file).with_context(|| {
+            format!(
+                "Could not read cargo build Wasm output from {}.",
+                output_wasm_file.display()
+            )
+        })?;
+
+        Ok(wasm)
     }
 }

@@ -256,7 +256,7 @@ struct ContainerBuildOutput {
 /// - `package`, the package being built.
 /// - `package_root_path`, the root path of the package being built.
 /// - `metadata`, cargo metadata.
-/// - `extra_args`, the extra arguments to pass to the cargo build command.
+/// - `cargo_args`, the extra arguments to pass to the cargo build command.
 /// - `container_runtime`, the container runtime to use, e.g. `docker` or
 ///   `podman`
 /// - `out_path`, - the path to the out file for the wasm artifact. This should
@@ -268,7 +268,7 @@ fn build_in_container(
     package: &Package,
     package_root_path: &Path,
     metadata: &Metadata,
-    extra_args: &[String],
+    cargo_args: &[String],
     container_runtime: &str,
     out_path: &Path,
     tar_path: &Path,
@@ -281,8 +281,15 @@ fn build_in_container(
         &package_version_string,
         &[out_path, tar_path, target_dir],
     )?;
-
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
+
+    // The manifest path does not make sense since the project is built from
+    // a specific location inside the container
+    let args_without_manifest: Vec<String> = cargo_args
+        .iter()
+        .take_while(|val| !val.starts_with("--manifest-path"))
+        .cloned()
+        .collect();
 
     let build_command = CargoBuildParameters {
         target_dir: Path::new("/b/t"),
@@ -290,7 +297,7 @@ fn build_in_container(
         locked: true,
         features: &[],
         package,
-        extra_args,
+        extra_args: &args_without_manifest,
     }
     .get_cargo_cmd_as_strings()?;
 
@@ -371,11 +378,6 @@ pub(crate) fn build_contract(
 
     let build_schema = options.schema_build_options();
     let container_runtime = options.container_runtime;
-    let args_without_manifest: Vec<String> = cargo_args
-        .iter()
-        .take_while(|val| !val.starts_with("--manifest-path"))
-        .cloned()
-        .collect();
 
     // Check immediately if reproducible build is requested that we can execute the
     // container runtime.
@@ -503,7 +505,7 @@ pub(crate) fn build_contract(
             package,
             &package_root_path,
             metadata,
-            &args_without_manifest,
+            &cargo_args,
             &container_runtime,
             &out_filename,
             &tar_filename,

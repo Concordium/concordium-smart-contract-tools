@@ -1035,13 +1035,8 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
         options.cargo_args.clone()
     };
 
-    let metadata = get_crate_metadata(&cargo_args)?;
-    let package = metadata
-        .root_package()
-        .context("Unable to determine package.")?;
-
-    let build_info = build_contract(options.clone(), &cargo_args, package, &metadata)
-        .context("Could not build smart contract.")?;
+    let build_info =
+        build_contract(options.clone(), &cargo_args).context("Could not build smart contract.")?;
     if let Some(module_schema) = &build_info.schema {
         let module_schema_bytes = to_bytes(module_schema);
         if print_extra_info {

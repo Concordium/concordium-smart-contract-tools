@@ -49,14 +49,17 @@ const TARGET: &str = "wasm32-unknown-unknown";
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
 ///
-/// This function corresponds 1-1 to the example given in the `cargo_metadata`
-/// crate that we use. https://docs.rs/cargo_metadata/0.23.1/cargo_metadata/
-pub(crate) fn get_crate_metadata(cargo_extra_args: &[String]) -> anyhow::Result<Metadata> {
+/// If successful, the return value is a pair of metadata and all of the
+/// `cargo_args` except the `--manifest-path` and the path to the manifest file.
+/// This last part is used for reproducible builds. There we want to keep the
+/// remaining `cargo` arguments, but the manifest path does not make sense since
+/// the project is built from a specific location inside the container.
+pub(crate) fn get_crate_metadata(
+    cargo_args: &[String],
+) -> anyhow::Result<(Metadata, impl Iterator<Item = &String>)> {
+    let pred = |val: &&String| !val.starts_with("--manifest-path");
+    let mut args = cargo_args.iter().skip_while(pred);
     let mut cmd = MetadataCommand::new();
-    let mut args = cargo_extra_args
-        .iter()
-        .skip_while(|val| !val.starts_with("--manifest-path"));
-
     match args.next() {
         Some(p) if *p == "--manifest-path" => {
             // If a `--manifest-path` is provided, look for the `Cargo.toml` file there.
@@ -80,7 +83,9 @@ pub(crate) fn get_crate_metadata(cargo_extra_args: &[String]) -> anyhow::Result<
     };
 
     let metadata = cmd.exec().context("Could not access cargo metadata.")?;
-    Ok(metadata)
+
+    let init_args = cargo_args.iter().take_while(pred);
+    Ok((metadata, init_args.chain(args)))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -258,7 +263,6 @@ struct ContainerBuildOutput {
 /// - `image`, the docker image that will be used to build.
 /// - `package`, the package being built.
 /// - `package_root_path`, the root path of the package being built.
-/// - `metadata`, cargo metadata.
 /// - `cargo_extra_args`, the extra arguments to pass to the cargo build command.
 /// - `container_runtime`, the container runtime to use, e.g. `docker` or
 ///   `podman`
@@ -271,13 +275,14 @@ fn build_in_container(
     image: String,
     package: &Package,
     package_root_path: &Path,
-    metadata: &Metadata,
     cargo_extra_args: &[String],
     container_runtime: &str,
     out_path: &Path,
     tar_path: &Path,
     source_link: Option<String>,
 ) -> anyhow::Result<ContainerBuildOutput> {
+    let (metadata, extra_args_without_manifest) = get_crate_metadata(cargo_extra_args)?;
+    let extra_args_without_manifest: Vec<String> = extra_args_without_manifest.cloned().collect();
     let target_dir = metadata.target_directory.as_std_path();
     let package_version_string = format!("{}-{}", package.name, package.version);
     let tar_archive = create_archive(
@@ -286,14 +291,6 @@ fn build_in_container(
         &[out_path, tar_path, target_dir],
     )?;
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
-
-    // The manifest path does not make sense since the project is built from
-    // a specific location inside the container
-    let extra_args_without_manifest: Vec<String> = cargo_extra_args
-        .iter()
-        .take_while(|val| !val.starts_with("--manifest-path"))
-        .cloned()
-        .collect();
 
     let build_command = CargoBuildParameters {
         target_dir: Path::new("/b/t"),
@@ -374,8 +371,6 @@ fn build_in_container(
 pub(crate) fn build_contract(
     options: BuildOptions,
     cargo_extra_args: &[String],
-    package: &Package,
-    metadata: &Metadata,
 ) -> anyhow::Result<BuildInfo> {
     // Check that the wasm target is installed
     check_wasm_target()?;
@@ -394,6 +389,11 @@ pub(crate) fn build_contract(
             );
         }
     }
+
+    let (metadata, _) = get_crate_metadata(cargo_extra_args)?;
+    let package = metadata
+        .root_package()
+        .context("Unable to determine package.")?;
 
     let package_root_path = package
         .manifest_path
@@ -508,7 +508,6 @@ pub(crate) fn build_contract(
             image,
             package,
             &package_root_path,
-            metadata,
             cargo_extra_args,
             &container_runtime,
             &out_filename,
@@ -717,7 +716,7 @@ pub fn build_contract_schema<A>(
     skip_wasm_opt: bool,
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let metadata = get_crate_metadata(cargo_extra_args)?;
+    let (metadata, _) = get_crate_metadata(cargo_extra_args)?;
 
     let target_dir = metadata.target_directory.as_std_path().join("concordium");
 
@@ -1284,7 +1283,7 @@ pub fn build_and_run_wasm_test(
     // Check that the wasm target is installed
     check_wasm_target()?;
 
-    let metadata = get_crate_metadata(cargo_extra_args)?;
+    let (metadata, _) = get_crate_metadata(cargo_extra_args)?;
 
     let package = metadata
         .root_package()

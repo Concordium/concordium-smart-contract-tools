@@ -1092,7 +1092,7 @@ pub(crate) fn build_and_run_integration_tests(
     build_options: BuildOptions,
     test_targets: Vec<String>,
 ) -> anyhow::Result<()> {
-    let cargo_args = build_options.cargo_args.clone();
+    let cargo_extra_args = build_options.cargo_args.clone();
     let allow_debug = build_options.allow_debug;
 
     // Build the module in the same way as `cargo concordium build`, except that
@@ -1139,19 +1139,22 @@ pub(crate) fn build_and_run_integration_tests(
     if allow_debug {
         command.args(["--features", "concordium-std/debug"]);
     }
-    command.args(&cargo_args);
+    command.args(&cargo_extra_args);
     // when allowing debug output, we make sure that test output is not captured.
     if allow_debug {
         // check if the user has already supplied extra test flags
-        let (test_args, show_output) = cargo_args.iter().fold((false, false), |(ta, so), arg| {
-            if arg == "--" {
-                (true, so)
-            } else if arg == "--show-output" || arg == "--nocapture" {
-                (ta, true)
-            } else {
-                (ta, so)
-            }
-        });
+        let (test_args, show_output) =
+            cargo_extra_args
+                .iter()
+                .fold((false, false), |(ta, so), arg| {
+                    if arg == "--" {
+                        (true, so)
+                    } else if arg == "--show-output" || arg == "--nocapture" {
+                        (ta, true)
+                    } else {
+                        (ta, so)
+                    }
+                });
         // if the extra test args separator is added we should not add it again.
         if !test_args {
             command.arg("--");

@@ -48,9 +48,12 @@ const TARGET: &str = "wasm32-unknown-unknown";
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
-pub(crate) fn get_crate_metadata(cargo_args: &[String]) -> anyhow::Result<Metadata> {
+///
+/// This function corresponds 1-1 to the example given in the `cargo_metadata`
+/// crate that we use. https://docs.rs/cargo_metadata/0.23.1/cargo_metadata/
+pub(crate) fn get_crate_metadata(cargo_extra_args: &[String]) -> anyhow::Result<Metadata> {
     let mut cmd = MetadataCommand::new();
-    let mut args = cargo_args
+    let mut args = cargo_extra_args
         .iter()
         .skip_while(|val| !val.starts_with("--manifest-path"));
 
@@ -256,7 +259,7 @@ struct ContainerBuildOutput {
 /// - `package`, the package being built.
 /// - `package_root_path`, the root path of the package being built.
 /// - `metadata`, cargo metadata.
-/// - `cargo_args`, the extra arguments to pass to the cargo build command.
+/// - `cargo_extra_args`, the extra arguments to pass to the cargo build command.
 /// - `container_runtime`, the container runtime to use, e.g. `docker` or
 ///   `podman`
 /// - `out_path`, - the path to the out file for the wasm artifact. This should
@@ -269,7 +272,7 @@ fn build_in_container(
     package: &Package,
     package_root_path: &Path,
     metadata: &Metadata,
-    cargo_args: &[String],
+    cargo_extra_args: &[String],
     container_runtime: &str,
     out_path: &Path,
     tar_path: &Path,
@@ -286,7 +289,7 @@ fn build_in_container(
 
     // The manifest path does not make sense since the project is built from
     // a specific location inside the container
-    let args_without_manifest: Vec<String> = cargo_args
+    let extra_args_without_manifest: Vec<String> = cargo_extra_args
         .iter()
         .take_while(|val| !val.starts_with("--manifest-path"))
         .cloned()
@@ -298,7 +301,7 @@ fn build_in_container(
         locked: true,
         features: &[],
         package,
-        extra_args: &args_without_manifest,
+        cargo_extra_args: &extra_args_without_manifest,
     }
     .get_cargo_cmd_as_strings()?;
 
@@ -370,7 +373,7 @@ fn build_in_container(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build_contract(
     options: BuildOptions,
-    cargo_args: &[String],
+    cargo_extra_args: &[String],
     package: &Package,
     metadata: &Metadata,
 ) -> anyhow::Result<BuildInfo> {
@@ -437,7 +440,7 @@ pub(crate) fn build_contract(
         WasmVersion::V0 => {
             if build_schema.build() {
                 let schema = build_contract_schema(
-                    cargo_args,
+                    cargo_extra_args,
                     &options.profile,
                     options.skip_wasm_opt,
                     utils::generate_contract_schema_v0,
@@ -460,7 +463,7 @@ pub(crate) fn build_contract(
         WasmVersion::V1 => {
             if build_schema.build() {
                 let schema = build_contract_schema(
-                    cargo_args,
+                    cargo_extra_args,
                     &options.profile,
                     options.skip_wasm_opt,
                     utils::generate_contract_schema_v3,
@@ -506,7 +509,7 @@ pub(crate) fn build_contract(
             package,
             &package_root_path,
             metadata,
-            cargo_args,
+            cargo_extra_args,
             &container_runtime,
             &out_filename,
             &tar_filename,
@@ -527,7 +530,7 @@ pub(crate) fn build_contract(
             locked: false,
             features: &[],
             package,
-            extra_args: &[],
+            cargo_extra_args: &[],
         }
         .run_cargo_cmd(options.skip_wasm_opt)?;
 
@@ -709,12 +712,12 @@ fn find_closest<'a>(
 /// Generates the contract schema by compiling with the 'build-schema' feature
 /// Then extracts the schema from the schema build
 pub fn build_contract_schema<A>(
-    cargo_args: &[String],
+    cargo_extra_args: &[String],
     profile: &str,
     skip_wasm_opt: bool,
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let metadata = get_crate_metadata(cargo_args)?;
+    let metadata = get_crate_metadata(cargo_extra_args)?;
 
     let target_dir = metadata.target_directory.as_std_path().join("concordium");
 
@@ -728,7 +731,7 @@ pub fn build_contract_schema<A>(
         locked: false,
         features: &["concordium-std/build-schema"],
         package,
-        extra_args: cargo_args,
+        cargo_extra_args,
     }
     .run_cargo_cmd(skip_wasm_opt)?;
     let schema =
@@ -1271,14 +1274,14 @@ fn get_test_result(
 pub fn build_and_run_wasm_test(
     enable_debug: bool,
     profile: &str,
-    extra_args: &[String],
+    cargo_extra_args: &[String],
     seed: Option<u64>,
     skip_wasm_opt: bool,
 ) -> anyhow::Result<bool> {
     // Check that the wasm target is installed
     check_wasm_target()?;
 
-    let metadata = get_crate_metadata(extra_args)?;
+    let metadata = get_crate_metadata(cargo_extra_args)?;
 
     let package = metadata
         .root_package()
@@ -1300,7 +1303,7 @@ pub fn build_and_run_wasm_test(
         } else {
             &["concordium-std/wasm-test"]
         },
-        extra_args,
+        cargo_extra_args,
     }
     .run_cargo_cmd(skip_wasm_opt)?;
 
@@ -1376,7 +1379,7 @@ struct CargoBuildParameters<'a> {
     locked: bool,
     features: &'a [&'a str],
     package: &'a Package,
-    extra_args: &'a [String],
+    cargo_extra_args: &'a [String],
 }
 
 impl CargoBuildParameters<'_> {
@@ -1399,7 +1402,7 @@ impl CargoBuildParameters<'_> {
         if self.locked {
             args.push("--locked");
         }
-        args.extend(self.extra_args.iter().map(|x| x.as_str()));
+        args.extend(self.cargo_extra_args.iter().map(|x| x.as_str()));
 
         let mut args: Vec<_> = args.into_iter().map(|x| x.to_string()).collect();
         if !self.features.is_empty() {

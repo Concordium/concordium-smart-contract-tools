@@ -372,7 +372,7 @@ struct EditOptions {
 // The issue is known (https://github.com/TeXitoi/structopt/issues/391) but won't
 // be fixed in `structopt` as it is in maintenance mode and is now integrated
 // in `clap` v3+. Once we migrate to `clap` v3+, this can become a doc comment.
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 struct BuildOptions {
     #[structopt(
         name = "schema-embed",
@@ -424,6 +424,13 @@ struct BuildOptions {
                 (expected input: `./my/path/base64_schema.b64` or `-`)."
     )]
     schema_base64_out: Option<PathBuf>,
+    #[structopt(
+        name = "profile",
+        long = "profile",
+        help = "The build profile to use for the smart contract.",
+        default_value = "release"
+    )]
+    profile: String,
     #[structopt(
         name = "out",
         long = "out",
@@ -708,6 +715,7 @@ pub fn main() -> anyhow::Result<()> {
             }
             let unit_test_success = build_and_run_wasm_test(
                 build_options.allow_debug,
+                &build_options.profile,
                 &build_options.cargo_args,
                 seed,
                 build_options.skip_wasm_opt,
@@ -1015,30 +1023,20 @@ fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
 fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result<BuildInfo> {
     let success_style = ansi_term::Color::Green.bold();
     let bold_style = ansi_term::Style::new().bold();
-    let build_schema = options.schema_build_options();
     let is_verifiable_build = options.image.is_some();
     let cargo_args = if options.allow_debug {
         // prepend the features at the beginning of the options
         // since the user might have added some options after `--`.
         let mut args = Vec::with_capacity(options.cargo_args.len() + 1);
         args.push("--features=concordium-std/debug".into());
-        args.extend(options.cargo_args);
+        args.extend(options.cargo_args.clone());
         args
     } else {
-        options.cargo_args
+        options.cargo_args.clone()
     };
-    let build_info = build_contract(
-        options.version,
-        build_schema,
-        options.allow_debug,
-        options.image,
-        options.source_link,
-        options.container_runtime,
-        options.out,
-        options.skip_wasm_opt,
-        &cargo_args,
-    )
-    .context("Could not build smart contract.")?;
+
+    let build_info =
+        build_contract(options.clone(), &cargo_args).context("Could not build smart contract.")?;
     if let Some(module_schema) = &build_info.schema {
         let module_schema_bytes = to_bytes(module_schema);
         if print_extra_info {

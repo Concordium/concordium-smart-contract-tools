@@ -49,17 +49,15 @@ const TARGET: &str = "wasm32-unknown-unknown";
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
 ///
-/// If successful, the return value is a pair of metadata and all of the
-/// `cargo_args` except the `--manifest-path` and the path to the manifest file.
-/// This last part is used for reproducible builds. There we want to keep the
-/// remaining `cargo` arguments, but the manifest path does not make sense since
-/// the project is built from a specific location inside the container.
-pub(crate) fn get_crate_metadata(
-    cargo_args: &[String],
-) -> anyhow::Result<(Metadata, impl Iterator<Item = &String>)> {
-    let pred = |val: &&String| !val.starts_with("--manifest-path");
-    let mut args = cargo_args.iter().skip_while(pred);
+/// This function corresponds 1-1 to the example given in the `cargo_metadata`
+/// crate that we use, except for some error context:
+/// https://docs.rs/cargo_metadata/0.23.1/cargo_metadata/
+pub(crate) fn get_crate_metadata(cargo_extra_args: &[String]) -> anyhow::Result<Metadata> {
     let mut cmd = MetadataCommand::new();
+    let mut args = cargo_extra_args
+        .iter()
+        .skip_while(|val| !val.starts_with("--manifest-path"));
+
     match args.next() {
         Some(p) if *p == "--manifest-path" => {
             // If a `--manifest-path` is provided, look for the `Cargo.toml` file there.
@@ -83,11 +81,8 @@ pub(crate) fn get_crate_metadata(
     };
 
     let metadata = cmd.exec().context("Could not access cargo metadata.")?;
-
-    let init_args = cargo_args.iter().take_while(pred);
-    Ok((metadata, init_args.chain(args)))
+    Ok(metadata)
 }
-
 #[derive(Debug, Clone, Copy)]
 pub enum SchemaBuildOptions {
     DoNotBuild,
@@ -281,8 +276,7 @@ fn build_in_container(
     tar_path: &Path,
     source_link: Option<String>,
 ) -> anyhow::Result<ContainerBuildOutput> {
-    let (metadata, extra_args_without_manifest) = get_crate_metadata(cargo_extra_args)?;
-    let extra_args_without_manifest: Vec<String> = extra_args_without_manifest.cloned().collect();
+    let metadata = get_crate_metadata(cargo_extra_args)?;
     let target_dir = metadata.target_directory.as_std_path();
     let package_version_string = format!("{}-{}", package.name, package.version);
     let tar_archive = create_archive(
@@ -291,6 +285,14 @@ fn build_in_container(
         &[out_path, tar_path, target_dir],
     )?;
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
+
+    // The manifest path does not make sense since the project is built from
+    // a specific location inside the container
+    let extra_args_without_manifest: Vec<String> = cargo_extra_args
+        .iter()
+        .take_while(|val| !val.starts_with("--manifest-path"))
+        .cloned()
+        .collect();
 
     let build_command = CargoBuildParameters {
         target_dir: Path::new("/b/t"),
@@ -389,7 +391,7 @@ pub(crate) fn build_contract(
         }
     }
 
-    let (metadata, _) = get_crate_metadata(cargo_extra_args)?;
+    let metadata = get_crate_metadata(cargo_extra_args)?;
     let package = metadata
         .root_package()
         .context("Unable to determine package.")?;
@@ -491,14 +493,8 @@ pub(crate) fn build_contract(
         out_filename = cwd.join(out_filename);
         // The archive will be named after the module output path, by appending `.tar`
         // to it.
-        let tar_filename: PathBuf = {
-            // Rust 1.70 has as_mut_os_string, but to support older versions we don't use it
-            // here for now, and instead convert from and to OsString to append an
-            // extension.
-            let mut tar_filename = out_filename.clone().into_os_string();
-            tar_filename.push(".tar");
-            tar_filename.into()
-        };
+        let mut tar_filename = out_filename.clone();
+        tar_filename.as_mut_os_string().push(".tar");
         let ContainerBuildOutput {
             output_wasm,
             build_info,
@@ -715,7 +711,7 @@ pub fn build_contract_schema<A>(
     skip_wasm_opt: bool,
     generate_schema: impl FnOnce(&[u8]) -> ExecResult<A>,
 ) -> anyhow::Result<A> {
-    let (metadata, _) = get_crate_metadata(cargo_extra_args)?;
+    let metadata = get_crate_metadata(cargo_extra_args)?;
 
     let target_dir = metadata.target_directory.as_std_path().join("concordium");
 
@@ -1141,18 +1137,16 @@ pub(crate) fn build_and_run_integration_tests(
     // when allowing debug output, we make sure that test output is not captured.
     if allow_debug {
         // check if the user has already supplied extra test flags
-        let (test_args, show_output) =
-            cargo_extra_args
-                .iter()
-                .fold((false, false), |(ta, so), arg| {
-                    if arg == "--" {
-                        (true, so)
-                    } else if arg == "--show-output" || arg == "--nocapture" {
-                        (ta, true)
-                    } else {
-                        (ta, so)
-                    }
-                });
+        let mut test_args = false;
+        let mut show_output = false;
+        for arg in &cargo_extra_args {
+            if arg == "--" {
+                test_args = true;
+            } else if arg == "--show-output" || arg == "--nocapture" {
+                show_output = true;
+            }
+        }
+
         // if the extra test args separator is added we should not add it again.
         if !test_args {
             command.arg("--");
@@ -1282,7 +1276,7 @@ pub fn build_and_run_wasm_test(
     // Check that the wasm target is installed
     check_wasm_target()?;
 
-    let (metadata, _) = get_crate_metadata(cargo_extra_args)?;
+    let metadata = get_crate_metadata(cargo_extra_args)?;
 
     let package = metadata
         .root_package()
@@ -1423,8 +1417,8 @@ impl CargoBuildParameters<'_> {
         let mut cmd = Command::new(&executable);
         cmd.args(&args);
 
-        eprint!(
-            "     {cargo_cmd_string} `{}`\n",
+        eprintln!(
+            "     {} `{cargo_cmd_string}`",
             Color::Green.bold().paint("Running"),
         );
 

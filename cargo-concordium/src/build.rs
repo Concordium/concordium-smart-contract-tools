@@ -1418,10 +1418,16 @@ impl CargoBuildParameters<'_> {
     /// Run the `cargo build` command with the specified parameters and get the wasm output.
     fn run_cargo_cmd(&self, skip_wasm_opt: bool) -> anyhow::Result<Vec<u8>> {
         let cargo_cmd = self.get_cargo_cmd_as_strings()?;
+        let cargo_cmd_string = self.get_cargo_cmd_as_strings()?.join(" ");
         let mut args = cargo_cmd.clone();
         let executable = args.remove(0); // "cargo"
         let mut cmd = Command::new(&executable);
         cmd.args(&args);
+
+        eprint!(
+            "     {cargo_cmd_string} `{}`\n",
+            Color::Green.bold().paint("Running"),
+        );
 
         let result = cmd
             .stdout(Stdio::inherit())
@@ -1430,10 +1436,7 @@ impl CargoBuildParameters<'_> {
             .context("Could not use cargo build.")?;
 
         if !result.status.success() {
-            anyhow::bail!(
-                "Compilation failed. Unable to build with command: `{}`",
-                cargo_cmd.join(" ")
-            )
+            anyhow::bail!("Compilation failed. Unable to build with command: `{cargo_cmd_string}`")
         }
 
         let wasm_file_name = format!("{}.wasm", self.package.name.as_str()).replace('-', "_");

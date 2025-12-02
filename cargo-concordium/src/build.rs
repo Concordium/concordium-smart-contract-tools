@@ -367,7 +367,6 @@ fn build_in_container(
 ///
 /// Note that even if a verifiable build is requested the schemas are built on
 /// the host machine.
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_contract(
     options: BuildOptions,
     cargo_extra_args: &[String],

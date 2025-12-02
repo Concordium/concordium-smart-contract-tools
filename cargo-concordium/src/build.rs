@@ -1423,8 +1423,8 @@ impl CargoBuildParameters<'_> {
         let mut cmd = Command::new(&executable);
         cmd.args(&args);
 
-        eprint!(
-            "     {cargo_cmd_string} `{}`\n",
+        eprintln!(
+            "     {} `{cargo_cmd_string}`",
             Color::Green.bold().paint("Running"),
         );
 

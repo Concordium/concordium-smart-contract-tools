@@ -195,7 +195,7 @@ impl v0::HasReceiveContext for ReceiveContextV1Opt {
 }
 
 impl v1::HasReceiveContext for ReceiveContextV1Opt {
-    fn entrypoint(&self) -> ExecResult<EntrypointName> {
+    fn entrypoint(&self) -> ExecResult<EntrypointName<'_>> {
         let ep = unwrap_ctx_field(self.entrypoint.as_ref(), "entrypoint")?;
         Ok(ep.as_entrypoint_name())
     }

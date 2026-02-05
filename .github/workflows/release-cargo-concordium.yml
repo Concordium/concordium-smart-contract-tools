@@ -38,7 +38,7 @@ jobs:
           name: binary-${{ matrix.platform }}
           path: |
             cargo-concordium/target/release/cargo-concordium
-            cargo-concordium/target/release/x86_64-unknown-linux-musl/cargo-concordium
+            cargo-concordium/target/x86_64-unknown-linux-musl/release/cargo-concordium
             cargo-concordium/target/release/cargo-concordium.exe
 
   # Attach binaries to the release identified by the tag.

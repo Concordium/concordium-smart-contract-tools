@@ -24,6 +24,4 @@ pkg
 **/concordium-out
 
 # Nix
-**/*.nix
-**/flake.lock
 **/result

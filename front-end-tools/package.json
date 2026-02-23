@@ -50,7 +50,8 @@
     },
     "resolutions": {
         "cacache@npm:18.0.0/tar": "7.5.8",
-        "node-gyp@npm:10.0.1/tar": "7.5.8"
+        "node-gyp@npm:10.0.1/tar": "7.5.8",
+        "minimatch": "10.2.1"
     },
     "scripts": {
         "lint": "eslint . --cache --max-warnings 0 --ext .ts,.tsx",

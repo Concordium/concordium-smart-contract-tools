@@ -4,7 +4,6 @@ use crate::{
 };
 use ansi_term::Color;
 use anyhow::{bail, ensure, Context};
-use clap::AppSettings;
 use concordium_base::{
     contracts_common::{
         self, from_bytes,
@@ -32,6 +31,7 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
 };
+use structopt::clap::AppSettings;
 use structopt::StructOpt;
 mod build;
 mod context;

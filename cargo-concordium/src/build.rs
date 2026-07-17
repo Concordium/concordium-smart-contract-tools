@@ -2,7 +2,7 @@ use crate::BuildOptions;
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
-use cargo_metadata::{Metadata, MetadataCommand, Package};
+use cargo_metadata::{Metadata, MetadataCommand, Package, TargetKind};
 use concordium_base::{
     contracts_common::{
         self,
@@ -1108,7 +1108,7 @@ pub(crate) fn build_and_run_integration_tests(
             .targets
             .iter()
             .filter_map(|t| {
-                if t.kind == ["test"] {
+                if t.kind == [TargetKind::Test] {
                     Some(t.name.clone())
                 } else {
                     None

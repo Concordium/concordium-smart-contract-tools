@@ -1,0 +1,9 @@
+[workspace]
+resolver = "3"
+
+members = [
+   "cargo-concordium",
+]
+
+# Exclude crates in submodules
+exclude = ["concordium-base"]

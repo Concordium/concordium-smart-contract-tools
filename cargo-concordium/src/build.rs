@@ -528,7 +528,7 @@ pub(crate) fn build_contract(
             locked: false,
             features: &[],
             package,
-            cargo_extra_args: &[],
+            cargo_extra_args,
         }
         .run_cargo_cmd(options.skip_wasm_opt)?;
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Change smart contract target to be `wasm32v1-none` (was `wasm32-unknown-unknown` before)
 - Support specifying a profile using the `--profile` flag for both builds
   and tests. Default is `release` as previously.
 

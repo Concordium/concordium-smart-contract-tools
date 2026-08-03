@@ -678,7 +678,7 @@ fn check_exports(module: &Module, version: WasmVersion) -> anyhow::Result<()> {
 
 /// Find the string closest to the list of strings. If an exact match is found
 /// return `None`, otherwise return `Some` with a list of strings that are
-/// closest according to the [optimal string alignment metric](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance distance).
+/// closest according to the [optimal string alignment metric](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance).
 fn find_closest<'a>(
     list: impl IntoIterator<Item = &'a str>,
     goal: &'a str,

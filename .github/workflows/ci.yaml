@@ -63,3 +63,17 @@ jobs:
           submodules: recursive
       - name: Test
         run: cargo test --all-features
+
+  rustdoc:
+    name: cargo:doc
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Docs
+        run: |
+          rustup component add rust-docs
+          RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features

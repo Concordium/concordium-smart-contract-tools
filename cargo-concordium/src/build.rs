@@ -2,7 +2,7 @@ use crate::BuildOptions;
 use ansi_term::{Color, Style};
 use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
-use cargo_metadata::{Metadata, MetadataCommand, Package};
+use cargo_metadata::{Metadata, MetadataCommand, Package, TargetKind};
 use concordium_base::{
     contracts_common::{
         self,
@@ -44,7 +44,7 @@ use std::{
 
 /// Encode all base64 strings using the standard alphabet and padding.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
-const TARGET: &str = "wasm32-unknown-unknown";
+const TARGET: &str = "wasm32v1-none";
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
@@ -528,7 +528,7 @@ pub(crate) fn build_contract(
             locked: false,
             features: &[],
             package,
-            cargo_extra_args: &[],
+            cargo_extra_args,
         }
         .run_cargo_cmd(options.skip_wasm_opt)?;
 
@@ -678,7 +678,7 @@ fn check_exports(module: &Module, version: WasmVersion) -> anyhow::Result<()> {
 
 /// Find the string closest to the list of strings. If an exact match is found
 /// return `None`, otherwise return `Some` with a list of strings that are
-/// closest according to the [optimal string alignment metric](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance distance).
+/// closest according to the [optimal string alignment metric](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance).
 fn find_closest<'a>(
     list: impl IntoIterator<Item = &'a str>,
     goal: &'a str,
@@ -1108,7 +1108,7 @@ pub(crate) fn build_and_run_integration_tests(
             .targets
             .iter()
             .filter_map(|t| {
-                if t.kind == ["test"] {
+                if t.kind == [TargetKind::Test] {
                     Some(t.name.clone())
                 } else {
                     None

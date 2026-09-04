@@ -910,7 +910,7 @@ fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
         &tar_file_contents,
         &options.container_runtime,
         &build_info.build_command,
-        &target,
+        target,
     )
     .context("Unable to build sources.")?;
 

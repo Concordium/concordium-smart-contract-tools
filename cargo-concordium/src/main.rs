@@ -450,11 +450,19 @@ struct BuildOptions {
         name = "verifiable",
         long = "verifiable",
         short = "r",
-        help = "The image to use for a build of a contract that can be verified. If this is not \
-                supplied then the contract will be built in the context of the host, which is \
+        help = "Whether to build the contract in a OCI runtime such that the build can be verified. If not enabled, \
+                then the contract will be built in the context of the host, which is \
                 usually not verifiable."
     )]
-    image: Option<String>,
+    verifiable: bool,
+    #[structopt(
+        name = "verifiable-image",
+        long = "verifiable-image",
+        default_value = "concordium/verifiable-sc-wasm32v1:1",
+        help = "The OCI image to use for the build of the contract when doing a verifiable build. \
+                Relying on the default value should be fine unless there are special requirements."
+    )]
+    image: String,
     #[structopt(
         name = "crt",
         long = "container-runtime",
@@ -888,11 +896,21 @@ fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
     };
 
     eprintln!("Building source and checking ...");
+    // Support verifying build created using the WASM32_UNKNOWN_UNKNOWN_TARGET
+    let target = if build_info
+        .build_command
+        .contains(&WASM32_UNKNOWN_UNKNOWN_TARGET.to_string())
+    {
+        WASM32_UNKNOWN_UNKNOWN_TARGET
+    } else {
+        WASM32V1_NONE_TARGET
+    };
     let rebuilt_source = build::build_archive(
         &build_info.image,
         &tar_file_contents,
         &options.container_runtime,
         &build_info.build_command,
+        target,
     )
     .context("Unable to build sources.")?;
 
@@ -1023,7 +1041,6 @@ fn handle_print_build_info(source: PathBuf) -> anyhow::Result<()> {
 fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result<BuildInfo> {
     let success_style = ansi_term::Color::Green.bold();
     let bold_style = ansi_term::Style::new().bold();
-    let is_verifiable_build = options.image.is_some();
     let cargo_args = if options.allow_debug {
         // prepend the features at the beginning of the options
         // since the user might have added some options after `--`.
@@ -1161,7 +1178,7 @@ fn handle_build(options: BuildOptions, print_extra_info: bool) -> anyhow::Result
             )
         )
     }
-    if !is_verifiable_build {
+    if !options.verifiable {
         let error_style = ansi_term::Color::Yellow;
         eprintln!(
             "{}",

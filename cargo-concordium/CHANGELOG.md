@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-- Change smart contract target to be `wasm32v1-none` (was `wasm32-unknown-unknown` before)
+- The smart contract target is now `wasm32v1-none` (it was `wasm32-unknown-unknown` before). Verifiable builds are enabled
+  with the `--verifiable` option. Notice this option previously took the OCI image for the verifiable build as an argument.
+  It can now be specified with `--verifiable-image` if needed, but the default value should normally be sufficient. 
+  The Rust version used for the verifiable
+  build is now resolved the usual way (like for non-verifiable builds), see <https://rust-lang.github.io/rustup/overrides.html#overrides>.
+  Before it was specified as part of the image used for the verifiable build. 
 - Support specifying a profile using the `--profile` flag for both builds
   and tests. Default is `release` as previously.
 

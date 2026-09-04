@@ -44,7 +44,10 @@ use std::{
 
 /// Encode all base64 strings using the standard alphabet and padding.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
-const TARGET: &str = "wasm32v1-none";
+/// The target the current version of cargo concordium builds smart contracts to.
+pub const WASM32V1_NONE_TARGET: &str = "wasm32v1-none";
+/// Up to version 4.2, we build smart contracts to this target.
+pub const WASM32_UNKNOWN_UNKNOWN_TARGET: &str = "wasm32-unknown-unknown";
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
@@ -202,6 +205,7 @@ pub fn build_archive(
     tar_contents: &[u8],
     container_runtime: &str,
     build_command: &[String],
+    target: &str,
 ) -> anyhow::Result<Vec<u8>> {
     let artifact_dir =
         tempfile::tempdir().context("Unable to create temporary build directory.")?;
@@ -219,7 +223,7 @@ pub fn build_archive(
     std::fs::write(artifact_dir.path().join(tar_file_name), tar_contents)
         .context("Unable to write archive.")?;
 
-    let container_output_dir = format!("/b/t/{TARGET}/release");
+    let container_output_dir = format!("/b/t/{target}/release");
     let mut cmd = Command::new(container_runtime);
 
     cmd.arg("run")
@@ -341,6 +345,7 @@ fn build_in_container(
             &tar_archive.tar_archive,
             container_runtime,
             &build_command,
+            WASM32V1_NONE_TARGET,
         )
         .context("Unable to build.")?;
     }
@@ -1353,21 +1358,21 @@ fn check_wasm_target() -> anyhow::Result<()> {
     {
         str::from_utf8(&rustup_output.stdout)?
             .lines()
-            .any(|l| l == TARGET)
+            .any(|l| l == WASM32V1_NONE_TARGET)
     } else {
         let rustc_output = Command::new("rustc")
             .args(["--print", "sysroot"])
             .output()
             .context("Unable to run `rustc`")?;
         let mut target_path = PathBuf::from(str::from_utf8(&rustc_output.stdout)?.trim_end());
-        target_path.push(format!("lib/rustlib/{TARGET}"));
+        target_path.push(format!("lib/rustlib/{WASM32V1_NONE_TARGET}"));
         fs::metadata(target_path).is_ok_and(|m| m.is_dir())
     };
 
     anyhow::ensure!(
         target_installed,
         format!(
-            "Cannot find the `{TARGET}` target. Try installing it by running `rustup target add {TARGET}`."
+            "Cannot find the `{WASM32V1_NONE_TARGET}` target. Try installing it by running `rustup target add {WASM32V1_NONE_TARGET}`."
         )
     );
     Ok(())
@@ -1390,7 +1395,7 @@ impl CargoBuildParameters<'_> {
             "cargo",
             "build",
             "--target",
-            TARGET,
+            WASM32V1_NONE_TARGET,
             "--profile",
             self.profile,
             "--package",
@@ -1442,7 +1447,7 @@ impl CargoBuildParameters<'_> {
 
         let output_wasm_file = self
             .target_dir
-            .join(TARGET)
+            .join(WASM32V1_NONE_TARGET)
             .join(self.profile)
             .join(wasm_file_name);
 

@@ -888,11 +888,21 @@ fn handle_verify(options: VerifyOptions) -> anyhow::Result<()> {
     };
 
     eprintln!("Building source and checking ...");
+    // Support verifying build created using the WASM32_UNKNOWN_UNKNOWN_TARGET
+    let target = if build_info
+        .build_command
+        .contains(&WASM32_UNKNOWN_UNKNOWN_TARGET.to_string())
+    {
+        WASM32_UNKNOWN_UNKNOWN_TARGET
+    } else {
+        WASM32V1_NONE_TARGET
+    };
     let rebuilt_source = build::build_archive(
         &build_info.image,
         &tar_file_contents,
         &options.container_runtime,
         &build_info.build_command,
+        &target,
     )
     .context("Unable to build sources.")?;
 

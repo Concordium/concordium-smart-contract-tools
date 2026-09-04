@@ -392,10 +392,10 @@ pub(crate) fn build_contract(
 
     // Check immediately if reproducible build is requested that we can execute the
     // container runtime.
-    if let Some(image) = &options.image {
+    if options.verifiable {
         if let Err(which::Error::CannotFindBinaryPath) = which::which(&container_runtime) {
             anyhow::bail!(
-                "cargo concordium build --verifiable {image}` requires `{container_runtime}` \
+                "cargo concordium build --verifiable requires `{container_runtime}` \
                  which does not appear to be installed. Either install `{container_runtime}` or \
                  choose another container runtime by setting `CARGO_CONCORDIUM_CONTAINER_RUNTIME`."
             );
@@ -497,7 +497,7 @@ pub(crate) fn build_contract(
         }
     };
 
-    let (out_filename, wasm, stored_build_info) = if let Some(image) = options.image {
+    let (out_filename, wasm, stored_build_info) = if options.verifiable {
         let cwd = env::current_dir()
             .context("Unable to get working directory. Does it exist?")?
             .canonicalize()?;
@@ -517,7 +517,7 @@ pub(crate) fn build_contract(
             build_info,
             tar_archive,
         } = build_in_container(
-            image,
+            options.image,
             package,
             &package_root_path,
             cargo_extra_args,

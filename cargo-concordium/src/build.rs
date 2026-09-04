@@ -1429,7 +1429,6 @@ impl CargoBuildParameters<'_> {
         }
         args.extend(self.cargo_extra_args.iter().cloned());
 
-        let mut args: Vec<_> = args.into_iter().map(|x| x.to_string()).collect();
         if !self.features.is_empty() {
             args.push("--features".to_string());
             args.push(self.features.join(","));

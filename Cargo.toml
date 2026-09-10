@@ -5,5 +5,5 @@ members = [
    "cargo-concordium",
 ]
 
-# Exclude crates in submodules
-exclude = ["concordium-base"]
+# Exclude crates in submodules and the example smart contract
+exclude = ["concordium-base", "reproducible/example-contract"]

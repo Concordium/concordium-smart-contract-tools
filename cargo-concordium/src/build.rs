@@ -1,6 +1,6 @@
 use crate::BuildOptions;
 use ansi_term::{Color, Style};
-use anyhow::Context;
+use anyhow::{bail, Context};
 use base64::{engine::general_purpose, Engine as _};
 use cargo_metadata::{Metadata, MetadataCommand, Package, TargetKind};
 use concordium_base::{
@@ -44,7 +44,10 @@ use std::{
 
 /// Encode all base64 strings using the standard alphabet and padding.
 const ENCODER: base64::engine::GeneralPurpose = general_purpose::STANDARD;
-const TARGET: &str = "wasm32v1-none";
+/// The target the current version of cargo concordium builds smart contracts to.
+pub const WASM32V1_NONE_TARGET: &str = "wasm32v1-none";
+/// Up to version 4.2, we build smart contracts to this target.
+pub const WASM32_UNKNOWN_UNKNOWN_TARGET: &str = "wasm32-unknown-unknown";
 
 /// Get the crate's metadata either by looking for the `Cargo.toml` file at the
 /// `--manifest-path` or at the ancestors of the current directory.
@@ -202,7 +205,14 @@ pub fn build_archive(
     tar_contents: &[u8],
     container_runtime: &str,
     build_command: &[String],
+    target: &str,
 ) -> anyhow::Result<Vec<u8>> {
+    eprintln!(
+        "     {} `{}`",
+        Color::Green.bold().paint("Running build command in docker"),
+        build_command.join(" ")
+    );
+
     let artifact_dir =
         tempfile::tempdir().context("Unable to create temporary build directory.")?;
     // Construct the mapping of the host's build directory
@@ -219,7 +229,7 @@ pub fn build_archive(
     std::fs::write(artifact_dir.path().join(tar_file_name), tar_contents)
         .context("Unable to write archive.")?;
 
-    let container_output_dir = format!("/b/t/{TARGET}/release");
+    let container_output_dir = format!("/b/t/{target}/release");
     let mut cmd = Command::new(container_runtime);
 
     cmd.arg("run")
@@ -291,9 +301,11 @@ fn build_in_container(
         &[out_path, tar_path, target_dir],
     )?;
     let archive_hash = sha2::Sha256::digest(&tar_archive.tar_archive);
+    let toolchain_version = resolve_toolchain_version()?;
 
     let build_command = CargoBuildParameters {
         target_dir: Path::new("/b/t"),
+        toolchain_version: Some(&toolchain_version),
         profile: "release",
         locked: true,
         features: &[],
@@ -341,6 +353,7 @@ fn build_in_container(
             &tar_archive.tar_archive,
             container_runtime,
             &build_command,
+            WASM32V1_NONE_TARGET,
         )
         .context("Unable to build.")?;
     }
@@ -379,10 +392,10 @@ pub(crate) fn build_contract(
 
     // Check immediately if reproducible build is requested that we can execute the
     // container runtime.
-    if let Some(image) = &options.image {
+    if options.verifiable {
         if let Err(which::Error::CannotFindBinaryPath) = which::which(&container_runtime) {
             anyhow::bail!(
-                "cargo concordium build --verifiable {image}` requires `{container_runtime}` \
+                "cargo concordium build --verifiable requires `{container_runtime}` \
                  which does not appear to be installed. Either install `{container_runtime}` or \
                  choose another container runtime by setting `CARGO_CONCORDIUM_CONTAINER_RUNTIME`."
             );
@@ -484,7 +497,7 @@ pub(crate) fn build_contract(
         }
     };
 
-    let (out_filename, wasm, stored_build_info) = if let Some(image) = options.image {
+    let (out_filename, wasm, stored_build_info) = if options.verifiable {
         let cwd = env::current_dir()
             .context("Unable to get working directory. Does it exist?")?
             .canonicalize()?;
@@ -504,7 +517,7 @@ pub(crate) fn build_contract(
             build_info,
             tar_archive,
         } = build_in_container(
-            image,
+            options.image,
             package,
             &package_root_path,
             cargo_extra_args,
@@ -524,6 +537,7 @@ pub(crate) fn build_contract(
         let target_dir = metadata.target_directory.as_std_path().join("concordium");
         let wasm = CargoBuildParameters {
             target_dir: &target_dir,
+            toolchain_version: None,
             profile: &options.profile,
             locked: false,
             features: &[],
@@ -725,6 +739,7 @@ pub fn build_contract_schema<A>(
 
     let wasm = CargoBuildParameters {
         target_dir: &target_dir,
+        toolchain_version: None,
         profile,
         locked: false,
         features: &["concordium-std/build-schema"],
@@ -1296,6 +1311,7 @@ pub fn build_and_run_wasm_test(
 
     let wasm = CargoBuildParameters {
         target_dir: &target_dir,
+        toolchain_version: None,
         profile,
         locked: false,
         package,
@@ -1353,21 +1369,21 @@ fn check_wasm_target() -> anyhow::Result<()> {
     {
         str::from_utf8(&rustup_output.stdout)?
             .lines()
-            .any(|l| l == TARGET)
+            .any(|l| l == WASM32V1_NONE_TARGET)
     } else {
         let rustc_output = Command::new("rustc")
             .args(["--print", "sysroot"])
             .output()
             .context("Unable to run `rustc`")?;
         let mut target_path = PathBuf::from(str::from_utf8(&rustc_output.stdout)?.trim_end());
-        target_path.push(format!("lib/rustlib/{TARGET}"));
+        target_path.push(format!("lib/rustlib/{WASM32V1_NONE_TARGET}"));
         fs::metadata(target_path).is_ok_and(|m| m.is_dir())
     };
 
     anyhow::ensure!(
         target_installed,
         format!(
-            "Cannot find the `{TARGET}` target. Try installing it by running `rustup target add {TARGET}`."
+            "Cannot find the `{WASM32V1_NONE_TARGET}` target. Try installing it by running `rustup target add {WASM32V1_NONE_TARGET}`."
         )
     );
     Ok(())
@@ -1376,6 +1392,10 @@ fn check_wasm_target() -> anyhow::Result<()> {
 /// The parameters to pass to CargoBuildParameters
 struct CargoBuildParameters<'a> {
     target_dir: &'a Path,
+    /// Toolchain version (1.xx.x) to use. If not specified, it will be resolved "normally" by cargo.
+    /// Primary use case of setting it is if the command is run in a docker container that does not
+    /// have the needed context to resolve the toolchain version.
+    toolchain_version: Option<&'a str>,
     profile: &'a str,
     locked: bool,
     features: &'a [&'a str],
@@ -1387,25 +1407,28 @@ impl CargoBuildParameters<'_> {
     /// Get the cargo arguments as a list of strings, i.e. `Vec!["cargo", "build", ...]`.
     fn get_cargo_cmd_as_strings(&self) -> anyhow::Result<Vec<String>> {
         let mut args = vec![
-            "cargo",
-            "build",
-            "--target",
-            TARGET,
-            "--profile",
-            self.profile,
-            "--package",
-            &self.package.name,
-            "--target-dir",
+            "cargo".to_string(),
+            "build".to_string(),
+            "--target".to_string(),
+            WASM32V1_NONE_TARGET.to_string(),
+            "--profile".to_string(),
+            self.profile.to_string(),
+            "--package".to_string(),
+            self.package.name.to_string(),
+            "--target-dir".to_string(),
             self.target_dir
                 .to_str()
-                .context("target_dir is not valid UTF-8")?,
+                .context("target_dir is not valid UTF-8")?
+                .to_string(),
         ];
-        if self.locked {
-            args.push("--locked");
+        if let Some(toolchain_version) = &self.toolchain_version {
+            args.insert(1, format!("+{toolchain_version}"));
         }
-        args.extend(self.cargo_extra_args.iter().map(|x| x.as_str()));
+        if self.locked {
+            args.push("--locked".to_string());
+        }
+        args.extend(self.cargo_extra_args.iter().cloned());
 
-        let mut args: Vec<_> = args.into_iter().map(|x| x.to_string()).collect();
         if !self.features.is_empty() {
             args.push("--features".to_string());
             args.push(self.features.join(","));
@@ -1442,7 +1465,7 @@ impl CargoBuildParameters<'_> {
 
         let output_wasm_file = self
             .target_dir
-            .join(TARGET)
+            .join(WASM32V1_NONE_TARGET)
             .join(self.profile)
             .join(wasm_file_name);
 
@@ -1460,5 +1483,68 @@ impl CargoBuildParameters<'_> {
         })?;
 
         Ok(wasm)
+    }
+}
+
+/// Resolve toolchain version using standard precedence: cargo +1.xx, rust-toolchain.toml, etc.
+/// We do this by simply calling `rustc --version`.
+fn resolve_toolchain_version() -> anyhow::Result<String> {
+    let toolchain_version = String::from_utf8(
+        Command::new("rustc")
+            .arg("--version")
+            .output()
+            .context("Run rustc to resolve Rust toolchain version")?
+            .stdout,
+    )
+    .context("Read rustc output to resolve Rust toolchain version")?
+    // parse format "rustc 1.95.0 (59807616e 2026-04-14)"
+    .strip_prefix("rustc ")
+    .context("rustc --version output does not have format 'rustc x.xx.x'")?
+    .split_whitespace()
+    .next()
+    .context("rustc --version output does not have format 'rustc x.xx.x'")?
+    .to_string();
+
+    if !is_valid_toolchain_version(&toolchain_version) {
+        bail!("rustc --version output does not have format 'rustc x.xx.x'");
+    }
+
+    Ok(toolchain_version)
+}
+
+/// Validates a string is a Rust release version: three dot-separated
+/// numeric components, e.g. "1.84.1" or "1.95.0".
+fn is_valid_toolchain_version(s: &str) -> bool {
+    fn is_numeric_component(c: &str) -> bool {
+        !c.is_empty() && c.bytes().all(|b| b.is_ascii_digit()) && c.parse::<u32>().is_ok()
+    }
+
+    let mut parts = s.split('.');
+    let ok = matches!((parts.next(), parts.next(), parts.next()), (Some(a), Some(b), Some(c))
+        if is_numeric_component(a) && is_numeric_component(b) && is_numeric_component(c));
+    ok && parts.next().is_none() // reject a 4th component like "1.2.3.4"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_is_valid_toolchain_version() {
+        for v in ["1.84.1", "1.95.0", "1.0.0", "10.200.30"] {
+            assert!(is_valid_toolchain_version(v), "{v}");
+        }
+        for v in [
+            "1.84",
+            "1.84.1.0",
+            "1..1",
+            "1.84.",
+            "v1.84.1",
+            "1.84.1-aarch64-apple-darwin",
+            "stable",
+            "1.8x.1",
+            "",
+        ] {
+            assert!(!is_valid_toolchain_version(v), "{v}");
+        }
     }
 }

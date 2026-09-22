@@ -129,7 +129,7 @@ Ensure to read through the extensions guidelines and follow the best practices f
   ```
   mkdir executables
   cargo build --manifest-path ../cargo-concordium/Cargo.toml
-  cp ../cargo-concordium/target/debug/cargo-concordium ./executables
+  cp ../target/debug/cargo-concordium ./executables
   ```
 
 To compile the typescript run:

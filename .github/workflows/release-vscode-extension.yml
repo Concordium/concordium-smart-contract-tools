@@ -55,10 +55,10 @@ jobs:
         with:
           name: binary-${{ matrix.platform }}
           path: |
-            cargo-concordium/target/aarch64-apple-darwin/release/cargo-concordium
-            cargo-concordium/target/x86_64-apple-darwin/release/cargo-concordium
-            cargo-concordium/target/x86_64-unknown-linux-musl/release/cargo-concordium
-            cargo-concordium/target/release/cargo-concordium.exe
+            target/aarch64-apple-darwin/release/cargo-concordium
+            target/x86_64-apple-darwin/release/cargo-concordium
+            target/x86_64-unknown-linux-musl/release/cargo-concordium
+            target/release/cargo-concordium.exe
 
   build-extension:
     needs: build-cargo-concordium

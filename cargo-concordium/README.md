@@ -28,30 +28,7 @@ will build a contract, embed the schema, and output the artifact to
 
 ### Compilation options
 
-Since a contract running on the chain will typically not be able to recover from
-panics, and error traces are not reported, it is useful not to bloat code size
-with them. Setting `panic=abort` will make it so that the compiler will generate
-simple `Wasm` traps on any panic that occurs. This option can be specified
-either in `.cargo/config` or in the `Cargo.toml` file as
-
-```
-[profile.release]
-# Don't unwind on panics, just trap.
-panic = "abort"
-```
-
-The latter will only set this option in `release` builds, for debug builds use
-
-```
-[profile.dev]
-# Don't unwind on panics, just trap.
-panic = "abort"
-```
-instead.
-
-Note that currently this is the default already for wasm32-unknown-unknown target.
-
-An additional option that might be useful to minimize code size at the cost of
+An option that might be useful to minimize code size at the cost of
 some performance in some cases is
 ```
 [profile.release]
@@ -215,10 +192,10 @@ See `--help` or `help` option to `cargo concordium run` for an explanation of th
 By default the compiled binary from a rust crate contains some information from the host machine, namely rust-related paths such as the path to `.cargo`. This can be seen by inspecting the produced binary:
 
 Lets assume your username is `tom` and you have a smart contract `foo` located in your home folder, which you compiled in release-mode to WASM32.
-By running the following command inside the `foo` folder, you will be able to see the paths included in the binary: `strings target/wasm32-unknown-unknown/release/foo.wasm | grep tom`
+By running the following command inside the `foo` folder, you will be able to see the paths included in the binary: `strings target/wasm32v1-none/release/foo.wasm | grep tom`
 
 To remove the host information, the path prefixes can be remapped using a flag given to the compiler.
-`RUSTFLAGS=--remap-path-prefix=/home/tom=secret cargo build --release --target wasm32-unknown-unknown`, where `/home/tom` is the prefix you want to change into `secret`.
+`RUSTFLAGS=--remap-path-prefix=/home/tom=secret cargo build --release --target wasm32v1-none`, where `/home/tom` is the prefix you want to change into `secret`.
 The flag can be specified multiple times to remap multiple prefixes.
 
 The flags can also be set permanently in the `.cargo/config` file in your crate, under the `build` section:

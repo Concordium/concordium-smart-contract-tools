@@ -99,11 +99,11 @@ jobs:
 
       - name: Move cargo-concordium to executables for extension
         if: runner.os != 'Windows'
-        run: mkdir -p vscode-smart-contracts/executables && cp cargo-concordium/target/release/cargo-concordium vscode-smart-contracts/executables/
+        run: mkdir -p vscode-smart-contracts/executables && cp target/release/cargo-concordium vscode-smart-contracts/executables/
       - name: Move cargo-concordium to executables for extension
         if: runner.os == 'Windows'
         shell: bash
-        run: mkdir -p vscode-smart-contracts/executables && cp cargo-concordium/target/release/cargo-concordium.exe vscode-smart-contracts/executables/
+        run: mkdir -p vscode-smart-contracts/executables && cp target/release/cargo-concordium.exe vscode-smart-contracts/executables/
 
       - name: Install Nodejs
         uses: actions/setup-node@v3

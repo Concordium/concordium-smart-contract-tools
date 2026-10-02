@@ -96,13 +96,13 @@ async function buildTask(
 ): Promise<vscode.Task | undefined> {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
-      "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
+      "The needed wasm32v1-none rust target seems to be missing. Should it be installed?",
       "Install",
       "Abort"
     );
     if (response !== "Install") {
       vscode.window.showErrorMessage(
-        "Unable to build because of missing wasm32-unknown-unknown target."
+        "Unable to build because of missing wasm32v1-none target."
       );
       return;
     }
@@ -156,22 +156,22 @@ async function locateCargoProjectDir(cwd: string) {
 }
 
 /**
- * Check the rustup list of installed targets for wasm32-unknown-unknown.
+ * Check the rustup list of installed targets for wasm32v1-none.
  */
 async function haveWasmTargetInstalled() {
   const out = await exec("rustup target list --installed");
-  return out.stdout.includes("wasm32-unknown-unknown");
+  return out.stdout.includes("wasm32v1-none");
 }
 
 /**
- * Install the wasm32-unknown-unknown target using rustup.
+ * Install the wasm32v1-none target using rustup.
  * The returned promise resolves when the install task has ended.
  */
 async function installWasmTarget() {
   const execution = new vscode.ProcessExecution("rustup", [
     "target",
     "install",
-    "wasm32-unknown-unknown",
+    "wasm32v1-none",
   ]);
   const task = new vscode.Task(
     { type: tasks.CONCORDIUM_TASK_TYPE, command: "install wasm" },
@@ -182,7 +182,7 @@ async function installWasmTarget() {
   );
   const exitCode = await executeAndAwaitTask(task);
   if (exitCode !== 0) {
-    throw new Error("Failed installing wasm32-unknown-unknown");
+    throw new Error("Failed installing wasm32v1-none");
   }
 }
 
@@ -214,13 +214,13 @@ function executeAndAwaitTask(task: vscode.Task) {
 export async function test() {
   if (!(await haveWasmTargetInstalled())) {
     const response = await vscode.window.showInformationMessage(
-      "The needed wasm32-unknown-unknown rust target seems to be missing. Should it be installed?",
+      "The needed wasm32v1-none rust target seems to be missing. Should it be installed?",
       "Install",
       "Abort"
     );
     if (response !== "Install") {
       vscode.window.showErrorMessage(
-        "Unable to run tests because of missing wasm32-unknown-unknown target."
+        "Unable to run tests because of missing wasm32v1-none target."
       );
       return;
     }

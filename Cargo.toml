@@ -1,0 +1,9 @@
+[workspace]
+resolver = "3"
+
+members = [
+   "cargo-concordium",
+]
+
+# Exclude crates in submodules and the example smart contract
+exclude = ["concordium-base", "reproducible/example-contract"]

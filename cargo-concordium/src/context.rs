@@ -56,7 +56,7 @@ impl v0::HasInitContext for InitContextOpt {
     }
 }
 
-/// Serde deserializer for Option<Address>.
+/// Serde deserializer for `Option<Address>`.
 /// Introduced to avoid breaking changes when the serde implementation for
 /// Address was changed to match the node.
 fn deserialize_optional_address<'de, D: serde::de::Deserializer<'de>>(

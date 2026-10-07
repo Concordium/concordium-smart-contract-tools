@@ -458,7 +458,7 @@ struct BuildOptions {
     #[structopt(
         name = "verifiable-image",
         long = "verifiable-image",
-        default_value = "concordium/verifiable-sc-wasm32v1:1",
+        default_value = "concordium/verifiable-sc-wasm32v1",
         help = "The OCI image to use for the build of the contract when doing a verifiable build. \
                 Relying on the default value should be fine unless there are special requirements."
     )]

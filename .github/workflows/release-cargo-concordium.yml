@@ -1,64 +1,50 @@
-name: 'Publish cargo-concordium binaries'
+name: Relase Cargo Concordium
+
 on:
-  # This release action always requires a tag to publish a release.
-  # This job will run when a releases/cargo-concordium/$VERSION
-  # tag is created.
+
+  workflow_dispatch:
+
   push:
     tags:
-      - releases/cargo-concordium/*.*.*
+      - releases/cargo-concordium/*
+
+
+env:
+  TAG: ${{ github.ref_name }}
 
 jobs:
-  build:
-    name: build ${{ matrix.platform }}
-    strategy:
-      fail-fast: true
-      matrix:
-        platform: [macos-latest, ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - name: Support longpaths on Windows
-        if: matrix.platform == 'windows-latest'
-        run: git config --system core.longpaths true
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Install rust toolchain
-        uses: dtolnay/rust-toolchain@1.74
-      - name: Build on ubuntu
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          rustup target add x86_64-unknown-linux-musl
-          cargo build --release --manifest-path cargo-concordium/Cargo.toml --target x86_64-unknown-linux-musl
-      - name: Build on other platforms
-        if: matrix.platform != 'ubuntu-latest'
-        run: cargo build --release --manifest-path cargo-concordium/Cargo.toml
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: binary-${{ matrix.platform }}
-          path: |
-            target/release/cargo-concordium
-            target/x86_64-unknown-linux-musl/release/cargo-concordium
-            target/release/cargo-concordium.exe
-
-  # Attach binaries to the release identified by the tag.
-  release:
-    permissions:
-      contents: write
-    needs: build
+  cargo-concordium-release:
+    name: cargo-concordium:release
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cargo-concordium
+
+    environment: release
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           submodules: recursive
-      - uses: actions/download-artifact@v4
-      - run: |
-          mkdir uploads
-          mv binary-macos-latest/cargo-concordium uploads/cargo-concordium-darwin-amd64
-          mv binary-windows-latest/cargo-concordium.exe uploads/cargo-concordium-windows-amd64.exe
-          mv binary-ubuntu-latest/cargo-concordium uploads/cargo-concordium-linux-amd64
-      - name: Attach binaries to an existing release.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: validate tag version has correct matching tag
         run: |
-          gh release upload ${{ github.ref_name }} uploads/*
+          echo "Validating tag version $TAG matches expected version from Cargo.toml"
+          EXPECTED_VERSION_FROM_CARGO=$(yq .package.version ./Cargo.toml)
+          TAG_VERSION_NUMBER=${TAG##releases/cargo-concordium/}
+          
+          # Check if the tag version number matches the expected version from Cargo.toml
+          if [ "$TAG_VERSION_NUMBER" != "$EXPECTED_VERSION_FROM_CARGO" ]; then
+            echo "version tagged: $TAG_VERSION_NUMBER  does not match cargo version: $EXPECTED_VERSION_FROM_CARGO. Exiting."
+            exit 1
+          else
+            echo "Tag version number matches expected version from Cargo.toml. Proceeding with release."
+          fi
+
+      - name: Publish to crates.io
+        env:
+          CARGO_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          echo "Publishing Cargo Concordium to crates.io for version: $TAG_VERSION_NUMBER"
+          cargo publish --token $CARGO_TOKEN --locked

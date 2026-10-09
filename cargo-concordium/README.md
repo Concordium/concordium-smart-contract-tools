@@ -21,7 +21,7 @@ This command will generate a new project from the templates in the [template fol
 ## Compiling smart contracts
 
 ```
-cargo concordium build -e --out contract.wasm.v1
+cargo concordium build --out contract.wasm.v1
 ```
 will build a contract, embed the schema, and output the artifact to
 `contract.wasm.v1`. This can be deployed to the chain or tested locally.
@@ -44,21 +44,17 @@ In some cases using `opt-level=3` actually leads to smaller code sizes, presumab
 A normal build with `cargo concordium build` is generally not reproducible since
 some host information is embedded into the resulting binary. For this reason
 `cargo concordium` supports so-called verifiable or reproducible builds that
-always build the contract in a fixed environment specified as a Docker image.
-The list of available images can be found on
-[DockerHub](https://hub.docker.com/r/concordium/verifiable-sc/)
-
-**Note that the image used to verify a build is part of the chain of trust. When
-verifying a build you must only use images you trust.**
+always build the contract in a fixed environment in form of a Docker image
+(defaults to `concordium/verifiable-sc-wasm32v1`).
 
 Both `cargo concordium build` and `cargo concordium test` support verifiable
 builds, which can be requested by adding the option `--verifiable` to the build
 command. The value of this option should be a docker image listed above. For example
 
 ```
-cargo concordium build --verifiable docker.io/concordium/verifiable-sc:1.70.0 -o contract.wasm.v1 -e
+cargo concordium build --verifiable -o contract.wasm.v1 
 ```
-This will build the smart contract, embed the schema (`-e`) and output it to a
+This will build the smart contract and output it to a
 `contract.wasm.v1` file. In addition to this `cargo concordium` will also
 produce a file `contract.wasm.v1.tar` that contains the exact sources that were
 used to build the contract.
@@ -76,9 +72,8 @@ Information about the sources and the build will be embedded into
 `contract.wasm.v1` file. This information includes
 
 - SHA2-256 hash of the `tar` file
-- the docker image used in the build (`docker.io/concordium/verifiable-sc:1.70.0` in the
-  example above)
-- the exact build command executed inside the image
+- the docker image used in the build
+- the exact build command executed inside the image, which includes the Rust toolchain version used for the build
 - optionally the link to the sources if the `--source` flag is provided. If this
   is not provided the link can be embedded later. The source link should point
   either to the `tar` file directly, or to a `gzip`ped version of the file.
@@ -127,8 +122,6 @@ Will print any embedded build information.
 - The contract sources must be either available remotely on a package
   repository such as [crates.io](https://crates.io) or entirely under the
   package root directory.
-- The `crypto-primitives` feature is not supported. This feature is only needed
-  for running tests and can be disabled for a build.
 
 ## Locally executing contracts
 
@@ -187,20 +180,3 @@ where an example receive context is
 
 See `--help` or `help` option to `cargo concordium run` for an explanation of the options.
 
-## Removing Host Information from Binary
-
-By default the compiled binary from a rust crate contains some information from the host machine, namely rust-related paths such as the path to `.cargo`. This can be seen by inspecting the produced binary:
-
-Lets assume your username is `tom` and you have a smart contract `foo` located in your home folder, which you compiled in release-mode to WASM32.
-By running the following command inside the `foo` folder, you will be able to see the paths included in the binary: `strings target/wasm32v1-none/release/foo.wasm | grep tom`
-
-To remove the host information, the path prefixes can be remapped using a flag given to the compiler.
-`RUSTFLAGS=--remap-path-prefix=/home/tom=secret cargo build --release --target wasm32v1-none`, where `/home/tom` is the prefix you want to change into `secret`.
-The flag can be specified multiple times to remap multiple prefixes.
-
-The flags can also be set permanently in the `.cargo/config` file in your crate, under the `build` section:
-
-``` toml
-[build]
-rustflags = ["--remap-path-prefix=/home/tom=secret"]
-```

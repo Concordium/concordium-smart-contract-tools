@@ -684,6 +684,11 @@ pub fn main() -> anyhow::Result<()> {
     {
         let _ = ansi_term::enable_ansi_support();
     }
+    // Install ring as the process-wide rustls crypto provider. reqwest is built with
+    // rustls-no-provider, so a default provider must be installed
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install the ring rustls crypto provider.");
     let cmd = {
         let app = CargoCommand::clap()
             .setting(AppSettings::ArgRequiredElseHelp)

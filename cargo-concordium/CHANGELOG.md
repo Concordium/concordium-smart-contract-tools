@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 5.0.0
 
 - The smart contract target is now `wasm32v1-none` (it was `wasm32-unknown-unknown` before). Verifiable builds are enabled
   with the `--verifiable` option. Notice this option previously took the OCI image for the verifiable build as an argument.

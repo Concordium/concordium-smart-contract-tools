@@ -20,6 +20,7 @@ use concordium_smart_contract_engine::{
     v1::{self, trie, InstanceState},
     ExecResult,
 };
+use concordium_wasm::machine::CopyMeteringEnabled;
 use concordium_wasm::{
     artifact::{Artifact, ArtifactNamedImport, CompiledFunction},
     output::{write_custom_section, Output},
@@ -1230,13 +1231,16 @@ fn get_test_result(
         TestHost::new(SmallRng::seed_from_u64(seed), state)
     };
 
-    let test_result = artifact.run(&mut test_host, name, &[]).err().map(|msg| {
-        msg.downcast_ref::<ReportError>()
-            .cloned()
-            .unwrap_or_else(|| ReportError::Other {
-                msg: msg.to_string(),
-            })
-    });
+    let test_result = artifact
+        .run(&mut test_host, name, &[], CopyMeteringEnabled::False)
+        .err()
+        .map(|msg| {
+            msg.downcast_ref::<ReportError>()
+                .cloned()
+                .unwrap_or_else(|| ReportError::Other {
+                    msg: msg.to_string(),
+                })
+        });
 
     let mut print_vec = Vec::new();
     match test_result {

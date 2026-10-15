@@ -68,6 +68,7 @@ jobs:
 
   cargo-concordium-crate-release:
     name: cargo-concordium:release
+    needs: build
     runs-on: ubuntu-latest
     defaults:
       run:

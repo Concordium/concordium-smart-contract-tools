@@ -14,35 +14,43 @@ env:
 
 jobs:
   build:
-    name: build ${{ matrix.platform }}
+    name: build ${{ matrix.target }}
     strategy:
       fail-fast: true
       matrix:
-        platform: [macos-latest, ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.platform }}
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Support longpaths on Windows
-        if: matrix.platform == 'windows-latest'
+        if: matrix.os == 'windows-latest'
         run: git config --system core.longpaths true
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Build on ubuntu
-        if: matrix.platform == 'ubuntu-latest'
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --manifest-path cargo-concordium/Cargo.toml --target ${{ matrix.target }}
+      - name: Stage binary
+        shell: bash
         run: |
-          rustup target add x86_64-unknown-linux-musl
-          cargo build --release --manifest-path cargo-concordium/Cargo.toml --target x86_64-unknown-linux-musl
-      - name: Build on other platforms
-        if: matrix.platform != 'ubuntu-latest'
-        run: cargo build --release --manifest-path cargo-concordium/Cargo.toml
+          mkdir -p uploads
+          ext=""
+          [ "${{ matrix.os }}" = "windows-latest" ] && ext=".exe"
+          cp "target/${{ matrix.target }}/release/cargo-concordium${ext}" "uploads/cargo-concordium-${{ matrix.target }}${ext}"
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.platform }}
-          path: |
-            target/release/cargo-concordium
-            target/x86_64-unknown-linux-musl/release/cargo-concordium
-            target/release/cargo-concordium.exe
+          name: binary-${{ matrix.target }}
+          path: uploads/*
 
   # Attach binaries to the release identified by the tag.
   release:
@@ -52,14 +60,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: actions/download-artifact@v4
-      - run: |
-          mkdir uploads
-          mv binary-macos-latest/cargo-concordium uploads/cargo-concordium-darwin-amd64
-          mv binary-windows-latest/cargo-concordium.exe uploads/cargo-concordium-windows-amd64.exe
-          mv binary-ubuntu-latest/cargo-concordium uploads/cargo-concordium-linux-amd64
+        with:
+          path: uploads
+          pattern: binary-*
+          merge-multiple: true
       - name: Attach binaries to an existing release.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

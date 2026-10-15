@@ -11,7 +11,9 @@ homepage = "https://github.com/Concordium/concordium-smart-contract-tools"
 repository = "https://github.com/Concordium/concordium-smart-contract-tools"
 include = ["Cargo.toml", "Cargo.lock", "src/*"] # Only include the actual sources.
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/releases/cargo-concordium/{ version }/{ name }-{ target }{ binary-ext }"
+pkg-fmt = "bin"
 
 [dependencies]
 clap = "4.6.2"

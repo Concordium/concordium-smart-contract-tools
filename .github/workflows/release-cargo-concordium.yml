@@ -6,7 +6,7 @@ on:
 
   push:
     tags:
-      - releases/cargo-concordium/*
+      - releases/cargo-concordium/*.*.*
 
 
 env:
@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        platform: [ macos-latest, ubuntu-latest, windows-latest ]
+        platform: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Support longpaths on Windows

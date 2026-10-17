@@ -14,15 +14,13 @@ on:
       - reopened
       - synchronize
       - ready_for_review
-    paths:
-      - 'cargo-concordium/**/*.rs'
-      - 'cargo-concordium/**/*.toml'
-      - 'rustfmt.toml'
-      - 'Cargo.toml'
-      - 'rust-toolchain.toml'
-      - 'concordium-base'
 
   workflow_dispatch: # allows manual trigger
+
+env:
+  # Rust version to use for the verifiable build image base image. Notice that the image will install the needed toolchain when
+  # building the smart contract. We just need an image with some Rust toolchain.
+  VERIFIABLE_IMAGE_BASE_RUST_VERSION: 1.85
 
 jobs:
   "lint_fmt":
@@ -77,3 +75,17 @@ jobs:
         run: |
           rustup component add rust-docs
           RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
+
+  verifiable-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install wasm32v1-none target
+        run: |
+          rustup target add wasm32v1-none
+      - name: Test smart contract
+        working-directory: ./reproducible
+        run: ./run-test.sh "rust:$VERIFIABLE_IMAGE_BASE_RUST_VERSION"

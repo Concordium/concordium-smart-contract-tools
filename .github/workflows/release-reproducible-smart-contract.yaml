@@ -5,11 +5,14 @@ on:
 
   push:
     tags:
-      - 'verifiable-sc/*.*.*'
+      - 'verifiable-sc/*'
 
 env:
   REGISTRY: docker.io
-  SERVICE_NAME: 'verifiable-sc'
+  # Rust version to use for the verifiable build image base image. Notice that the image will install the needed toolchain when
+  # building the smart contract. We just need an image with some Rust toolchain.
+  VERIFIABLE_IMAGE_BASE_RUST_VERSION: 1.85
+  IMAGE_VERSION: 1
 
 jobs:
   build-and-push-image:
@@ -20,32 +23,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Extract version from git tag
-        id: meta
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          # Extract version by splitting on "/" and taking the second part
-          RUST_VERSION=$(echo "$TAG" | cut -d '/' -f2)
-          echo "$RUST_VERSION"
-          echo "$TAG"
-          echo "rust_version=$RUST_VERSION" > "$GITHUB_OUTPUT"
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: ${{ steps.meta.outputs.rust_version }}
-          target: wasm32-unknown-unknown
       - name: Build Docker image
-        env:
-          RUST_VERSION: ${{ steps.meta.outputs.rust_version }}
-        run: docker build -f ./reproducible/build.Dockerfile --build-arg source_image="rust:$RUST_VERSION" -t "concordium/$SERVICE_NAME:$RUST_VERSION" ./reproducible
-      - name: Test smart contract
-        working-directory: ./reproducible/example-contract
-        env:
-          RUST_VERSION: ${{ steps.meta.outputs.rust_version }}
+        run: docker build -f ./reproducible/build.Dockerfile --build-arg source_image="rust:$VERIFIABLE_IMAGE_BASE_RUST_VERSION" -t "concordium/verifiable-sc:$IMAGE_VERSION" ./reproducible
+      - name: Install wasm32v1-none target
         run: |
-            CARGO_CONCORDIUM="cargo run --manifest-path $GITHUB_WORKSPACE/cargo-concordium/Cargo.toml --target x86_64-unknown-linux-gnu -- concordium"
-            $CARGO_CONCORDIUM build --verifiable "concordium/$SERVICE_NAME:$RUST_VERSION"
-            $CARGO_CONCORDIUM verify-build --module ./concordium-out/module.wasm.v1 --source ./concordium-out/module.wasm.v1.tar
+          rustup target add wasm32v1-none
+      - name: Test smart contract
+        working-directory: ./reproducible
+        run: ./run-test.sh "concordium/verifiable-sc:$IMAGE_VERSION"
       - name: Log in to the Container registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
@@ -53,6 +38,4 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Push the image
-        env:
-          RUST_VERSION: ${{ steps.meta.outputs.rust_version }}
-        run: docker push "concordium/$SERVICE_NAME:$RUST_VERSION"
+        run: docker push "concordium/verifiable-sc:$IMAGE_VERSION"

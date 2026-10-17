@@ -14,13 +14,6 @@ on:
       - reopened
       - synchronize
       - ready_for_review
-    paths:
-      - 'cargo-concordium/**/*.rs'
-      - 'cargo-concordium/**/*.toml'
-      - 'rustfmt.toml'
-      - 'Cargo.toml'
-      - 'rust-toolchain.toml'
-      - 'concordium-base'
 
   workflow_dispatch: # allows manual trigger
 

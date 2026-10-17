@@ -82,3 +82,17 @@ jobs:
         run: |
           rustup component add rust-docs
           RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
+
+  verifiable-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install wasm32v1-none target
+        run: |
+          rustup target add wasm32v1-none
+      - name: Test smart contract
+        working-directory: ./reproducible
+        run: ./run-test.sh "rust:$VERIFIABLE_IMAGE_BASE_RUST_VERSION"

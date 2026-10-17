@@ -5,7 +5,7 @@ on:
 
   push:
     tags:
-      - 'verifiable-sc/*'
+      - 'verifiable-sc-wasm32v1/*'
 
 env:
   REGISTRY: docker.io
@@ -24,13 +24,7 @@ jobs:
         with:
           submodules: recursive
       - name: Build Docker image
-        run: docker build -f ./reproducible/build.Dockerfile --build-arg source_image="rust:$VERIFIABLE_IMAGE_BASE_RUST_VERSION" -t "concordium/verifiable-sc:$IMAGE_VERSION" ./reproducible
-      - name: Install wasm32v1-none target
-        run: |
-          rustup target add wasm32v1-none
-      - name: Test smart contract
-        working-directory: ./reproducible
-        run: ./run-test.sh "concordium/verifiable-sc:$IMAGE_VERSION"
+        run: docker build -f ./reproducible/build.Dockerfile --build-arg source_image="rust:$VERIFIABLE_IMAGE_BASE_RUST_VERSION" -t "concordium/verifiable-sc-wasm32v1:$IMAGE_VERSION" ./reproducible
       - name: Log in to the Container registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
@@ -38,4 +32,4 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Push the image
-        run: docker push "concordium/verifiable-sc:$IMAGE_VERSION"
+        run: docker push "concordium/verifiable-sc-wasm32v1:$IMAGE_VERSION"

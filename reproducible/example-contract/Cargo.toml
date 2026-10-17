@@ -10,7 +10,7 @@ description = "Reproducible builds test smart contract."
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-concordium-std = "10"
+concordium-std = "11.0.0"
 
 [profile.release]
 opt-level = "s"

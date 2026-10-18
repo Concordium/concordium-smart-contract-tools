@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Script used to test the verifiable build image.
+# Script used to test the verifiable build, including the builder image.
 
 set -e
 

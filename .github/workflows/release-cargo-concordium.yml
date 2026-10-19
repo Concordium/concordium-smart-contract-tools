@@ -72,7 +72,7 @@ jobs:
           gh release upload ${{ github.ref_name }} uploads/*
 
   cargo-concordium-crate-release:
-    name: cargo-concordium:release
+    name: cargo-concordium-crate:release
     needs: build
     runs-on: ubuntu-latest
     defaults:
